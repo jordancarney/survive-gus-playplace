@@ -10,7 +10,7 @@
 // told in cutscenes (story.js).
 import * as THREE from 'three';
 import {
-  DEBUG, ANIMATRONIC_ORDER, ROAMERS, PLAYER, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef,
+  DEBUG, ANIMATRONIC_ORDER, ROAMERS, PLAYER, TIMMY, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef,
 } from './config.js';
 import { input, requestPointerLock, exitPointerLock, onPointerLockChange } from './input.js';
 import { audio, sfx, playMusic, stopMusic, setListener, startAmbience, stopAmbience, stopMusicBox } from './audio.js';
@@ -31,8 +31,10 @@ import { Repair } from './repair.js';
 import { Weapons } from './weapons.js';
 import { Hud } from './hud.js';
 import { Touch } from './touch.js';
+import { Timmy } from './timmy.js';
+import { Phone } from './phone.js';
 import { loadProfile, saveProfile, freshProfile } from './save.js';
-import { setEyes, buildJonathan, buildManager } from './models.js';
+import { setEyes, buildJonathan, buildManager, buildGramma } from './models.js';
 import { signTex } from './textures.js';
 import { VERSION } from './version.js';
 
@@ -80,12 +82,26 @@ export class Game {
     };
     this.playplace = this.place;
     this.lighting = new Lighting(this.scene, this.decor, this.place, this.houseDecor);
-    this.people = { jonathan: makePerson(this.scene, buildJonathan), manager: makePerson(this.scene, buildManager) };
+    this.people = {
+      jonathan: makePerson(this.scene, buildJonathan),
+      manager: makePerson(this.scene, buildManager),
+      gramma: makePerson(this.scene, buildGramma),
+    };
     this.effects = new Effects(this.scene);
     this.machines = new Machines(this, this.decor);
     this.player = new Player(this, this.camera);
     this.bots = ANIMATRONIC_ORDER.map((id) => new Animatronic(this, id));
     this.junk = new JunkMonster(this);
+    // The old originals, under dust sheets in Parts & Service until Night 21.
+    this.oldBots = ANIMATRONIC_ORDER.map((id) => {
+      const a = new Animatronic(this, id, { old: true });
+      a.spawnAt = this.decor.oldSpots[id];
+      a.root.visible = false;
+      a.state = 'stored';
+      return a;
+    });
+    this.timmy = new Timmy(this);
+    this.timmyQuest = false;
     this.night = new NightDirector(this);
     this.day = new Daytime(this);
     this.cams = new CameraSystem(this);
@@ -95,6 +111,7 @@ export class Game {
     this.touch = new Touch(this);
     this.touch.init();
     this.cut = new Cutscene(this);
+    this.phone = new Phone(this);
     this.setArea('playplace');
 
     this.profile = loadProfile();
@@ -130,8 +147,14 @@ export class Game {
 
   hidePeople() { for (const p of Object.values(this.people)) p.root.visible = false; }
 
+  // Everyone the animatronics' side of things can be fighting alongside you.
+  friends() { return [...this.bots, ...this.oldBots].filter((a) => a.state === 'friend' && a.root.visible); }
+
   resetBots() {
+    this.timmy.hide();
     for (const a of this.bots) a.resetToStage();
+    for (const a of this.oldBots) { a.state = 'stored'; a.root.visible = false; }
+    for (const s of this.decor.sheets) s.visible = true;
     this.junk.clear();
     if (!this.area.isPlayPlace) this.bot('gus').root.visible = false;   // Gus never leaves the stage
   }
@@ -206,7 +229,7 @@ export class Game {
     this.junk.clear();
     this.weapons.clear();
     this.effects.clear();
-    for (const a of this.bots) a.resetToStage();
+    this.resetBots();
     this.machines.resetAll();
     this.machines.setPower(true);
     this.player.carrying = null;
@@ -223,25 +246,30 @@ export class Game {
       this.cutscene('intro', () => {
         p.seenIntro = true;
         saveProfile(p);
-        this.startDay(true);
+        this.startDay({ first: true });
       });
       return;
     }
+    if (this.timmyNext()) { this.cutscene('timmyNumber', () => this.startDay({ timmy: true })); return; }
     if (this.homeNext()) { this.cutscene('home', () => this.startHome()); return; }
     this.showCard(p.night);
   }
+
+  // Night 2 is done and Timmy still hasn't gone home with his gramma.
+  timmyNext() { return this.profile.night === 3 && !this.profile.timmyHome; }
 
   // Night 10 is done and the trip home hasn't happened yet.
   homeNext() { return this.profile.night === 11 && !this.profile.homeDone; }
 
   afterMorning() {
-    if (!this.replaying && this.homeNext()) this.cutscene('home', () => this.startHome());
+    if (!this.replaying && this.timmyNext()) this.cutscene('timmyNumber', () => this.startDay({ timmy: true }));
+    else if (!this.replaying && this.homeNext()) this.cutscene('home', () => this.startHome());
     else this.startDay();
   }
 
   // ── Daytime ───────────────────────────────────────────────────────────
 
-  startDay(first = false) {
+  startDay({ first = false, timmy = false } = {}) {
     this.setArea('playplace');
     this.hidePeople();
     this.night.stop();
@@ -259,7 +287,12 @@ export class Game {
     this.player.vmGroup.visible = true;
     this.day.start(this.profile.happiness);
     const n = this.profile.night;
-    $('dayText').innerHTML = first
+    this.timmyQuest = timmy;
+    if (timmy) this.timmy.follow(P(31.2, 11.6)); else this.timmy.hide();
+    $('btnClockIn').classList.toggle('hidden', timmy);
+    $('dayText').innerHTML = timmy
+      ? 'Timmy remembered his gramma\'s number! Take him to the <b>Security Office</b> and call her on the <b>desk phone</b> (E).'
+      : first
       ? 'Your first day at Gus\'s PlayPlace! Walk around (WASD + mouse). When you\'re ready, clock in at the <b>time clock</b> in the <b>Security Office</b> — or just press the button.'
       : `The kids are back! Look around, then clock in at the <b>time clock</b> in the <b>Security Office</b>.`;
     $('btnClockIn').textContent = n > LAST_STORY_NIGHT ? 'Clock in for Secret Night 21' : `Clock in for Night ${n}`;
@@ -287,7 +320,7 @@ export class Game {
     this.hideHands();
     this.hud.card(n);
     this.lighting.set('title');
-    for (const a of this.bots) a.resetToStage();
+    this.resetBots();
     this.showScreen('card');
   }
 
@@ -304,6 +337,7 @@ export class Game {
 
   startNight(n) {
     const p = this.profile;
+    this.timmyQuest = false;
     this.setArea('playplace');
     this.hidePeople();
     this.retry = () => this.showCard(n);
@@ -462,7 +496,7 @@ export class Game {
   winBoss(who) {
     this.winTimer = 3;
     this.winWho = who;
-    for (const a of this.bots) if (a !== who && a.state !== 'friend') a.befriend(null);
+    for (const a of this.bots) if (a !== who && a.state !== 'friend' && a.root.visible) a.befriend(null);
     if (this.player.carrying) this.dropCarried();
   }
 
@@ -591,7 +625,10 @@ export class Game {
     const near = (pt, r = reach) => Math.hypot(pt.x - p.pos.x, pt.z - p.pos.z) < r;
 
     if (this.mode === 'day') {
-      if (near(this.decor.timeClock.point, 1.6)) {
+      if (this.timmyQuest && near(this.decor.phone.point, 1.5)) {
+        return { text: '<b>E</b> Call Timmy\'s gramma', act: () => this.phone.open(TIMMY.number, 'Timmy\'s Gramma', () => this.grammaComes()) };
+      }
+      if (!this.timmyQuest && near(this.decor.timeClock.point, 1.6)) {
         return { text: `<b>E</b> Clock in for ${this.profile.night > 20 ? 'Secret Night 21' : 'Night ' + this.profile.night}`, act: () => this.clockIn() };
       }
       return null;
@@ -601,6 +638,7 @@ export class Game {
       if (!this.area.isPlayPlace && near(this.houseDecor.van.drop, 2.6)) return { text: `<b>E</b> Load ${p.carrying.name} into the van`, act: () => this.chuck() };
       return { text: `<b>E</b> Let go of ${p.carrying.name}`, act: () => this.dropCarried(), quiet: true };
     }
+    if (this.timmy.state === 'crying' && near(this.timmy.pos, 2.4)) return { text: '<b>E</b> Talk to the crying kid', act: () => this.meetTimmy() };
     for (const a of this.bots) {
       if (a.state === 'down' && near(a.pos, 2.3)) return { text: `<b>E</b> Drag ${a.name}`, act: () => this.grab(a) };
     }
@@ -692,6 +730,9 @@ export class Game {
     this.night.update(dt);
     if (this.mode !== 'night') return;
     for (const a of this.bots) a.update(dt);
+    for (const a of this.oldBots) if (a.state === 'friend') a.update(dt);
+    if (this.mode !== 'night') return;
+    this.timmy.update(dt);
     this.junk.update(dt);
     this.weapons.update(dt);
     this.machines.update(dt);
@@ -717,6 +758,13 @@ export class Game {
 
   updateDay(dt) {
     const p = this.player;
+    if (this.phone.active) {
+      this.phone.update(dt);
+      p.update(dt, { canMove: false, canLook: false });
+      this.hud.prompt(null);
+      this.timmy.update(dt);
+      return;
+    }
     if (this.handleCommonInput()) return;
     p.update(dt);
     const it = this.findInteraction();
@@ -724,8 +772,54 @@ export class Game {
     if (it && input.pressed('interact')) it.act();
     if (this.mode !== 'day') return;
     for (const a of this.bots) a.update(dt);
+    this.timmy.update(dt);
     this.day.update(dt);
     this.hud.update(dt);
+  }
+
+  // ── Timmy ─────────────────────────────────────────────────────────────
+
+  // Found him crying in the ball pit. A quick talk, then he follows you.
+  meetTimmy() {
+    this.cut.play(SCRIPTS.timmyMeet, () => {
+      this.showScreen('night');
+      this.player.vmGroup.visible = true;
+      this.player.lightVisible = true;
+      this.player.pos.copy(P(12.4, 31.6));
+      this.player.yaw = Math.PI / 2;
+      this.timmy.follow(P(12.9, 32.9));
+      this.hud.toast('Timmy is following you. Keep him safe until 6 AM!', 4);
+      if (!this.touch.active) requestPointerLock();
+    });
+  }
+
+  // An animatronic got to Timmy before you could stop it.
+  timmyCaught(a) {
+    if (this.mode !== 'night') return;
+    this.cams.close();
+    if (this.repair.active) this.repair.close();
+    if (this.player.carrying) this.dropCarried();
+    exitPointerLock();
+    sfx.scream();
+    this.night.stop();
+    this.timmy.hide();
+    this.hud.caught(a.name, `Try Night ${this.night.n} again`,
+      'Keep Timmy close behind you, and zap anything that gets near him.', 'OH NO!', `${a.name} caught Timmy!`);
+    this.showScreen('caught');
+  }
+
+  // The phone call worked: gramma is on her way.
+  grammaComes() {
+    this.cutscene('gramma', () => {
+      const p = this.profile;
+      if (!p.timmyHome) {
+        p.timmyHome = true;
+        p.happiness = Math.min(100, p.happiness + TIMMY.rescue);
+        saveProfile(p);
+      }
+      this.startDay();
+      this.hud.toast(`Timmy is home safe! Kids' happiness +${TIMMY.rescue} 😄`, 4);
+    });
   }
 
   render(dt) {

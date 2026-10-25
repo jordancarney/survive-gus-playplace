@@ -17,11 +17,14 @@ import { sfx, startMusicBox, stopMusicBox } from './audio.js';
 const tmp = new THREE.Vector3();
 
 export class Animatronic {
-  constructor(game, id) {
+  constructor(game, id, { old = false } = {}) {
     this.game = game;
     this.id = id;
+    this.old = old;
     this.def = ANIMATRONICS[id] || { name: 'The Junk Monster', walk: 3.2, chase: 3.6, sight: 99 };
-    this.rig = buildAnimatronic(id);
+    if (old) this.def = { ...this.def, name: `Old ${this.def.name}` };
+    this.rig = buildAnimatronic(id, { old });
+    this.spawnAt = null;      // the old originals start in Parts & Service, not on the stage
     this.root = this.rig.root;
     this.root.rotation.order = 'YXZ';
     game.scene.add(this.root);
@@ -54,7 +57,7 @@ export class Animatronic {
 
   get name() { return this.def.name; }
   // Where a night (or the house level) starts it: the stage, or somewhere in Jonathan's house.
-  get home() { return this.game.area.spawn[this.id]; }
+  get home() { return this.spawnAt || this.game.area.spawn[this.id]; }
   get chestY() { return this.rig.height * 0.6; }
 
   // True while it can still catch you.
@@ -79,6 +82,7 @@ export class Animatronic {
     this.sink = 0;
     this.freezeTimer = 0;
     this.root.visible = true;
+    this.root.scale.setScalar(this.old ? 0.96 : 1);
     this.root.rotation.set(0, this.yaw, 0);
     // Put the model there now, not on the next update — cutscenes don't run updates.
     this.root.position.set(this.pos.x, this.game.place.floorAt(this.pos.x, this.pos.z), this.pos.z);
@@ -181,7 +185,25 @@ export class Animatronic {
 
   eye() { return tmp.set(this.pos.x, this.pos.y + this.rig.height * 0.85, this.pos.z); }
 
+  // Who it's after: Jonathan, or (on Night 2) Timmy, if it can sense him and not Jonathan.
   senses() {
+    this.preyIsTimmy = false;
+    if (this.sensesPlayer()) return true;
+    const t = this.game.timmy;
+    if (!t.vulnerable) return false;
+    const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z);
+    if (d > this.def.sight || !this.game.place.sightClear(this.eye(), t.pos)) return false;
+    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+    if (d < 3 || (fx * (t.pos.x - this.pos.x) + fz * (t.pos.z - this.pos.z)) / d > 0.35) {
+      this.preyIsTimmy = true;
+      return true;
+    }
+    return false;
+  }
+
+  preyPos() { return this.preyIsTimmy ? this.game.timmy.pos : this.game.player.pos; }
+
+  sensesPlayer() {
     const player = this.game.player;
     if (!this.game.hunting) return false;
     const dx = player.pos.x - this.pos.x, dz = player.pos.z - this.pos.z;
@@ -285,7 +307,7 @@ export class Animatronic {
     this.state = 'chase';
     this.lostTimer = 0;
     this.repath = 0;
-    this.lastSeen.copy(this.game.player.pos);
+    this.lastSeen.copy(this.preyPos());
   }
 
   // Gus calls the junk room awake.
@@ -391,6 +413,8 @@ export class Animatronic {
     if (night && this.game.hunting && this.dangerous && this.state !== 'return' && this.state !== 'stage') {
       const reach = AI.catchRadius + this.rig.radius * 0.5;
       if (this.distToPlayer() < reach && Math.abs(this.game.player.pos.y - this.pos.y) < 1.2) this.game.caught(this);
+      const t = this.game.timmy;
+      if (this.game.mode === 'night' && t.vulnerable && Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) < reach) this.game.timmyCaught(this);
     }
     this.render(dt);
   }
@@ -446,15 +470,15 @@ export class Animatronic {
   }
 
   facePlayer(dt, rate = 8) {
-    const p = this.game.player.pos;
+    const p = this.preyPos();
     this.turnToward(p.x - this.pos.x, p.z - this.pos.z, dt, rate);
   }
 
   updateChase(dt) {
-    const player = this.game.player;
     const sees = this.senses() || this.distToPlayer() < 3;
+    const prey = this.preyPos();
     if (sees) {
-      this.lastSeen.copy(player.pos);
+      this.lastSeen.copy(prey);
       this.lostTimer = 0;
     } else {
       this.lostTimer += dt;
@@ -466,8 +490,8 @@ export class Animatronic {
     }
     const speed = this.def.chase * this.speedMult();
     // Straight at you when there's a clear line; otherwise path round.
-    if (sees && this.game.place.walkClear(this.pos, player.pos, this.rig.radius * 0.7)) {
-      this.path = [player.pos.clone()];
+    if (sees && this.game.place.walkClear(this.pos, prey, this.rig.radius * 0.7)) {
+      this.path = [prey.clone()];
     } else {
       this.repath -= dt;
       if (this.repath <= 0 || !this.path.length) {
@@ -737,7 +761,7 @@ export class JunkMonster extends Animatronic {
     // Friends in its face get swatted away — which is time it isn't spending on you.
     this.swatCool = (this.swatCool || 0) - dt;
     if (this.swatCool <= 0) {
-      const pest = this.game.bots.find((a) => a.state === 'friend' && a.timer <= 0 &&
+      const pest = this.game.friends().find((a) => a.timer <= 0 &&
         Math.hypot(a.pos.x - this.pos.x, a.pos.z - this.pos.z) < 2.6);
       if (pest) {
         this.state = 'swat';

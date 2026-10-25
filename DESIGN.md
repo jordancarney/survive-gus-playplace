@@ -19,11 +19,17 @@ Jonathan goes home to sleep and the four of them follow him: he has to zap them 
 again in his own house and load them into the PlayPlace van, which takes them back. The
 manager gives him a raise and doesn't ask. Gus never left the stage — he was waiting.
 
+On Night 2 there's a kid crying in the ball pit: **Timmy**, who fell asleep there and woke up
+alone. He sticks behind Jonathan until morning, and the next day remembers his gramma's
+number; Jonathan calls her from the office phone and she comes to pick him up.
+
 Night 20 is the reason for that warning: Gus goes haywire, the fuse boxes fry, and Jonathan
 has to stop him with the Magnum. Beating him fixes his glitch, and the animatronics become
-Jonathan's friends — just in time for Secret Night 21, when every broken part ever thrown in
-the junk pile pulls itself together into the **Junk Monster**, and the friends fight it with
-him.
+Jonathan's friends. Then, on Secret Night 21, the junk pile pulls all five of them in and
+spits out one **Junk Monster** — Gerald's body, Gus's head with Chomper's and Cranker's on its
+shoulders, Flipper's face in its belly. The **old originals**, retired to Parts & Service under
+dust sheets years ago, wake up and fight it with Jonathan. When it falls apart, the five pop
+back out.
 
 ## Tone
 
@@ -57,6 +63,14 @@ After playing the first build, he asked for:
 - **More story, with cutscenes.**
 - **After Night 10, at daytime, you go home and they follow you** — you stop them and put
   them back in the PlayPlace.
+
+After the second build, he asked for:
+
+- **All of them combine to make the Junk Monster** — and on Night 21, "the old versions of
+  the animatronics fight with you while the new ones attack you."
+- **On Night 2 you meet a kid** who lost his parents and follows you. The next day he gives
+  you his gramma's phone number, you type it on the keyboard, and she picks him up. He's
+  **Timmy**; the number is **145-247-3719**; and the animatronics **try to catch him too**.
 
 His original brief also fixed: Jonathan is 15 and found the job opening; five animatronics
 (Gus the platypus is the leader, Gerald the gorilla, Chomper the beaver, Cranker the penguin,
@@ -223,13 +237,35 @@ only here, built from the same parts as the daytime kids.
 | Cutscene   | When                                  | What happens                                         |
 |------------|---------------------------------------|------------------------------------------------------|
 | intro      | Start of a new game                   | Jonathan takes the job; "don't let Gus find you"     |
+| timmyMeet  | Night 2, when you find the crying kid | Timmy got left behind; "stay right behind me"        |
+| timmyNumber | The morning after Night 2            | Timmy remembers his gramma's phone number            |
+| gramma     | The phone call goes through           | Gramma comes to the lobby to pick him up (+10 happiness) |
 | blackout   | Before Night 5 (first time)           | The lights flicker and Gus turns his head            |
 | home       | After Night 10                        | He goes home to sleep — and hears squeaky feet       |
 | homeDone   | House level cleared                   | The van drives them back; Jonathan gets a raise      |
 | haywire    | Before Night 20 (first time)          | Gus's eyes go red and the fuse boxes fry             |
 | gusDown    | Gus beaten                            | His glitch is gone; everyone's friends; the junk pile moves |
-| junkRises  | Before Night 21 (first time)          | The Junk Monster climbs out of Parts & Service       |
-| finale     | Junk Monster beaten                   | Employee of the Month                                |
+| junkRises  | Before Night 21 (first time)          | The pile pulls the five in; the Junk Monster rises; the old crew wakes up |
+| finale     | Junk Monster beaten                   | The five pop back out; Employee of the Month         |
+
+## Timmy
+
+Night 2 only ([js/timmy.js](js/timmy.js)). 45 seconds in, a kid starts crying in the ball pit
+— you can hear it, positional, and see him on CAM 05. Walk up and press E to talk; after a
+short cutscene he follows a step behind you for the rest of the night, path-finding round
+furniture and catching up if he falls behind. He wears a white shirt so he stands out against
+the balls.
+
+The animatronics hunt him as well as you: anything that sees him and not you goes for him,
+and if it reaches him it's "OH NO! Chomper caught Timmy!" and the night starts over. Zap
+anything that gets close.
+
+The morning after, he remembers his gramma's number. He follows you around the daytime
+PlayPlace (the time clock is off until he's home) to the office, where the desk phone opens a
+keypad: type 145-247-3719 with the number keys (or tap it), Backspace to fix a digit. A wrong
+number beeps and clears. The right one rings, gramma answers, and she comes to the lobby to
+pick him up: kids' happiness +10. Saved as `timmyHome`, so it only happens once (if you quit
+before calling, Continue brings you back to that morning).
 
 ## They followed me home
 
@@ -291,10 +327,14 @@ hurt him: 15 to win, each freezing him 2 s (freezes don't stack). He speeds up a
 and one-third health (3.9 → 4.4 → 5.0 m/s). Four ammo crates (yellow glow, +6 shots, back
 after 30 s) are spread around the building. When he falls, everyone else stops hunting you.
 
-**Night 21 — the Junk Monster.** Rises out of the junk pile at midnight. 90 health; every
-weapon works on it (taser 3, knife 2, baseball 1, Magnum 4). It hunts you like Gus, lobs
-junk at where you're about to be (a hit dazes you), and swats any friend in its face. Gus,
-Gerald and Cranker fight it (1.2 per hit); Chomper and Flipper fix games instead. At
+**Night 21 — the Junk Monster.** The five are inside it, so they're gone from the stage. It
+rises out of the junk pile at midnight. 90 health; every weapon works on it (taser 3, knife
+2, baseball 1, Magnum 4). It hunts you like Gus, lobs junk at where you're about to be (a hit
+dazes you), and swats any friend in its face. The **old originals** are your friends here
+(faded, dusty versions of the same five, one eye dead, built by `buildAnimatronic(id, { old:
+true })`): Old Gus, Old Gerald and Old Cranker fight it (1.2 per hit); Old Chomper and Old
+Flipper fix games instead. The rest of the time they stand under dust sheets in the
+north-east corner of Parts & Service. At
 two-thirds health it speeds up; at one-third it rips out the power and the friends' blue
 eyes are the only lights left.
 
@@ -332,6 +372,8 @@ js/day.js         Daytime: kids, music, the show
 js/house.js       Jonathan's house: its floor plan, furniture and the van
 js/cutscene.js    The cutscene player
 js/story.js       Every cutscene script
+js/timmy.js       Timmy: crying in the ball pit, then following Jonathan
+js/phone.js       The office phone's keypad
 js/machines.js    Broken/fixed state and looks for games and fuse boxes
 js/repair.js      The three repair puzzles
 js/cameras.js     The security monitor and office monitor feeds
@@ -371,6 +413,6 @@ from a background tab needs `__game.update(1/60)` called yourself.
 ## Save data
 
 One profile in `localStorage` under `survive_gus_save_v1` — current night, kids' happiness,
-whether the intro has been seen, whether the house level is done, which one-time cutscenes
+whether the intro has been seen, whether the house level is done, whether Timmy is home, which one-time cutscenes
 have played, the two boss wins, the furthest night reached, and lifetime stats. It's merged over a fresh profile on load, so a save written by an older build never
 arrives missing a field newer code reads, and it only changes at 6 AM (or a boss win).

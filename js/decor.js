@@ -339,6 +339,24 @@ export class Decor {
         { p: [c.x, c.y, c.z], s: [0.3 + rand() * 0.5, 0.2 + rand() * 0.4, 0.3 + rand() * 0.5], r: [rand(), rand() * 3, rand()] });
     }
     this.junkSpots = [P(4.2, 20.4), P(5.8, 21.3), P(4.0, 22.6), P(6.2, 22.9), P(5.2, 19.6), P(3.4, 21.5)];
+
+    // The old originals, retired years ago, standing in a row under dust sheets. They only
+    // come out on Night 21.
+    this.oldSpots = { gus: P(9.7, 14.3), gerald: P(10.7, 14.3), chomper: P(11.6, 14.3), cranker: P(12.4, 14.3), flipper: P(13.2, 14.3) };
+    const heights = { gus: 2.25, gerald: 2.45, chomper: 1.55, cranker: 1.65, flipper: 2.0 };
+    const sheet = new THREE.MeshLambertMaterial({ color: 0xcfc8b8 });
+    this.sheets = [];
+    for (const [id, p] of Object.entries(this.oldSpots)) {
+      const h = heights[id];
+      const g = new THREE.Group();
+      g.position.copy(p);
+      g.rotation.y = (id.length % 3) * 0.4;
+      this.mesh(new THREE.CylinderGeometry(0.22, 0.55, h * 0.8, 9), sheet, g, { p: [0, h * 0.4, 0], still: false });
+      this.mesh(G.sphere, sheet, g, { p: [0, h * 0.85, 0], s: [0.3, 0.32, 0.3], still: false });
+      this.group.add(g);
+      this.sheets.push(g);
+    }
+    this.place.addBlock(9.3, 13.8, 13.6, 14.8, 2.4);
     this.sign('PARTS & SERVICE', 13.95, 15.5, 3.1, 3.4, 0.7, 'west', { bg: '#2b2d33', fg: '#f2c230', glow: '#f2c230' });
     this.sign('KEEP OUT', 3.5, 13.05, 2.6, 1.8, 0.5, 'south', { bg: '#f2c230', fg: '#111', glow: '#111', w: 256, h: 64, font: 'bold 34px sans-serif' });
     // one bare bulb on a cord, which flickers at night
@@ -474,6 +492,11 @@ export class Decor {
     this.mesh(G.cylLo, lam(0x333333), fan, { p: [0, 0.15, 0], s: [0.03, 0.3, 0.03] });
     const blades = this.mesh(G.box, lam(0x777777), fan, { p: [0, 0.32, 0.05], s: [0.3, 0.05, 0.01], still: false });
     this.spinners.push({ obj: blades, axis: 'z', speed: 14 });
+    // the office phone (Timmy's gramma gets a call from it)
+    const ph = this.anchor(31.75, 35.4, 'east', 0.78);
+    this.mesh(G.box, lam(0xc0262d), ph, { p: [0, 0.05, 0], s: [0.26, 0.1, 0.22] });
+    this.mesh(G.box, lam(0x8a1a1a), ph, { p: [0, 0.13, 0], s: [0.3, 0.05, 0.08] });
+    this.phone = { point: P(32.7, 35.4) };
     // the charging dock for the flashlight
     const dock = P(31.8, 34.5, 0.78);
     this.mesh(G.box, lam(0x222222), this.group, { p: [dock.x, dock.y + 0.05, dock.z], s: [0.3, 0.1, 0.2] });

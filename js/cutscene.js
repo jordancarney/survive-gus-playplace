@@ -16,6 +16,7 @@ export const smooth = (k) => k * k * (3 - 2 * k);
 const SPEAKER_COLORS = {
   Jonathan: '#2de2e6', Manager: '#ffd23f', Gus: '#ff9a1f', Gerald: '#ff6b6b',
   Chomper: '#9cff6b', Cranker: '#6fe3ff', Flipper: '#ff7ad1',
+  Timmy: '#7cff6b', Gramma: '#ff9ad5', 'Old Gus': '#d9b48a', '???': '#d9b48a',
 };
 
 export class Cutscene {

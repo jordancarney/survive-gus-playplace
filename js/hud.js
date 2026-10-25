@@ -145,6 +145,7 @@ export class Hud {
 
   objective() {
     const g = this.game;
+    if (g.mode === 'day' && g.timmyQuest) return 'Take Timmy to the <b>Security Office</b> and call his gramma on the <b>desk phone</b>';
     if (g.mode === 'day') return 'Daytime! Explore, then <b>clock in</b> at the time clock in the Security Office.';
     if (g.mode === 'home') {
       const lines = [`Zap them and load them into the <b>van</b> in the garage: <b>${g.vanCount()} of 4</b>`];
@@ -159,7 +160,8 @@ export class Hud {
       return `Fix the fuse box in the <b>${f ? g.roomName(f.room) : '?'}</b>!`;
     }
     const broken = g.machines.brokenCount();
-    const lines = ['Survive until <b>6 AM</b>'];
+    const lines = [g.timmy.found ? 'Keep <b>Timmy</b> safe until <b>6 AM</b>' : 'Survive until <b>6 AM</b>'];
+    if (g.timmy.state === 'crying') lines.push('A kid is crying somewhere — find him (try the cameras)');
     if (broken) lines.push(`${broken} broken game${broken > 1 ? 's' : ''} — find ${broken > 1 ? 'them' : 'it'} on the cameras`);
     const down = g.bots.filter((a) => a.state === 'down').length;
     if (down) lines.push('Drag powered-down animatronics to <b>Parts &amp; Service</b>');
@@ -246,9 +248,9 @@ export class Hud {
     } else u.classList.add('hidden');
   }
 
-  caught(who, retryLabel, tip) {
-    $('caughtTitle').textContent = 'GOTCHA!';
-    $('caughtBody').textContent = `${who} caught you.`;
+  caught(who, retryLabel, tip, title = 'GOTCHA!', body = `${who} caught you.`) {
+    $('caughtTitle').textContent = title;
+    $('caughtBody').textContent = body;
     $('caughtTip').textContent = tip;
     $('btnRetry').textContent = retryLabel;
   }

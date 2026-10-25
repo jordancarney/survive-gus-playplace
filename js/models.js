@@ -74,12 +74,14 @@ function eyes(head, rig, { color, x = 0.13, y = 0.08, z = 0.3, r = 0.085, white 
 }
 
 export function setEyes(rig, mode) {
-  if (!rig.eyeMat) return;
-  if (mode === 'off') rig.eyeMat.color.setRGB(0.05, 0.05, 0.05);
-  else if (mode === 'friend') rig.eyeMat.color.set(0x5ad1ff);
-  else if (mode === 'scare') rig.eyeMat.color.set(0xff1a1a);
-  else if (mode === 'dim') rig.eyeMat.color.copy(rig.eyeColor).multiplyScalar(0.35);
-  else rig.eyeMat.color.copy(rig.eyeColor);
+  // The Junk Monster has a whole set of heads, so it can have many eye materials.
+  for (const m of rig.eyeMats || (rig.eyeMat ? [rig.eyeMat] : [])) {
+    if (mode === 'off') m.color.setRGB(0.05, 0.05, 0.05);
+    else if (mode === 'friend') m.color.set(0x5ad1ff);
+    else if (mode === 'scare') m.color.set(0xff1a1a);
+    else if (mode === 'dim') m.color.copy(rig.eyeColor).multiplyScalar(0.35);
+    else m.color.copy(rig.eyeColor);
+  }
 }
 
 // ── The generic biped ───────────────────────────────────────────────────
@@ -277,58 +279,80 @@ function buildFlipper() {
 
 // ── The Junk Monster ────────────────────────────────────────────────────
 //
-// Built from every broken part ever thrown in Parts & Service — which is to say, from bits
-// of the other five. Nothing on it matches.
+// On Night 21 the junk pile pulls all five of them in and spits out one thing: Gerald's body
+// and arm, Gus's head in the middle with Chomper's and Cranker's on its shoulders, Flipper's
+// face in its belly, a flipper for a right arm, two different legs, and junk and wires
+// holding it all together.
+
+// Build one of the five and take just its head.
+function takeHead(build, scale, p, r = [0, 0, 0]) {
+  const src = build();
+  const h = src.head;
+  h.parent.remove(h);
+  h.position.set(p[0], p[1], p[2]);
+  h.rotation.set(r[0], r[1], r[2]);
+  h.scale.setScalar(scale);
+  return src;
+}
 
 function buildJunk() {
+  const fur = mat(0x3a3a44, { rough: 0.6 }), tan = mat(0x9b8f86, { rough: 0.5 });
   const rust = mat(0x7a4b2a, { rough: 0.8, metal: 0.4 });
   const steel = METAL();
   const root = new THREE.Group();
-  const rig = { root, height: 3.7, radius: 0.85, swing: 0.35 };
+  const rig = { root, height: 3.8, radius: 0.9, swing: 0.35 };
   rig.hips = group(root, [0, 1.15, 0]);
-  rig.legL = group(rig.hips, [-0.36, 0, 0]);
-  rig.legR = group(rig.hips, [0.36, 0, 0]);
-  limb(rig.legL, 1.15, 0.16, mat(0x1d2230), { foot: (g, len) => part(G.sphereLo, mat(0xff9a1f), g, { p: [0, -len + 0.06, 0.12], s: [0.2, 0.1, 0.36] }) });
-  limb(rig.legR, 1.15, 0.12, steel, { foot: (g, len) => part(G.box, DARK_METAL(), g, { p: [0, -len + 0.06, 0.1], s: [0.3, 0.12, 0.42] }) });
+  rig.legL = group(rig.hips, [-0.4, 0, 0]);
+  rig.legR = group(rig.hips, [0.4, 0, 0]);
+  // a gorilla leg and a penguin leg
+  limb(rig.legL, 1.15, 0.2, fur, { foot: (g, len) => part(G.sphereLo, tan, g, { p: [0, -len + 0.06, 0.12], s: [0.24, 0.1, 0.36] }) });
+  limb(rig.legR, 1.15, 0.13, mat(0x1d2230, { rough: 0.3 }), { foot: (g, len) => part(G.sphereLo, mat(0xff9a1f), g, { p: [0, -len + 0.06, 0.14], s: [0.2, 0.09, 0.4] }) });
+
   rig.torso = group(rig.hips, [0, 0, 0]);
-  const chunks = [
-    [0, 0.5, 0, 1.2, 0.9, 0.8, rust, 0.1], [0.3, 1.1, 0.05, 0.9, 0.7, 0.7, steel, -0.2],
-    [-0.35, 1.05, -0.05, 0.7, 0.8, 0.7, mat(0x7a4a2b), 0.25], [0.1, 1.55, 0, 1.3, 0.4, 0.75, rust, 0.05],
-    [-0.5, 0.4, 0.2, 0.4, 0.4, 0.4, mat(0x5b8fc4), 0.6], [0.55, 0.45, 0.25, 0.35, 0.5, 0.3, mat(0xc0262d), -0.4],
-  ];
-  for (const [x, y, z, sx, sy, sz, m, rz] of chunks) part(G.box, m, rig.torso, { p: [x, y, z], s: [sx, sy, sz], r: [0, rz * 0.5, rz] });
-  // a glowing core where a heart would be
-  rig.core = part(G.sphere, new THREE.MeshBasicMaterial({ color: 0xff3b30 }), rig.torso, { p: [0, 0.95, 0.42], s: [0.16, 0.16, 0.08] });
-  rig.neck = group(rig.torso, [0.05, 1.8, 0]);
-  rig.head = group(rig.neck, [0, 0, 0]);
-  rig.head.rotation.z = 0.12;
-  rig.skull = part(G.box, mat(0x6a6e78, { metal: 0.5, rough: 0.5 }), rig.head, { p: [0, 0.35, 0], s: [0.75, 0.62, 0.62] });
-  part(G.box, mat(0xfffbe6), rig.head, { p: [-0.1, 0.06, 0.32], s: [0.08, 0.16, 0.04] });   // one of Chomper's teeth
-  part(G.box, mat(0xfffbe6), rig.head, { p: [0.14, 0.04, 0.32], s: [0.07, 0.12, 0.04] });
-  rig.jaw = group(rig.head, [0, 0.06, 0.05]);
-  part(G.box, rust, rig.jaw, { p: [0, -0.08, 0.15], s: [0.62, 0.12, 0.45] });
-  const glow = new THREE.MeshBasicMaterial({ color: 0xff2a2a });
-  const glow2 = new THREE.MeshBasicMaterial({ color: 0x7cff3a });
-  rig.eyeMat = glow; rig.eyeColor = new THREE.Color(0xff2a2a);
-  part(G.sphereLo, glow, rig.head, { p: [-0.18, 0.42, 0.32], s: [0.13, 0.13, 0.05] });
-  part(G.sphereLo, glow2, rig.head, { p: [0.2, 0.46, 0.32], s: [0.06, 0.06, 0.04] });
-  // Gus's old top hat, crushed
-  const hat = group(rig.head, [-0.15, 0.72, 0]);
-  hat.rotation.set(0.2, 0, 0.45);
-  part(G.cyl, mat(0x5b2a86), hat, { p: [0, 0, 0], s: [0.3, 0.04, 0.3] });
-  part(G.cyl, mat(0x5b2a86), hat, { p: [0, 0.14, 0], s: [0.2, 0.25, 0.2], r: [0.15, 0, 0.1] });
-  // left arm: Gerald's. right arm: a claw from the claw machine.
-  rig.armL = group(rig.torso, [-0.85, 1.5, 0]);
-  rig.armR = group(rig.torso, [0.85, 1.5, 0]);
-  limb(rig.armL, 1.5, 0.2, mat(0x3a3a44, { rough: 0.6 }));
-  part(G.sphereLo, mat(0x9b8f86), rig.armL, { p: [0, -1.55, 0.05], s: [0.24, 0.24, 0.24] });
-  limb(rig.armR, 1.3, 0.09, steel);
-  for (const a of [-0.5, 0.5]) part(G.box, DARK_METAL(), rig.armR, { p: [Math.sin(a) * 0.12, -1.42, 0.05], s: [0.05, 0.3, 0.05], r: [0, 0, a] });
+  rig.skull = part(G.sphere, fur, rig.torso, { p: [0, 0.95, 0], s: [0.95, 1.0, 0.7] });       // Gerald's body
+  part(G.sphere, tan, rig.torso, { p: [0, 0.95, 0.35], s: [0.6, 0.7, 0.38] });
+  part(G.cylTaper, mat(0xc0262d), rig.torso, { p: [0, 1.25, 0], s: [0.85, 0.5, 0.66] });      // his vest, torn
+  const tie = group(rig.torso, [0, 1.62, 0.55]);                                             // Gus's bow tie
+  part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [-0.1, 0, 0], s: [0.08, 0.16, 0.08], r: [0, 0, Math.PI / 2] });
+  part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [0.1, 0, 0], s: [0.08, 0.16, 0.08], r: [0, 0, -Math.PI / 2] });
+  part(G.cone, mat(0x5b8fc4, { rough: 0.25 }), rig.torso, { p: [0, 1.6, -0.6], s: [0.08, 0.5, 0.35], r: [-0.6, 0, 0] });   // Flipper's fin
+  part(G.box, mat(0x4a3020, { rough: 0.7 }), rig.hips, { p: [0.25, -0.1, -0.6], s: [0.4, 0.06, 0.7], r: [0.4, 0.3, 0] }); // Chomper's tail
+  part(G.sphere, mat(0x5a341d), rig.hips, { p: [-0.25, -0.1, -0.6], s: [0.32, 0.07, 0.45], r: [0.5, -0.3, 0] });          // Gus's tail
+  for (const [x, y, z, sx, sy, sz, rz] of [[0.6, 0.4, 0.3, 0.35, 0.3, 0.3, 0.6], [-0.65, 1.3, 0.2, 0.3, 0.35, 0.3, -0.4], [0.4, 1.55, -0.3, 0.4, 0.25, 0.3, 0.2]]) {
+    part(G.box, rust, rig.torso, { p: [x, y, z], s: [sx, sy, sz], r: [0, rz, rz] });
+  }
+  rig.core = part(G.sphere, new THREE.MeshBasicMaterial({ color: 0xff3b30 }), rig.torso, { p: [0.5, 0.45, 0.45], s: [0.12, 0.12, 0.06] });
+
+  // The heads. Gus in the middle (he's the leader, even now), and Flipper staring out of
+  // the belly.
+  const gus = takeHead(buildGus, 1.25, [0, 1.85, 0.05]);
+  const chomper = takeHead(buildChomper, 1.15, [-0.78, 1.6, 0.05], [0, 0.35, 0.35]);
+  const cranker = takeHead(buildCranker, 1.15, [0.78, 1.62, 0.05], [0, -0.35, -0.35]);
+  const flipper = takeHead(buildFlipper, 0.95, [0, 0.55, 0.5], [0.15, 0, 0]);
+  rig.neck = group(rig.torso, [0, 0, 0]);
+  rig.neck.add(gus.head, chomper.head, cranker.head, flipper.head);
+  rig.head = gus.head;
+  rig.jaw = gus.jaw;
+  rig.jawMax = 0.6;
+  rig.eyeColor = new THREE.Color(0xff2a2a);
+  rig.eyeMats = [gus, chomper, cranker, flipper].map((r) => r.eyeMat);
+  rig.eyeMat = rig.eyeMats[0];
+  for (const m of rig.eyeMats) m.color.copy(rig.eyeColor);
+
+  // left arm: Gerald's. right arm: Flipper's flipper, with a claw-machine claw on the end.
+  rig.armL = group(rig.torso, [-0.95, 1.5, 0]);
+  rig.armR = group(rig.torso, [0.95, 1.5, 0]);
+  limb(rig.armL, 1.5, 0.22, fur);
+  part(G.sphereLo, tan, rig.armL, { p: [0, -1.55, 0.05], s: [0.26, 0.26, 0.26] });
+  limb(rig.armR, 1.2, 0.1, mat(0x5b8fc4, { rough: 0.25 }));
+  part(G.sphere, mat(0x5b8fc4, { rough: 0.25 }), rig.armR, { p: [0, -0.7, 0], s: [0.1, 0.6, 0.24] });
+  for (const a of [-0.5, 0.5]) part(G.box, DARK_METAL(), rig.armR, { p: [Math.sin(a) * 0.12, -1.32, 0.05], s: [0.05, 0.3, 0.05], r: [0, 0, a] });
+
   // wires hanging out of it everywhere
   const wireColors = [0xff3b30, 0x2de2e6, 0xffd23f, 0x7cff3a];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 9; i++) {
     part(G.cyl, mat(wireColors[i % 4]), rig.torso, {
-      p: [(i / 7 - 0.5) * 1.1, 0.2 + (i % 3) * 0.4, 0.42], s: [0.015, 0.4 + (i % 3) * 0.15, 0.015], r: [0.2, 0, (i % 2 ? 1 : -1) * 0.3],
+      p: [(i / 8 - 0.5) * 1.3, 0.2 + (i % 3) * 0.45, 0.5], s: [0.015, 0.4 + (i % 3) * 0.15, 0.015], r: [0.2, 0, (i % 2 ? 1 : -1) * 0.3],
     });
   }
   rig.armBase = { L: [0, 0, 0.2], R: [0, 0, -0.2] };
@@ -340,11 +364,32 @@ const BUILDERS = { gus: buildGus, gerald: buildGerald, chomper: buildChomper, cr
 
 // How far each face sticks out in front of its head (a platypus bill is long), so the
 // jumpscare stops just short of it instead of putting the camera inside the bill.
-const SNOUT = { gus: 0.85, flipper: 0.7, cranker: 0.5, gerald: 0.5, chomper: 0.45, junk: 0.65 };
+const SNOUT = { gus: 0.85, flipper: 0.7, cranker: 0.5, gerald: 0.5, chomper: 0.45, junk: 1.1 };
 
-export function buildAnimatronic(id) {
+// The old originals, retired to Parts & Service years ago: same shapes, faded and dusty,
+// one eye gone dark.
+const oldCache = new Map();
+const DUST = new THREE.Color(0x8a8478);
+function aged(m) {
+  if (!m.isMeshStandardMaterial) return m;
+  if (!oldCache.has(m)) {
+    const c = m.color.clone().lerp(DUST, 0.45).multiplyScalar(0.8);
+    oldCache.set(m, new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: Math.min(0.3, m.metalness) }));
+  }
+  return oldCache.get(m);
+}
+
+export function buildAnimatronic(id, { old = false } = {}) {
   const rig = BUILDERS[id]();
   rig.id = id;
+  if (old) {
+    rig.root.traverse((o) => { if (o.isMesh) o.material = aged(o.material); });
+    rig.eyeColor.multiplyScalar(0.7);
+    let dark = null;
+    rig.root.traverse((o) => { if (o.isMesh && o.material === rig.eyeMat && o.position.x > 0) dark = o; });
+    if (dark) dark.material = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    rig.root.scale.setScalar(0.96);
+  }
   rig.root.updateMatrixWorld(true);
   const head = new THREE.Vector3();
   rig.head.getWorldPosition(head);
@@ -431,6 +476,18 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
       jaw = 1.0;
       break;
     }
+    case 'cry': {            // standing in the balls, hands over face
+      const sob = Math.sin(t * 9) * 0.04;
+      armLx = -2.3; armRx = -2.3; armLz = 0.35; armRz = -0.35;
+      headX = 0.4 + sob; torsoX = 0.2;
+      hipDrop = 0.04;
+      bob = sob * 0.5;
+      break;
+    }
+    case 'hug':
+      armLx = -1.5; armRx = -1.5; armLz = -0.35; armRz = 0.35;
+      torsoX = 0.15; headX = 0.1;
+      break;
     case 'wave': {
       bob = Math.sin(t * 1.4) * 0.012;
       armRx = -2.7; armRz = -0.5 + Math.sin(t * 6) * 0.35;
@@ -529,6 +586,18 @@ export function buildKid(rand = Math.random) {
 // Jonathan, as other people see him: fifteen, in his security uniform and cap.
 export const buildJonathan = () => buildPerson({
   height: 1.72, shirt: 0x2b4a7a, pants: 0x1f2533, skin: 0xd9a07a, cap: 0x1f3360, badge: true, shadows: true,
+});
+
+// Timmy, the kid who got left behind on Night 2, and his gramma.
+export const buildTimmy = () => buildPerson({
+  // a white shirt, so he stands out against the ball pit
+  height: 1.15, headScale: 0.11, shoulders: 0.15, shirt: 0xf4f1ea, pants: 0x2a4a8a,
+  skin: 0xf1c7a5, hair: 0x6b3e1f, shadows: true,
+});
+
+export const buildGramma = () => buildPerson({
+  height: 1.6, shirt: 0x8a4a8a, pants: 0x5a5a6a, skin: 0xf1c7a5, hair: 0xe8e8e8, glasses: true,
+  shoulders: 0.2, shadows: true,
 });
 
 export const buildManager = () => buildPerson({

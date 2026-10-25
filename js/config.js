@@ -221,6 +221,15 @@ export const NIGHTS = [
   n(21, 0,  0,  0,  0,  0, 0,  { title: 'The Junk Monster', boss: 'junk', secret: true }),
 ];
 
+// Timmy, the kid left behind on Night 2. He starts crying `cryAt` seconds into the night.
+export const TIMMY = {
+  name: 'Timmy',
+  pit: [9.4, 30.8],          // where he fell asleep in the ball pit (plan metres)
+  cryAt: 45,
+  number: '145-247-3719',    // his gramma's phone number, as the designer chose it
+  rescue: 10,                // kids' happiness when gramma picks him up
+};
+
 // The house level after Night 10: the four who followed Jonathan home.
 export const HOME_DEF = {
   night: 10, title: 'They Followed Me Home', home: true, blackouts: 0,
@@ -277,7 +286,8 @@ export const MANAGER_NOTES = {
      'breaks, go fix it: happy kids make happy animatronics. And if Cranker wanders off ' +
      'the stage, zap him with your taser and drag him to Parts & Service.',
   2: 'Chomper chews wires. If a camera goes fuzzy or a game suddenly breaks, Chomper is ' +
-     'probably close by.',
+     'probably close by. P.S. A family left in a hurry tonight. If you find anyone small ' +
+     'in here, keep them safe — the animatronics will go after them too.',
   3: 'Gerald takes TWO zaps. Here is a baseball — throw it to freeze him from far away. ' +
      'Don\'t forget to pick it back up.',
   4: 'Flipper likes to hide in the ball pit and can hear you running. Walk when you are close.',

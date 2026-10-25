@@ -322,6 +322,37 @@ export const sfx = {
     noise({ dur: 2.2, gain: 0.12, filter: 'bandpass', freq: 220, to: 340, q: 2, attack: 0.2 });
     for (let i = 0; i < 10; i++) tone({ freq: 90, type: 'square', dur: 0.04, gain: 0.04, delay: i * 0.2 });
   },
+  // A kid crying, from wherever he is.
+  cry(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 34);
+    if (!d) return;
+    [0, 0.32, 0.7].forEach((t, i) => {
+      tone({ freq: 520 - i * 30, to: 360 - i * 20, type: 'triangle', dur: 0.28 + i * 0.1, gain: 0.12, delay: t, dest: d });
+    });
+  },
+  // Phone keypad: the real two-tone beeps.
+  dtmf(k) {
+    if (!ok()) return;
+    const rows = { 1: 697, 2: 697, 3: 697, 4: 770, 5: 770, 6: 770, 7: 852, 8: 852, 9: 852, '*': 941, 0: 941, '#': 941 };
+    const cols = { 1: 1209, 4: 1209, 7: 1209, '*': 1209, 2: 1336, 5: 1336, 8: 1336, 0: 1336, 3: 1477, 6: 1477, 9: 1477, '#': 1477 };
+    tone({ freq: rows[k], type: 'sine', dur: 0.14, gain: 0.08 });
+    tone({ freq: cols[k], type: 'sine', dur: 0.14, gain: 0.08 });
+  },
+  ring() {
+    if (!ok()) return;
+    for (let i = 0; i < 2; i++) {
+      tone({ freq: 440, type: 'sine', dur: 0.4, gain: 0.07, delay: i * 0.5 });
+      tone({ freq: 480, type: 'sine', dur: 0.4, gain: 0.07, delay: i * 0.5 });
+    }
+  },
+  // The junk pile pulling everything in.
+  combine(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 40) || sfxGain;
+    noise({ dur: 2.2, gain: 0.3, filter: 'bandpass', freq: 200, to: 2400, q: 1.5, dest: d, attack: 0.4 });
+    tone({ freq: 60, to: 400, type: 'sawtooth', dur: 2.2, gain: 0.2, dest: d, curve: distortion() });
+  },
   clang() {
     if (!ok()) return;
     tone({ freq: 210, type: 'triangle', dur: 0.8, gain: 0.3 });

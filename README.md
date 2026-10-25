@@ -37,10 +37,14 @@ means starting the night over.
   flashlight, and finally the Magnum
 - A story told in cutscenes: getting the job, the night Gus first turns his head, the boss
   fights, and how it all ends
+- On Night 2 there's a kid crying in the ball pit: Timmy, who got left behind. Keep him safe
+  until morning (they'll go after him too), then dial his gramma's number on the office phone
+  so she can come and get him
 - After Night 10 Jonathan goes home to sleep — and they follow him. Zap them all through his
   house and load them into the PlayPlace van to send them back
-- A boss fight with Gus on Night 20, and a secret Night 21 where your new animatronic friends
-  help you take down the Junk Monster
+- A boss fight with Gus on Night 20, and a secret Night 21 where all five get pulled into the
+  junk pile and come out as one Junk Monster — and the old original animatronics, retired
+  under dust sheets for years, wake up to help you get them back
 - A manager's note before every night teaches whatever is new tonight
 - Saves automatically at 6 AM, and you can replay any night you've reached
 

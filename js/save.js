@@ -13,6 +13,7 @@ export const freshProfile = () => ({
   beatGus: false,           // night 20 won: the animatronics are friends, night 21 is open
   beatJunk: false,          // night 21 won: the whole game is done
   homeDone: false,          // the house level after night 10 is cleared
+  timmyHome: false,         // Timmy's gramma has picked him up
   seen: {},                 // cutscenes that only play once
   best: 1,                  // furthest night reached, for the night select
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },

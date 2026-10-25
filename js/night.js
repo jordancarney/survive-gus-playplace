@@ -2,7 +2,7 @@
 // that let Gus out, the boss nights, and the 6 AM report.
 import * as THREE from 'three';
 import {
-  CLOCK, AI, HAPPINESS, BOSS, HOME_DEF, nightDef, wakeHour, breakEvery, moodOf, ROAMERS, repairLevel,
+  CLOCK, AI, HAPPINESS, BOSS, HOME_DEF, TIMMY, nightDef, wakeHour, breakEvery, moodOf, ROAMERS, repairLevel,
 } from './config.js';
 import { sfx, startAmbience, stopAmbience, stopMusicBox, playMusic, stopMusic } from './audio.js';
 
@@ -71,7 +71,9 @@ export class NightDirector {
     g.machines.resetAll();
     g.machines.setPower(true);
     g.machines.breakForNight(n);
-    for (const a of g.bots) a.resetToStage();
+    g.resetBots();
+    // Night 2: a kid fell asleep in the ball pit and got left behind.
+    if (n === 2) g.timmy.setupNight(); else g.timmy.hide();
     g.junk.clear();
     this.clearCrates();
     g.lighting.set('night');
@@ -92,9 +94,12 @@ export class NightDirector {
       playMusic('boss');
     }
     if (this.boss === 'junk') {
-      // Night 21: everyone is on your side.
+      // Night 21: the five are inside the Junk Monster. The old originals come out from
+      // under their sheets to fight it with you.
+      for (const a of g.bots) { a.state = 'hidden'; a.root.visible = false; }
+      for (const sheet of g.decor.sheets) sheet.visible = false;
       const roles = { gus: 'fighter', gerald: 'fighter', cranker: 'fighter', chomper: 'fixer', flipper: 'fixer' };
-      for (const a of g.bots) a.befriend(roles[a.id]);
+      for (const a of g.oldBots) { a.resetToStage(); a.befriend(roles[a.id]); }
       g.junk.start();
       this.spawnCrates(BOSS.junk.ammoCrates);
       playMusic('boss');
@@ -251,6 +256,11 @@ export class NightDirector {
         this.breakTimer = breakEvery(this.n) * (0.7 + Math.random() * 0.6);
         if (g.machines.breakRandom()) g.hud.toast('*CLUNK* Something broke... check the cameras.', 3);
       }
+    }
+
+    if (g.timmy.state === 'hiding' && this.time >= TIMMY.cryAt) {
+      g.timmy.startCrying();
+      g.hud.toast('You hear a kid crying somewhere... check the cameras!', 4);
     }
 
     if (this.power && this.blackouts.length && this.time >= this.blackouts[0] && !this.boss) {

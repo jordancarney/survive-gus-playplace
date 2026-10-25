@@ -377,6 +377,29 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 .repair-pads .btn { min-width: 58px; font-size: 24px; padding: 10px 0; }
 .repair-cancel { font-size: 11px; color: var(--dim); font-family: var(--hud-font); }
 
+/* ── The office phone ───────────────────────────────────────────────── */
+
+#phoneUI { position: absolute; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+.phone {
+  background: linear-gradient(180deg, #c0262d, #8a1a1a); border-radius: 22px; padding: 18px 20px 16px;
+  display: flex; flex-direction: column; gap: 10px; align-items: center; width: min(320px, 92vw);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+.phone-note {
+  align-self: stretch; background: #fff59d; color: #3a2a10; border-radius: 4px; padding: 8px 12px;
+  font-size: 14px; line-height: 1.4; transform: rotate(-1.5deg); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+.phone-note b { font-family: var(--hud-font); font-size: 18px; letter-spacing: 0.06em; }
+.phone-display {
+  align-self: stretch; background: #c8f0c0; color: #12301a; border-radius: 8px; padding: 10px; text-align: center;
+  font-family: var(--hud-font); font-size: 26px; letter-spacing: 0.08em; min-height: 52px;
+}
+.phone-status { font-size: 13px; color: #ffe6e6; text-align: center; min-height: 1.3em; }
+.phone-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-self: stretch; }
+.phone-keys .btn { font-size: 22px; padding: 10px 0; min-width: 0; color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+.phone-actions { display: flex; gap: 8px; }
+.phone-actions .btn { color: #fff; border-color: rgba(255, 255, 255, 0.35); font-size: 14px; padding: 8px 14px; }
+
 /* ── Daytime panel ──────────────────────────────────────────────────── */
 
 #dayPanel { position: absolute; left: 50%; top: calc(16px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 11; }
