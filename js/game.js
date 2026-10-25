@@ -1,18 +1,24 @@
 // The game's state machine and the glue between every system.
 //
-//   title → story (first time) → day → card → night → morning → day → card → night …
-//                                                    ↘ caught → card (same night again)
+//   title → intro cutscene (first time) → day → card → night → morning → day → card → …
+//                                                         ↘ caught → card (same night again)
 //
-// Night 20 ends in a boss fight with Gus; winning it makes the animatronics your friends
-// and opens Secret Night 21, where they help you fight the Junk Monster.
+// After Night 10 the morning leads home instead: the animatronics followed Jonathan back to
+// his house, and he has to zap them and load them into the PlayPlace van. Night 20 ends in a
+// boss fight with Gus; winning it makes the animatronics your friends and opens Secret
+// Night 21, where they help you fight the Junk Monster. The story between all of that is
+// told in cutscenes (story.js).
 import * as THREE from 'three';
 import {
-  DEBUG, ANIMATRONIC_ORDER, PLAYER, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef,
+  DEBUG, ANIMATRONIC_ORDER, ROAMERS, PLAYER, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef,
 } from './config.js';
 import { input, requestPointerLock, exitPointerLock, onPointerLockChange } from './input.js';
-import { audio, sfx, playMusic, stopMusic, setListener, stopAmbience, stopMusicBox } from './audio.js';
+import { audio, sfx, playMusic, stopMusic, setListener, startAmbience, stopAmbience, stopMusicBox } from './audio.js';
 import { PlayPlace, P, ROOMS } from './map.js';
 import { Decor } from './decor.js';
+import { House, HouseDecor } from './house.js';
+import { Cutscene, makePerson } from './cutscene.js';
+import { SCRIPTS, BEFORE_NIGHT } from './story.js';
 import { Lighting } from './lighting.js';
 import { Effects } from './effects.js';
 import { Machines } from './machines.js';
@@ -26,41 +32,19 @@ import { Weapons } from './weapons.js';
 import { Hud } from './hud.js';
 import { Touch } from './touch.js';
 import { loadProfile, saveProfile, freshProfile } from './save.js';
-import { setEyes } from './models.js';
+import { setEyes, buildJonathan, buildManager } from './models.js';
 import { signTex } from './textures.js';
 import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 
-const STORIES = {
-  intro: [
-    { art: '🧢', text: 'Jonathan is fifteen, and he really needs a job.' },
-    { art: '🦆', text: 'Then he sees the sign taped to the door of Gus\'s PlayPlace — slides, arcade games, a ball pit, and five singing animatronics. NOW HIRING: NIGHT SECURITY.' },
-    { art: '🔦', text: '"Easy job!" says the manager, handing him a flashlight and a taser. "Watch the cameras. Fix whatever the kids broke. And if the animatronics wander off the stage... zap \'em and drag \'em to Parts & Service. They\'re always back on stage by morning."' },
-    { art: '⚡', text: '"Oh — and if the power ever goes out..." The manager stops smiling. "Don\'t let Gus find you."' },
-    { art: '🌙', text: 'Twenty nights. Survive them all.' },
-  ],
-  gus: [
-    { art: '💥', text: 'Gus crashes to the floor in a shower of sparks, and goes still.' },
-    { art: '💙', text: 'When his eyes flicker back on, they\'re blue. The glitch is gone. Gerald, Chomper, Cranker and Flipper look at you... and wave.' },
-    { art: '🤝', text: 'The animatronics aren\'t chasing you anymore. They\'re your friends now.' },
-    { art: '🗑️', text: 'But down in Parts & Service, something in the junk pile is moving. Every broken part you ever threw in there... is putting itself back together.' },
-    { art: '★', text: 'SECRET NIGHT 21 UNLOCKED.' },
-  ],
-  junk: [
-    { art: '💥', text: 'The Junk Monster falls apart into a mountain of bolts, springs and one very squashed top hat.' },
-    { art: '🎉', text: 'Gus, Gerald, Chomper, Cranker and Flipper cheer. Then they do what they do best: they put on a show.' },
-    { art: '🏆', text: 'EMPLOYEE OF THE MONTH: JONATHAN. Gus\'s PlayPlace is safe — and it\'s the happiest place in town.' },
-    { art: '🦆', text: 'Thanks for playing Survive Gus\'s PlayPlace!' },
-  ],
-};
-
 const TIPS = {
-  cranker: 'Cranker belly-slides in a straight line. Step to the side and he crashes into the wall!',
+  cranker: 'Listen for Cranker\'s squeaky feet. He\'s slower than you walk, but he keeps coming — zap him!',
   chomper: 'Chomper breaks games and chews camera wires. A fuzzy camera means he\'s close.',
   gerald: 'Gerald takes two zaps. A baseball freezes him from far away.',
   flipper: 'Flipper can hear you running. Walk when you\'re near the ball pit.',
   gus: 'When the power goes out, run to the fuse box — Gus always knows where you are.',
+  home: 'Zap one, then drag it to the van right away — before the next one finds you.',
   gusBoss: 'Keep moving and grab the glowing ammo boxes. Every Magnum hit freezes him.',
   junk: 'Dodge the junk it throws and fight next to your friends.',
 };
@@ -78,7 +62,25 @@ export class Game {
     this.scene.add(this.place.build());
     this.decor = new Decor(this.place);
     this.scene.add(this.decor.build());
-    this.lighting = new Lighting(this.scene, this.decor, this.place);
+    this.house = new House();
+    this.scene.add(this.house.build());
+    this.houseDecor = new HouseDecor(this.house);
+    this.scene.add(this.houseDecor.build());
+    // Two places the game can be. Systems reach the current one through `this.place`.
+    this.areas = {
+      playplace: {
+        building: this.place, isPlayPlace: true, groups: [this.place.group, this.decor.group],
+        spawn: this.decor.stageSpots, roam: ['K', 'B', 'D', 'H', 'T', 'E', 'P', 'A', 'R'], hideRoom: 'B',
+      },
+      home: {
+        building: this.house, isPlayPlace: false, groups: [this.house.group, this.houseDecor.group],
+        spawn: this.houseDecor.spawn, roam: ['B', 'W', 'K', 'H', 'L', 'G'], hideRoom: 'W',
+        hideSpot: this.houseDecor.spawn.flipper,
+      },
+    };
+    this.playplace = this.place;
+    this.lighting = new Lighting(this.scene, this.decor, this.place, this.houseDecor);
+    this.people = { jonathan: makePerson(this.scene, buildJonathan), manager: makePerson(this.scene, buildManager) };
     this.effects = new Effects(this.scene);
     this.machines = new Machines(this, this.decor);
     this.player = new Player(this, this.camera);
@@ -92,6 +94,8 @@ export class Game {
     this.hud = new Hud(this);
     this.touch = new Touch(this);
     this.touch.init();
+    this.cut = new Cutscene(this);
+    this.setArea('playplace');
 
     this.profile = loadProfile();
     this.mode = 'loading';
@@ -114,7 +118,38 @@ export class Game {
   bot(id) { return this.bots.find((a) => a.id === id); }
   allBots() { return this.junk.root.visible ? [...this.bots, this.junk] : this.bots; }
   roomName(id) { return ROOMS[id] ? ROOMS[id].name : ''; }
-  isPlaying() { return this.mode === 'night' || this.mode === 'day'; }
+  isPlaying() { return this.mode === 'night' || this.mode === 'day' || this.mode === 'home'; }
+  // True while the animatronics are out to get you.
+  get hunting() { return this.mode === 'night' || this.mode === 'home'; }
+
+  setArea(name) {
+    this.area = this.areas[name];
+    this.place = this.area.building;
+    for (const a of Object.values(this.areas)) for (const g of a.groups) g.visible = a === this.area;
+  }
+
+  hidePeople() { for (const p of Object.values(this.people)) p.root.visible = false; }
+
+  resetBots() {
+    for (const a of this.bots) a.resetToStage();
+    this.junk.clear();
+    if (!this.area.isPlayPlace) this.bot('gus').root.visible = false;   // Gus never leaves the stage
+  }
+
+  resetHouse() {
+    const d = this.houseDecor;
+    d.van.group.position.copy(d.van.home);
+    d.setVanDoors(true);
+    d.garageDoor.position.y = 0;
+  }
+
+  cutscene(id, done) {
+    exitPointerLock();
+    this.night.stop();
+    this.day.stop();
+    this.weapons.clear();
+    this.cut.play(SCRIPTS[id], done);
+  }
 
   // ── UI wiring ─────────────────────────────────────────────────────────
 
@@ -129,20 +164,18 @@ export class Game {
       this.continueGame();
     });
     click('btnSelect', () => {
-      this.hud.select(this.profile, (n) => { sfx.ui(); this.showCard(n); });
+      this.hud.select(this.profile, (n) => { sfx.ui(); if (n === 'home') this.startHome(); else this.showCard(n); });
       this.showScreen('select');
     });
     click('btnSelectBack', () => this.toTitle());
     click('btnHowTo', () => this.showScreen('howto'));
     click('btnHowToBack', () => this.toTitle());
-    click('btnStoryNext', () => this.nextStory());
-    click('btnStorySkip', () => this.endStory());
-    click('btnCardGo', () => this.startNight(this.cardNight));
+    click('btnCardGo', () => this.beginNight(this.cardNight));
     click('btnResume', () => this.togglePause());
     click('btnQuit', () => this.toTitle());
-    click('btnRetry', () => this.showCard(this.night.n));
+    click('btnRetry', () => this.retry());
     click('btnCaughtMenu', () => this.toTitle());
-    click('btnMorningGo', () => this.startDay());
+    click('btnMorningGo', () => this.afterMorning());
     click('btnClockIn', () => this.clockIn());
 
     // Clicking the 3D view during play takes the mouse.
@@ -157,7 +190,7 @@ export class Game {
     const el = $(name);
     if (el && el.classList.contains('screen')) el.classList.add('show');
     this.mode = name;
-    const playing = name === 'night' || name === 'day';
+    const playing = name === 'night' || name === 'day' || name === 'home';
     this.hud.show(playing);
     this.hud.el.classList.toggle('day', name === 'day');
     $('dayPanel').classList.toggle('hidden', name !== 'day');
@@ -166,6 +199,8 @@ export class Game {
 
   toTitle() {
     exitPointerLock();
+    this.setArea('playplace');
+    this.hidePeople();
     this.night.stop();
     this.day.stop();
     this.junk.clear();
@@ -185,48 +220,30 @@ export class Game {
   continueGame() {
     const p = this.profile;
     if (!p.seenIntro) {
-      this.story('intro', () => {
+      this.cutscene('intro', () => {
         p.seenIntro = true;
         saveProfile(p);
         this.startDay(true);
       });
       return;
     }
+    if (this.homeNext()) { this.cutscene('home', () => this.startHome()); return; }
     this.showCard(p.night);
   }
 
-  // ── Story cards ───────────────────────────────────────────────────────
+  // Night 10 is done and the trip home hasn't happened yet.
+  homeNext() { return this.profile.night === 11 && !this.profile.homeDone; }
 
-  story(key, done) {
-    this.storyPages = STORIES[key];
-    this.storyPage = 0;
-    this.storyDone = done;
-    this.showScreen('story');
-    this.drawStory();
-  }
-
-  drawStory() {
-    const s = this.storyPages[this.storyPage];
-    $('storyArt').textContent = s.art;
-    $('storyText').textContent = s.text;
-    $('btnStoryNext').textContent = this.storyPage === this.storyPages.length - 1 ? 'Continue' : 'Next';
-  }
-
-  nextStory() {
-    this.storyPage++;
-    if (this.storyPage >= this.storyPages.length) this.endStory();
-    else this.drawStory();
-  }
-
-  endStory() {
-    const done = this.storyDone;
-    this.storyDone = null;
-    if (done) done();
+  afterMorning() {
+    if (!this.replaying && this.homeNext()) this.cutscene('home', () => this.startHome());
+    else this.startDay();
   }
 
   // ── Daytime ───────────────────────────────────────────────────────────
 
   startDay(first = false) {
+    this.setArea('playplace');
+    this.hidePeople();
     this.night.stop();
     this.junk.clear();
     this.weapons.clear();
@@ -265,6 +282,8 @@ export class Game {
     this.day.stop();
     stopMusic();
     this.cardNight = n;
+    this.setArea('playplace');
+    this.hidePeople();
     this.hideHands();
     this.hud.card(n);
     this.lighting.set('title');
@@ -272,8 +291,22 @@ export class Game {
     this.showScreen('card');
   }
 
+  // Some nights open with a cutscene, the first time you reach them.
+  beginNight(n) {
+    const id = BEFORE_NIGHT[n];
+    const seen = this.profile.seen;
+    if (id && !seen[id]) {
+      seen[id] = true;
+      saveProfile(this.profile);
+      this.cutscene(id, () => this.startNight(n));
+    } else this.startNight(n);
+  }
+
   startNight(n) {
     const p = this.profile;
+    this.setArea('playplace');
+    this.hidePeople();
+    this.retry = () => this.showCard(n);
     this.winTimer = 0;
     $('jumpFlash').classList.add('hidden');
     this.replaying = n !== p.night;
@@ -295,9 +328,56 @@ export class Game {
     }
   }
 
+  // ── They followed me home ─────────────────────────────────────────────
+
+  startHome() {
+    this.retry = () => this.startHome();
+    this.replaying = this.profile.homeDone;
+    this.setArea('home');
+    this.hidePeople();
+    this.winTimer = 0;
+    $('jumpFlash').classList.add('hidden');
+    this.weapons.clear();
+    this.effects.clear();
+    this.resetHouse();
+    this.night.startHome(this.profile.happiness);
+    this.resetBots();
+    // They're already in the house, poking around.
+    for (const id of ROAMERS) {
+      const a = this.bot(id);
+      a.state = 'linger';
+      a.timer = 5 + Math.random() * 8;
+      a.mischief = id === 'flipper' ? 'pit' : null;
+    }
+    this.player.reset(this.houseDecor.spawn.jonathan, Math.PI, 10);
+    this.player.setWeapons(weaponsFor(10));
+    this.player.lightOn = false;
+    this.player.lightVisible = true;
+    this.player.vmGroup.visible = true;
+    this.lighting.set('home');
+    stopMusic();
+    startAmbience('night');
+    this.showScreen('home');
+    this.hud.toast('They followed you home! Zap them and load them into the van in the garage.', 5);
+    if (!this.touch.active) {
+      requestPointerLock();
+      $('clickToPlay').classList.remove('hidden');
+    }
+  }
+
+  vanCount() { return ROAMERS.filter((id) => this.bot(id).state === 'junked').length; }
+
+  winHome() {
+    exitPointerLock();
+    const p = this.profile;
+    if (!p.homeDone) { p.homeDone = true; saveProfile(p); }
+    sfx.victory();
+    this.cutscene('homeDone', () => this.startDay());
+  }
+
   // Something caught Jonathan.
   caught(who) {
-    if (this.mode !== 'night') return;
+    if (!this.hunting) return;
     this.cams.close();
     if (this.repair.active) this.repair.close();
     if (this.player.carrying) this.dropCarried();
@@ -347,8 +427,9 @@ export class Game {
     if (this.scareTimer <= 0) {
       $('jumpFlash').classList.add('hidden');
       exitPointerLock();
-      const tip = a.id === 'gus' && this.night.boss === 'gus' ? TIPS.gusBoss : TIPS[a.id];
-      this.hud.caught(a.name, this.night.n, tip);
+      const home = !this.area.isPlayPlace;
+      const tip = home ? TIPS.home : a.id === 'gus' && this.night.boss === 'gus' ? TIPS.gusBoss : TIPS[a.id];
+      this.hud.caught(a.name, home ? 'Try again' : `Try Night ${this.night.n} again`, tip);
       a.root.visible = a.id !== 'junk';
       this.night.stop();
       this.showScreen('caught');
@@ -402,9 +483,7 @@ export class Game {
       saveProfile(p);
       this.updatePhoto();
       sfx.victory();
-      playMusic('friends');
-      for (const a of this.bots) setEyes(a.rig, 'friend');
-      this.story(who.id === 'gus' ? 'gus' : 'junk', () => this.toTitle());
+      this.cutscene(who.id === 'gus' ? 'gusDown' : 'finale', () => this.toTitle());
     }
   }
 
@@ -439,7 +518,7 @@ export class Game {
     $('clickToPlay').classList.toggle('hidden', locked || !this.isPlaying() || this.cams.active || this.touch.active);
     if (locked || !this.isPlaying() || this.cams.active || this.repair.active) return;
     // Escape released the mouse mid-night: pause rather than leave Jonathan standing there.
-    if (this.mode === 'night') this.togglePause();
+    if (this.hunting) this.togglePause();
   }
 
   // ── Carrying ──────────────────────────────────────────────────────────
@@ -466,9 +545,11 @@ export class Game {
     if (!a) return;
     this.player.carrying = null;
     this.player.rebuildViewmodel();
+    // The junk pile at the PlayPlace; the back of the van at home.
+    const spots = this.area.isPlayPlace ? this.decor.junkSpots : this.houseDecor.van.spots;
     const used = this.bots.filter((b) => b.state === 'junked').map((b) => b.junkSpot);
-    const spot = this.decor.junkSpots.find((s, i) => !used.includes(i));
-    a.junkSpot = this.decor.junkSpots.indexOf(spot);
+    const spot = spots.find((s, i) => !used.includes(i));
+    a.junkSpot = spots.indexOf(spot);
     a.pos.set(spot.x, 0, spot.z);
     a.yaw = Math.random() * Math.PI * 2;
     a.state = 'junked';
@@ -476,7 +557,11 @@ export class Game {
     sfx.clang();
     this.effects.burst(new THREE.Vector3(spot.x, 0.6, spot.z), 12, 3);
     this.profile.stats.junked++;
-    this.hud.toast(`${a.name} is out for the night! 🗑️`);
+    if (this.area.isPlayPlace) this.hud.toast(`${a.name} is out for the night! 🗑️`);
+    else {
+      a.root.visible = false;   // in the back of the van, out of sight
+      this.hud.toast(`${a.name} is in the van! (${this.vanCount()} of ${ROAMERS.length})`);
+    }
   }
 
   alertAll(pos) {
@@ -512,7 +597,8 @@ export class Game {
       return null;
     }
     if (p.carrying) {
-      if (room === 'J') return { text: `<b>E</b> Chuck ${p.carrying.name} into the junk pile`, act: () => this.chuck() };
+      if (this.area.isPlayPlace && room === 'J') return { text: `<b>E</b> Chuck ${p.carrying.name} into the junk pile`, act: () => this.chuck() };
+      if (!this.area.isPlayPlace && near(this.houseDecor.van.drop, 2.6)) return { text: `<b>E</b> Load ${p.carrying.name} into the van`, act: () => this.chuck() };
       return { text: `<b>E</b> Let go of ${p.carrying.name}`, act: () => this.dropCarried(), quiet: true };
     }
     for (const a of this.bots) {
@@ -523,7 +609,7 @@ export class Game {
     for (const m of this.machines.list) {
       if (m.broken && near(m.point, 1.6)) return { text: `<b>E</b> Fix the ${m.name}`, act: () => this.repair.start(m, this.night.repairLevel) };
     }
-    if (room === 'O' && near(this.decor.desk.point, 1.8)) return { text: '<b>E</b> Use the cameras', act: () => this.cams.open() };
+    if (this.area.isPlayPlace && room === 'O' && near(this.decor.desk.point, 1.8)) return { text: '<b>E</b> Use the cameras', act: () => this.cams.open() };
     return null;
   }
 
@@ -535,9 +621,14 @@ export class Game {
     if (this.mode === 'paused' && input.pressed('pause')) this.togglePause();
     switch (this.mode) {
       case 'night': this.updateNight(dt); break;
+      case 'home': this.updateHome(dt); break;
       case 'day': this.updateDay(dt); break;
+      case 'cutscene':
+        this.cut.update(dt);
+        if (this.cut.active && this.cut.script.kids) this.day.update(dt);
+        break;
       case 'jumpscare': this.updateJumpscare(dt); break;
-      case 'title': case 'card': case 'howto': case 'select': case 'story':
+      case 'title': case 'card': case 'howto': case 'select':
         this.updateBackdrop(dt);
         break;
       default:
@@ -565,7 +656,7 @@ export class Game {
   handleCommonInput() {
     const p = this.player;
     if (input.pressed('pause') && !this.cams.active && !this.repair.active) { this.togglePause(); return true; }
-    if (input.pressed('flashlight') && this.mode === 'night') p.toggleLight();
+    if (input.pressed('flashlight') && this.hunting) p.toggleLight();
     if (input.pressed('swap') || input.wheel) {
       const dir = input.wheel < 0 ? -1 : 1;
       p.selectSlot((p.slot + dir + p.weapons.length) % p.weapons.length);
@@ -607,6 +698,23 @@ export class Game {
     this.hud.update(dt);
   }
 
+  updateHome(dt) {
+    const p = this.player;
+    if (this.handleCommonInput()) return;
+    p.update(dt);
+    const it = this.findInteraction();
+    this.hud.prompt(it ? it.text : null);
+    if (it && input.pressed('interact')) it.act();
+    if (input.firePressed && (input.locked || this.touch.active)) this.weapons.use();
+    if (this.mode !== 'home') return;
+    this.night.time += dt;
+    for (const a of this.bots) if (a.id !== 'gus') a.update(dt);
+    if (this.mode !== 'home') return;
+    this.weapons.update(dt);
+    this.hud.update(dt);
+    if (this.vanCount() === ROAMERS.length && !p.carrying) this.winHome();
+  }
+
   updateDay(dt) {
     const p = this.player;
     if (this.handleCommonInput()) return;
@@ -627,6 +735,10 @@ export class Game {
 
   resize(w, h) {
     this.camera.aspect = w / h;
+    // Keep at least ~80° across on narrow (portrait) screens, so cutscenes and the night
+    // don't turn into a letterbox slot.
+    const minVertical = 2 * Math.atan(Math.tan((80 * Math.PI / 180) / 2) / this.camera.aspect) * 180 / Math.PI;
+    this.camera.fov = Math.min(100, Math.max(72, minVertical));
     this.camera.updateProjectionMatrix();
     this.cams.cam.aspect = w / h;
     this.cams.cam.updateProjectionMatrix();

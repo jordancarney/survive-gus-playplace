@@ -48,7 +48,7 @@ export class Weapons {
     for (let t = 0.3; t < max; t += 0.2) {
       if (this.game.place.cell(eye.x + aim.x * t, eye.z + aim.z * t) === '#') return t;
       const y = eye.y + aim.y * t;
-      if (y < 0 || y > 4.6) return t;
+      if (y < 0 || y > this.game.place.wallH) return t;
     }
     return max;
   }
@@ -82,8 +82,10 @@ export class Weapons {
 
   taser() {
     const p = this.game.player;
-    if (p.cool.taser > 0) { sfx.zapEmpty(); return; }
-    p.cool.taser = p.taserCool;
+    if (p.cool.taser > 0) return;
+    if (p.taserCharges <= 0) { sfx.zapEmpty(); return; }
+    p.cool.taser = weaponById('taser').gap;
+    p.useTaserCharge();
     p.useAnim = 1;
     sfx.zap();
     const from = this.tipPos();

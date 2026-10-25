@@ -112,14 +112,12 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   font-weight: 800;
 }
 
-.brief-body, .story-text {
+.brief-body {
   color: var(--ink);
   max-width: 58ch;
   line-height: 1.6;
   font-size: clamp(14px, 2.2vw, 19px);
 }
-.story-text { min-height: 5em; }
-.story-art { font-size: clamp(54px, 12vw, 110px); line-height: 1; }
 
 /* ── Buttons ────────────────────────────────────────────────────────── */
 
@@ -387,6 +385,32 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; max-width: min(520px, 92vw);
 }
 .day-text { font-size: 14px; line-height: 1.45; }
+
+/* ── Cutscenes ──────────────────────────────────────────────────────── */
+
+#cutscene { position: absolute; inset: 0; z-index: 25; cursor: pointer; }
+.letterbox { position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+.lb-top { top: 0; }
+.lb-bottom { bottom: 0; }
+.cut-card {
+  position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center;
+  text-align: center; white-space: pre-line; font-size: clamp(26px, 5vw, 52px); font-weight: 800;
+  letter-spacing: 0.08em; color: var(--ink); text-shadow: 0 0 24px rgba(255, 63, 164, 0.6);
+}
+.cut-sub {
+  position: absolute; left: 50%; bottom: calc(11vh + 18px); transform: translateX(-50%);
+  width: min(760px, 92vw); padding: 12px 18px; border-radius: 12px; background: rgba(8, 4, 16, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.cut-who { font-weight: 800; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+.cut-text { font-size: clamp(16px, 2.4vw, 21px); line-height: 1.45; min-height: 1.45em; }
+.cut-sub.narrator .cut-who { display: none; }
+.cut-sub.narrator .cut-text { font-style: italic; color: #e6dcff; }
+.cut-hint {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(11vh - 26px);
+  font-family: var(--hud-font); font-size: 11px; color: rgba(255, 255, 255, 0.45);
+}
+.cut-skip { position: absolute; right: calc(14px + env(safe-area-inset-right)); top: calc(11vh + 12px); font-size: 13px; padding: 6px 14px; }
 
 /* ── Jumpscare and fades ────────────────────────────────────────────── */
 

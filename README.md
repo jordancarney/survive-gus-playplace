@@ -22,10 +22,12 @@ means starting the night over.
   upbeat techno; at night it's silent except for the footsteps
 - Twelve live security cameras with night vision, slow pans and static. What you see on a
   camera is exactly where an animatronic is, and anything broken gets marked on the map
-- Five animatronics, each with one trick you can learn: **Cranker** the penguin belly-slides
-  at you, **Chomper** the beaver chews wires, **Gerald** the gorilla takes two zaps,
-  **Flipper** the dolphin hides in the ball pit and hears you running, and **Gus** the platypus
-- Zap them, then drag them to the junk pile in Parts & Service, where they stay until morning
+- Five animatronics, each with one trick you can learn: **Cranker** the penguin squeaks when
+  he walks and never gives up, **Chomper** the beaver chews wires, **Gerald** the gorilla
+  takes two zaps, **Flipper** the dolphin hides in the ball pit and hears you running, and
+  **Gus** the platypus
+- A taser with three zaps before it needs to recharge. Zap them, then drag them to the junk
+  pile in Parts & Service, where they stay until morning
 - Broken kid games to fix with arrow-key puzzles. Happy kids make happy animatronics, so the
   Kids' Happiness meter makes every night easier or harder
 - Blackouts: when the power goes out, Gus leaves the stage. He senses you through walls,
@@ -33,6 +35,10 @@ means starting the night over.
   him except the Magnum. Find the fuse box that tripped before he finds you
 - New gear as the nights go on: a baseball, running shoes, a knife, a stronger taser, a bigger
   flashlight, and finally the Magnum
+- A story told in cutscenes: getting the job, the night Gus first turns his head, the boss
+  fights, and how it all ends
+- After Night 10 Jonathan goes home to sleep — and they follow him. Zap them all through his
+  house and load them into the PlayPlace van to send them back
 - A boss fight with Gus on Night 20, and a secret Night 21 where your new animatronic friends
   help you take down the Junk Monster
 - A manager's note before every night teaches whatever is new tonight

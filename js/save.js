@@ -12,6 +12,8 @@ export const freshProfile = () => ({
   seenIntro: false,
   beatGus: false,           // night 20 won: the animatronics are friends, night 21 is open
   beatJunk: false,          // night 21 won: the whole game is done
+  homeDone: false,          // the house level after night 10 is cleared
+  seen: {},                 // cutscenes that only play once
   best: 1,                  // furthest night reached, for the night select
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },
 });
@@ -24,7 +26,7 @@ export function loadProfile() {
     // missing a field that newer code reads.
     const saved = JSON.parse(raw);
     const base = freshProfile();
-    const p = { ...base, ...saved, stats: { ...base.stats, ...(saved.stats || {}) } };
+    const p = { ...base, ...saved, stats: { ...base.stats, ...(saved.stats || {}) }, seen: { ...(saved.seen || {}) } };
     p.night = Math.max(1, Math.min(NIGHTS.length, p.night | 0));
     p.best = Math.max(p.best | 0, p.night);
     p.happiness = Math.max(0, Math.min(100, Number(p.happiness) || HAPPINESS.start));

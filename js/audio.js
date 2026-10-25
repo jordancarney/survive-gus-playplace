@@ -183,8 +183,9 @@ const STEPS = {
     noise({ dur: 0.12, gain: 0.25, freq: 320, to: 120, dest: d });
   },
   cranker(d) {
-    tone({ freq: 980, to: 640, type: 'square', dur: 0.05, gain: 0.08, dest: d });
-    noise({ dur: 0.05, gain: 0.14, freq: 1800, dest: d });
+    tone({ freq: 1150, to: 1700, type: 'square', dur: 0.07, gain: 0.12, dest: d });
+    tone({ freq: 1700, to: 1100, type: 'square', dur: 0.06, gain: 0.09, delay: 0.07, dest: d });
+    noise({ dur: 0.05, gain: 0.12, freq: 1800, dest: d });
   },
   chomper(d) {
     noise({ dur: 0.05, gain: 0.2, freq: 1500, to: 600, dest: d });
@@ -214,7 +215,8 @@ export const sfx = {
 
   step(id, pos) {
     if (!ok()) return;
-    const d = spatial(pos, id === 'gerald' || id === 'junk' ? 34 : 26);
+    // Cranker's squeaky feet carry farthest of all — that's his whole trick.
+    const d = spatial(pos, id === 'cranker' ? 42 : id === 'gerald' || id === 'junk' ? 34 : 26);
     if (d) (STEPS[id] || STEPS.chomper)(d);
   },
 
@@ -238,6 +240,11 @@ export const sfx = {
     tone({ freq: 400, to: 90, type: 'square', dur: 0.2, gain: 0.08 });
   },
   zapEmpty() { if (ok()) tone({ freq: 240, to: 160, type: 'square', dur: 0.06, gain: 0.07 }); },
+  recharged() {
+    if (!ok()) return;
+    tone({ freq: 600, to: 1400, type: 'sawtooth', dur: 0.25, gain: 0.05 });
+    tone({ freq: 1400, type: 'square', dur: 0.05, gain: 0.05, delay: 0.25 });
+  },
   throwBall() { if (ok()) noise({ dur: 0.16, gain: 0.14, filter: 'bandpass', freq: 900, to: 2400, q: 2 }); },
   bonk(pos) {
     if (!ok()) return;
@@ -294,6 +301,27 @@ export const sfx = {
     const d = spatial(pos, 30) || sfxGain;
     tone({ freq: 400, to: 160, type: 'square', dur: 0.3, gain: 0.12, dest: d });
   },
+  // Three notes of Gus's music box, close by. The cutscenes' way of saying "he's watching".
+  musicBoxSting() {
+    if (!ok()) return;
+    [988, 880, 740].forEach((f, i) => {
+      tone({ freq: f, type: 'sine', dur: 0.7, gain: 0.12, delay: i * 0.38, dest: echoIn });
+      tone({ freq: f, type: 'sine', dur: 0.5, gain: 0.08, delay: i * 0.38 });
+    });
+  },
+  rattle(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 30) || sfxGain;
+    for (let i = 0; i < 6; i++) {
+      tone({ freq: 300 + Math.random() * 500, type: 'square', dur: 0.04, gain: 0.06, delay: i * 0.07, dest: d });
+      noise({ dur: 0.05, gain: 0.12, filter: 'bandpass', freq: 1800, q: 3, delay: i * 0.07, dest: d });
+    }
+  },
+  garageDoor() {
+    if (!ok()) return;
+    noise({ dur: 2.2, gain: 0.12, filter: 'bandpass', freq: 220, to: 340, q: 2, attack: 0.2 });
+    for (let i = 0; i < 10; i++) tone({ freq: 90, type: 'square', dur: 0.04, gain: 0.04, delay: i * 0.2 });
+  },
   clang() {
     if (!ok()) return;
     tone({ freq: 210, type: 'triangle', dur: 0.8, gain: 0.3 });
@@ -307,16 +335,6 @@ export const sfx = {
     tone({ freq: 220, to: 233, type: 'sawtooth', dur: 0.7, gain: 0.12 });
     tone({ freq: 311, to: 330, type: 'sawtooth', dur: 0.7, gain: 0.1 });
     noise({ dur: 0.5, gain: 0.12, filter: 'highpass', freq: 4000, attack: 0.05 });
-  },
-  slideWindup(pos) {
-    if (!ok()) return;
-    const d = spatial(pos, 30);
-    if (d) tone({ freq: 300, to: 1200, type: 'square', dur: 0.55, gain: 0.08, dest: d });
-  },
-  slide(pos) {
-    if (!ok()) return;
-    const d = spatial(pos, 34);
-    if (d) noise({ dur: 1.0, gain: 0.3, filter: 'bandpass', freq: 600, to: 1800, q: 1.5, dest: d });
   },
   crash(pos) {
     if (!ok()) return;

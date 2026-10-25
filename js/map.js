@@ -108,20 +108,30 @@ const DIRS = [
   [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2],
 ];
 
-export class PlayPlace {
-  constructor() {
+export class Building {
+  constructor(layout) {
+    this.layout = layout;
+    this.w = layout.w;
+    this.h = layout.h;
+    this.wallH = layout.wallH;
+    this.rooms = layout.rooms;
+    this.doors = layout.doors;
+    this.ox = layout.w / 2 - (layout.offsetX || 0);
+    this.oz = layout.h / 2 - (layout.offsetZ || 0);
+    // Plan metres → world, for this building.
+    this.P = (px, pz, y = 0) => new THREE.Vector3(px - this.ox, y, pz - this.oz);
     this.grid = [];
-    for (let z = 0; z < GRID_H; z++) this.grid.push(new Array(GRID_W).fill(WALL));
-    for (const [id, r] of Object.entries(ROOMS)) {
+    for (let z = 0; z < this.h; z++) this.grid.push(new Array(this.w).fill(WALL));
+    for (const [id, r] of Object.entries(this.rooms)) {
       for (let z = r.z0; z <= r.z1; z++) for (let x = r.x0; x <= r.x1; x++) this.grid[z][x] = id;
     }
     // Door cells belong to their first room, so "which room am I in" always has an answer.
-    for (const d of DOORS) {
+    for (const d of this.doors) {
       for (let z = d.z0; z <= d.z1; z++) for (let x = d.x0; x <= d.x1; x++) this.grid[z][x] = d.a;
     }
-    this.walkable = new Uint8Array(GRID_W * GRID_H);
-    for (let z = 0; z < GRID_H; z++) for (let x = 0; x < GRID_W; x++) {
-      this.walkable[z * GRID_W + x] = this.grid[z][x] !== WALL ? 1 : 0;
+    this.walkable = new Uint8Array(this.w * this.h);
+    for (let z = 0; z < this.h; z++) for (let x = 0; x < this.w; x++) {
+      this.walkable[z * this.w + x] = this.grid[z][x] !== WALL ? 1 : 0;
     }
     this.colliders = [];
     this.raised = [];        // walkable platforms: { x0, z0, x1, z1, h } in world space
@@ -133,8 +143,8 @@ export class PlayPlace {
   // ── Queries ───────────────────────────────────────────────────────────
 
   cell(x, z) {
-    const cx = Math.floor(x + OX), cz = Math.floor(z + OZ);
-    if (cx < 0 || cz < 0 || cx >= GRID_W || cz >= GRID_H) return WALL;
+    const cx = Math.floor(x + this.ox), cz = Math.floor(z + this.oz);
+    if (cx < 0 || cz < 0 || cx >= this.w || cz >= this.h) return WALL;
     return this.grid[cz][cx];
   }
 
@@ -144,9 +154,9 @@ export class PlayPlace {
   }
 
   isWalkable(x, z) {
-    const cx = Math.floor(x + OX), cz = Math.floor(z + OZ);
-    if (cx < 0 || cz < 0 || cx >= GRID_W || cz >= GRID_H) return false;
-    return this.walkable[cz * GRID_W + cx] === 1;
+    const cx = Math.floor(x + this.ox), cz = Math.floor(z + this.oz);
+    if (cx < 0 || cz < 0 || cx >= this.w || cz >= this.h) return false;
+    return this.walkable[cz * this.w + cx] === 1;
   }
 
   floorAt(x, z) {
@@ -191,13 +201,13 @@ export class PlayPlace {
   }
 
   nearestWalkable(cx, cz) {
-    if (this.walkable[cz * GRID_W + cx]) return [cx, cz];
+    if (this.walkable[cz * this.w + cx]) return [cx, cz];
     for (let r = 1; r < 8; r++) {
       for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
         const x = cx + dx, z = cz + dz;
-        if (x < 0 || z < 0 || x >= GRID_W || z >= GRID_H) continue;
-        if (this.walkable[z * GRID_W + x]) return [x, z];
+        if (x < 0 || z < 0 || x >= this.w || z >= this.h) continue;
+        if (this.walkable[z * this.w + x]) return [x, z];
       }
     }
     return [cx, cz];
@@ -205,16 +215,16 @@ export class PlayPlace {
 
   // World-space waypoints from `from` to `to`, smoothed so walkers cut corners naturally.
   findPath(from, to) {
-    const W = GRID_W;
+    const W = this.w;
     const clampC = (v, m) => Math.max(0, Math.min(m - 1, v));
-    const [sx, sz] = this.nearestWalkable(clampC(Math.floor(from.x + OX), W), clampC(Math.floor(from.z + OZ), GRID_H));
-    const [gx, gz] = this.nearestWalkable(clampC(Math.floor(to.x + OX), W), clampC(Math.floor(to.z + OZ), GRID_H));
+    const [sx, sz] = this.nearestWalkable(clampC(Math.floor(from.x + this.ox), W), clampC(Math.floor(from.z + this.oz), this.h));
+    const [gx, gz] = this.nearestWalkable(clampC(Math.floor(to.x + this.ox), W), clampC(Math.floor(to.z + this.oz), this.h));
     const start = sz * W + sx, goal = gz * W + gx;
     if (start === goal) return [new THREE.Vector3(to.x, 0, to.z)];
 
-    const g = new Float32Array(W * GRID_H).fill(Infinity);
-    const came = new Int32Array(W * GRID_H).fill(-1);
-    const closed = new Uint8Array(W * GRID_H);
+    const g = new Float32Array(W * this.h).fill(Infinity);
+    const came = new Int32Array(W * this.h).fill(-1);
+    const closed = new Uint8Array(W * this.h);
     const h = (i) => {
       const dx = Math.abs((i % W) - gx), dz = Math.abs(Math.floor(i / W) - gz);
       return Math.max(dx, dz) + (Math.SQRT2 - 1) * Math.min(dx, dz);
@@ -231,7 +241,7 @@ export class PlayPlace {
       const cx = cur % W, cz = Math.floor(cur / W);
       for (const [dx, dz, cost] of DIRS) {
         const nx = cx + dx, nz = cz + dz;
-        if (nx < 0 || nz < 0 || nx >= W || nz >= GRID_H) continue;
+        if (nx < 0 || nz < 0 || nx >= W || nz >= this.h) continue;
         const ni = nz * W + nx;
         if (!this.walkable[ni] || closed[ni]) continue;
         // no cutting a corner diagonally through a wall
@@ -249,7 +259,7 @@ export class PlayPlace {
     const cells = [];
     for (let i = goal; i !== -1; i = came[i]) cells.push(i);
     cells.reverse();
-    const pts = cells.map((i) => new THREE.Vector3((i % W) + 0.5 - OX, 0, Math.floor(i / W) + 0.5 - OZ));
+    const pts = cells.map((i) => new THREE.Vector3((i % W) + 0.5 - this.ox, 0, Math.floor(i / W) + 0.5 - this.oz));
     pts[pts.length - 1].set(to.x, 0, to.z);
 
     // String-pull: from each point, jump to the farthest one we can walk to in a line.
@@ -268,20 +278,20 @@ export class PlayPlace {
   }
 
   randomPointIn(roomId, rand = Math.random) {
-    const r = ROOMS[roomId];
+    const r = this.rooms[roomId];
     for (let tries = 0; tries < 40; tries++) {
       const px = r.x0 + 0.5 + rand() * (r.x1 - r.x0);
       const pz = r.z0 + 0.5 + rand() * (r.z1 - r.z0);
-      const p = P(px, pz);
+      const p = this.P(px, pz);
       if (this.isWalkable(p.x, p.z) && this.isWalkable(p.x + 0.5, p.z) && this.isWalkable(p.x - 0.5, p.z) &&
           this.isWalkable(p.x, p.z + 0.5) && this.isWalkable(p.x, p.z - 0.5)) return p;
     }
-    return P((r.x0 + r.x1) / 2 + 0.5, (r.z0 + r.z1) / 2 + 0.5);
+    return this.P((r.x0 + r.x1) / 2 + 0.5, (r.z0 + r.z1) / 2 + 0.5);
   }
 
   roomCenter(roomId) {
-    const r = ROOMS[roomId];
-    return P((r.x0 + r.x1 + 1) / 2, (r.z0 + r.z1 + 1) / 2);
+    const r = this.rooms[roomId];
+    return this.P((r.x0 + r.x1 + 1) / 2, (r.z0 + r.z1 + 1) / 2);
   }
 
   // ── Building it ───────────────────────────────────────────────────────
@@ -289,7 +299,7 @@ export class PlayPlace {
   // An axis-aligned solid box (plan coordinates, metres). Blocks movement and, unless
   // `nav` is false, takes its cells off the walking grid.
   addBlock(px0, pz0, px1, pz1, h, { nav = true, margin = 0.3 } = {}) {
-    const a = P(px0, pz0), b = P(px1, pz1);
+    const a = this.P(px0, pz0), b = this.P(px1, pz1);
     const c = {
       minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x),
       minZ: Math.min(a.z, b.z), maxZ: Math.max(a.z, b.z),
@@ -304,10 +314,10 @@ export class PlayPlace {
   blockNav(px0, pz0, px1, pz1, margin = 0.3) {
     const x0 = Math.min(px0, px1) - margin, x1 = Math.max(px0, px1) + margin;
     const z0 = Math.min(pz0, pz1) - margin, z1 = Math.max(pz0, pz1) + margin;
-    for (let z = Math.max(0, Math.floor(z0)); z <= Math.min(GRID_H - 1, Math.floor(z1)); z++) {
-      for (let x = Math.max(0, Math.floor(x0)); x <= Math.min(GRID_W - 1, Math.floor(x1)); x++) {
+    for (let z = Math.max(0, Math.floor(z0)); z <= Math.min(this.h - 1, Math.floor(z1)); z++) {
+      for (let x = Math.max(0, Math.floor(x0)); x <= Math.min(this.w - 1, Math.floor(x1)); x++) {
         const cx = x + 0.5, cz = z + 0.5;
-        if (cx >= x0 && cx <= x1 && cz >= z0 && cz <= z1) this.walkable[z * GRID_W + x] = 0;
+        if (cx >= x0 && cx <= x1 && cz >= z0 && cz <= z1) this.walkable[z * this.w + x] = 0;
       }
     }
   }
@@ -326,37 +336,37 @@ export class PlayPlace {
       const t = T.withRepeat(tex, w / 2, d / 2);
       const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: t }));
       m.rotation.x = -Math.PI / 2;
-      m.position.copy(P(x0 + w / 2, z0 + d / 2, 0));
+      m.position.copy(this.P(x0 + w / 2, z0 + d / 2, 0));
       m.receiveShadow = true;
       m.matrixAutoUpdate = false;
       m.updateMatrix();
       this.group.add(m);
     };
-    for (const r of Object.values(ROOMS)) add(r.x0, r.z0, r.x1, r.z1, r.floor());
-    for (const d of DOORS) add(d.x0, d.z0, d.x1, d.z1, ROOMS[d.b].floor());
+    for (const r of Object.values(this.rooms)) add(r.x0, r.z0, r.x1, r.z1, r.floor());
+    for (const d of this.doors) add(d.x0, d.z0, d.x1, d.z1, this.rooms[d.b].floor());
   }
 
   // Wall cells merged into as few boxes as possible: one collider and one mesh each.
   buildWalls() {
-    const used = new Uint8Array(GRID_W * GRID_H);
+    const used = new Uint8Array(this.w * this.h);
     const isWall = (x, z) => this.grid[z][x] === WALL;
-    const mat = new THREE.MeshLambertMaterial({ color: 0x1a1722 });
-    for (let z = 0; z < GRID_H; z++) {
-      for (let x = 0; x < GRID_W; x++) {
-        if (!isWall(x, z) || used[z * GRID_W + x]) continue;
+    const mat = new THREE.MeshLambertMaterial({ color: this.layout.wallColor || 0x1a1722 });
+    for (let z = 0; z < this.h; z++) {
+      for (let x = 0; x < this.w; x++) {
+        if (!isWall(x, z) || used[z * this.w + x]) continue;
         let x1 = x;
-        while (x1 + 1 < GRID_W && isWall(x1 + 1, z) && !used[z * GRID_W + x1 + 1]) x1++;
+        while (x1 + 1 < this.w && isWall(x1 + 1, z) && !used[z * this.w + x1 + 1]) x1++;
         let z1 = z;
-        outer: while (z1 + 1 < GRID_H) {
-          for (let k = x; k <= x1; k++) if (!isWall(k, z1 + 1) || used[(z1 + 1) * GRID_W + k]) break outer;
+        outer: while (z1 + 1 < this.h) {
+          for (let k = x; k <= x1; k++) if (!isWall(k, z1 + 1) || used[(z1 + 1) * this.w + k]) break outer;
           z1++;
         }
-        for (let zz = z; zz <= z1; zz++) for (let k = x; k <= x1; k++) used[zz * GRID_W + k] = 1;
+        for (let zz = z; zz <= z1; zz++) for (let k = x; k <= x1; k++) used[zz * this.w + k] = 1;
 
-        this.addBlock(x, z, x1 + 1, z1 + 1, WALL_H, { nav: false });
+        this.addBlock(x, z, x1 + 1, z1 + 1, this.wallH, { nav: false });
         const w = x1 - x + 1, d = z1 - z + 1;
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_H, d), mat);
-        m.position.copy(P(x + w / 2, z + d / 2, WALL_H / 2));
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, this.wallH, d), mat);
+        m.position.copy(this.P(x + w / 2, z + d / 2, this.wallH / 2));
         m.castShadow = true;
         m.receiveShadow = true;
         m.matrixAutoUpdate = false;
@@ -366,11 +376,12 @@ export class PlayPlace {
     }
 
     // Door headers: a lintel over every opening, so doors read as doors.
-    const header = new THREE.MeshLambertMaterial({ color: 0x2b2440 });
-    for (const d of DOORS) {
+    const header = new THREE.MeshLambertMaterial({ color: this.layout.headerColor || 0x2b2440 });
+    const doorTop = Math.min(3.0, this.wallH - 0.5);
+    for (const d of this.doors) {
       const w = d.x1 - d.x0 + 1, dd = d.z1 - d.z0 + 1;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_H - 3.0, dd), header);
-      m.position.copy(P(d.x0 + w / 2, d.z0 + dd / 2, 3.0 + (WALL_H - 3.0) / 2));
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, this.wallH - doorTop, dd), header);
+      m.position.copy(this.P(d.x0 + w / 2, d.z0 + dd / 2, doorTop + (this.wallH - doorTop) / 2));
       m.matrixAutoUpdate = false;
       m.updateMatrix();
       this.group.add(m);
@@ -381,12 +392,12 @@ export class PlayPlace {
   // edge, with UVs in metres so the pattern runs continuously around the room.
   buildPaint() {
     const eps = 0.02;   // far enough off the wall boxes not to flicker at a distance
-    for (const [id, r] of Object.entries(ROOMS)) {
+    for (const [id, r] of Object.entries(this.rooms)) {
       const pos = [], nrm = [], uv = [], idx = [];
       const quad = (ax, az, bx, bz, nx, nz, u0) => {
         const base = pos.length / 3;
-        const A = P(ax, az), B = P(bx, bz);
-        pos.push(A.x, 0, A.z, B.x, 0, B.z, B.x, WALL_H, B.z, A.x, WALL_H, A.z);
+        const A = this.P(ax, az), B = this.P(bx, bz);
+        pos.push(A.x, 0, A.z, B.x, 0, B.z, B.x, this.wallH, B.z, A.x, this.wallH, A.z);
         for (let k = 0; k < 4; k++) nrm.push(nx, 0, nz);
         uv.push(u0, 0, u0 + 1, 0, u0 + 1, 1, u0, 1);
         idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
@@ -415,23 +426,24 @@ export class PlayPlace {
   }
 
   buildCeiling() {
-    const t = T.withRepeat(T.ceiling(), GRID_W / 2, GRID_H / 2);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(GRID_W, GRID_H), new THREE.MeshLambertMaterial({ map: t }));
+    const t = T.withRepeat((this.layout.ceiling || T.ceiling)(), this.w / 2, this.h / 2);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(this.w, this.h), new THREE.MeshLambertMaterial({ map: t }));
     m.rotation.x = Math.PI / 2;
-    m.position.set(0, WALL_H, 0);
+    m.position.copy(this.P(this.w / 2, this.h / 2, this.wallH));
     m.matrixAutoUpdate = false;
     m.updateMatrix();
     this.group.add(m);
 
     // Light panels, a grid of them per room. Lit by day, dead by night.
+    if (this.layout.panels === false) return;
     const panelGeo = new THREE.BoxGeometry(1.6, 0.06, 0.8);
-    for (const [id, r] of Object.entries(ROOMS)) {
+    for (const [id, r] of Object.entries(this.rooms)) {
       const mat = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });
       const w = r.x1 - r.x0 + 1, d = r.z1 - r.z0 + 1;
       const nx = Math.max(1, Math.round(w / 6)), nz = Math.max(1, Math.round(d / 6));
       for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) {
         const p = new THREE.Mesh(panelGeo, mat);
-        p.position.copy(P(r.x0 + (i + 0.5) * w / nx, r.z0 + (k + 0.5) * d / nz, WALL_H - 0.03));
+        p.position.copy(this.P(r.x0 + (i + 0.5) * w / nx, r.z0 + (k + 0.5) * d / nz, this.wallH - 0.03));
         p.matrixAutoUpdate = false;
         p.updateMatrix();
         this.group.add(p);
@@ -439,4 +451,10 @@ export class PlayPlace {
       this.ceilingLights.push({ room: id, mat });
     }
   }
+}
+
+export const PLAYPLACE = { w: GRID_W, h: GRID_H, wallH: WALL_H, rooms: ROOMS, doors: DOORS };
+
+export class PlayPlace extends Building {
+  constructor() { super(PLAYPLACE); }
 }

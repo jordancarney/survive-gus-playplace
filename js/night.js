@@ -2,7 +2,7 @@
 // that let Gus out, the boss nights, and the 6 AM report.
 import * as THREE from 'three';
 import {
-  CLOCK, AI, HAPPINESS, BOSS, nightDef, wakeHour, breakEvery, moodOf, ROAMERS, repairLevel,
+  CLOCK, AI, HAPPINESS, BOSS, HOME_DEF, nightDef, wakeHour, breakEvery, moodOf, ROAMERS, repairLevel,
 } from './config.js';
 import { sfx, startAmbience, stopAmbience, stopMusicBox, playMusic, stopMusic } from './audio.js';
 
@@ -20,12 +20,31 @@ export class NightDirector {
     this.crates = [];
   }
 
-  get def() { return nightDef(this.n); }
+  get def() { return this.custom || nightDef(this.n); }
   get boss() { return this.def.boss || null; }
   get repairLevel() { return repairLevel(this.n); }
 
+  // The house level: no clock, no blackouts, just four animatronics loose in the house.
+  startHome(happiness) {
+    this.custom = HOME_DEF;
+    this.n = 10;
+    this.time = 0;
+    this.hour = 0;
+    this.happiness = happiness;
+    this.startHappiness = happiness;
+    this.power = true;
+    this.bossed = false;
+    this.fixed = 0;
+    this.trippedFuse = null;
+    this.gusTimer = -1;
+    this.freeTimer = -1;
+    this.blackouts = [];
+    this.won = false;
+  }
+
   start(n, happiness) {
     const g = this.game;
+    this.custom = null;
     this.n = n;
     this.time = 0;
     this.hour = 0;
@@ -90,7 +109,7 @@ export class NightDirector {
 
   isAwake(id) {
     // Nobody moves in the first half minute: time to check the cameras and get your bearings.
-    return this.levelOf(id) > 0 && this.hour >= wakeHour(this.def, id) && this.time > 30;
+    return this.levelOf(id) > 0 && this.hour >= wakeHour(this.def, id) && this.time > (this.custom ? 6 : 30);
   }
 
   addHappiness(d) {
@@ -99,6 +118,7 @@ export class NightDirector {
   }
 
   clockText() {
+    if (this.custom) return 'HOME';
     if (this.boss) return '??:??';
     const h = Math.min(6, this.hour);
     return `${h === 0 ? 12 : h} AM`;

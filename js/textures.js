@@ -100,6 +100,25 @@ export const playmat = () => canvasTex('playmat', 64, 64, (g) => {
   g.strokeRect(1, 33, 30, 30); g.strokeRect(33, 33, 30, 30);
 }, { nearest: true });
 
+// Wooden floorboards: one canvas = 2 m.
+export const wood = (base = '#9a6a3c') => canvasTex(`wood${base}`, 64, 64, (g) => {
+  g.fillStyle = base; g.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 4; i++) {
+    g.fillStyle = `rgba(0,0,0,${0.05 + (i % 2) * 0.06})`;
+    g.fillRect(0, i * 16, 64, 16);
+    g.fillStyle = 'rgba(40,20,10,0.5)';
+    g.fillRect(0, i * 16, 64, 1);
+    g.fillRect(((i * 23) % 48) + 8, i * 16, 1, 16);
+  }
+}, { nearest: true });
+
+export const rug = (a = '#7a2a3a', b = '#d9b45a') => canvasTex(`rug${a}${b}`, 64, 64, (g) => {
+  g.fillStyle = a; g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = b; g.lineWidth = 4; g.strokeRect(5, 5, 54, 54);
+  g.lineWidth = 2; g.strokeRect(14, 14, 36, 36);
+  g.fillStyle = b; g.beginPath(); g.arc(32, 32, 6, 0, Math.PI * 2); g.fill();
+});
+
 export const hazard = () => canvasTex('hazard', 64, 64, (g) => {
   g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, 64, 64);
   g.fillStyle = '#f2c230';

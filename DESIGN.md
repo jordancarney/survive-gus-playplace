@@ -14,6 +14,11 @@ watch the cameras, fix what the kids broke, and if the animatronics wander off t
 them and drag them to Parts & Service — they're always back on stage by morning. Oh, and
 don't let Gus find you if the power goes out.
 
+The first time the lights flicker (Night 5), Gus turns his head to watch. After Night 10,
+Jonathan goes home to sleep and the four of them follow him: he has to zap them all over
+again in his own house and load them into the PlayPlace van, which takes them back. The
+manager gives him a raise and doesn't ask. Gus never left the stage — he was waiting.
+
 Night 20 is the reason for that warning: Gus goes haywire, the fuse boxes fry, and Jonathan
 has to stop him with the Magnum. Beating him fixes his glitch, and the animatronics become
 Jonathan's friends — just in time for Secret Night 21, when every broken part ever thrown in
@@ -44,6 +49,14 @@ Asked directly, he chose:
 - **After Night 20:** the animatronics become friends, and a secret Night 21 unlocks.
 - **Night 21's boss:** a monster built from all the broken parts in the junk room.
 - **On Night 21 the friends** fight the boss with you and fix games for you.
+
+After playing the first build, he asked for:
+
+- **A taser with three shots** before it has to recharge.
+- **Cranker can't slide.** (His belly-slide is gone; he squeaks and never gives up instead.)
+- **More story, with cutscenes.**
+- **After Night 10, at daytime, you go home and they follow you** — you stop them and put
+  them back in the PlayPlace.
 
 His original brief also fixed: Jonathan is 15 and found the job opening; five animatronics
 (Gus the platypus is the leader, Gerald the gorilla, Chomper the beaver, Cranker the penguin,
@@ -102,11 +115,11 @@ Unlocked by reaching a night — the reward for surviving is the next tool. Numb
 
 | Item           | Night | What it does                                                              |
 |----------------|-------|---------------------------------------------------------------------------|
-| Taser          | 1     | 3.6 m, one zap, 2.4 s recharge                                           |
+| Taser          | 1     | 3.6 m, three zaps (0.35 s apart), then a 4 s recharge. Tops itself up one zap per 2.5 s while you're not zapping |
 | Baseball       | 3     | Thrown, freezes an animatronic 3.5 s from range. 3 of them; walk over thrown balls to pick them up |
 | Running Shoes  | 6     | Twice the stamina                                                         |
 | Knife          | 7     | 2.3 m, one hit, 0.55 s between swings — no recharge, but get close       |
-| Taser Mk II    | 9     | Taser range ×1.45, recharge ×0.5                                          |
+| Taser Mk II    | 9     | Taser range ×1.45, recharge and top-up twice as fast                     |
 | Big Flashlight | 11    | Wider, brighter beam; battery lasts twice as long                        |
 | Magnum         | 15    | 45 m, one shot powers anything down (freezes Gus 8 s). 6 shots a night. Loud: every awake animatronic comes to look |
 
@@ -117,7 +130,7 @@ Each has one readable trick ([js/animatronics.js](js/animatronics.js), stats in
 
 | Name    | Species  | Zaps | Walk | Chase | Trick                                                         |
 |---------|----------|------|------|-------|---------------------------------------------------------------|
-| Cranker | Penguin  | 1    | 2.3  | 3.4   | Winds up, then belly-slides straight at you at 9 m/s. Sidestep and he crashes into the wall, dizzy for 2.6 s |
+| Cranker | Penguin  | 1    | 2.3  | 3.4   | Squeaky feet you can hear from 42 m away; once he's after you he takes twice as long to give up |
 | Chomper | Beaver   | 1    | 3.0  | 4.4   | Goes looking for games to chew; chews camera cables (static)  |
 | Gerald  | Gorilla  | 2    | 2.2  | 3.7   | Smashes games; the first zap only staggers him               |
 | Flipper | Dolphin  | 1    | 3.2  | 4.8   | Sinks into the ball pit to hide; hears you sprint within 15 m |
@@ -198,6 +211,38 @@ up. Difficulty level is 1 on night 1, +1 every four nights, up to 5.
 | Copy the lights!  | Stage Lights, Slide Lights, Karaoke         | 3 + level/2 lights, faster flashes |
 | Hit the green!    | Claw, Air Hockey, Ball Blower, Spin Ride    | Smaller zone, faster needle; 3 hits |
 | Fuse box          | The three fuse boxes                        | A Rewire with 2 extra arrows      |
+
+## Cutscenes
+
+The story is told in the game world itself ([js/cutscene.js](js/cutscene.js) plays them,
+[js/story.js](js/story.js) holds the scripts): letterboxed shots with a moving camera,
+characters walking and posing, and dialogue typed out with the speaker's name. Space or a
+click finishes the line or moves on; Escape or Skip ends it. Jonathan and the manager appear
+only here, built from the same parts as the daytime kids.
+
+| Cutscene   | When                                  | What happens                                         |
+|------------|---------------------------------------|------------------------------------------------------|
+| intro      | Start of a new game                   | Jonathan takes the job; "don't let Gus find you"     |
+| blackout   | Before Night 5 (first time)           | The lights flicker and Gus turns his head            |
+| home       | After Night 10                        | He goes home to sleep — and hears squeaky feet       |
+| homeDone   | House level cleared                   | The van drives them back; Jonathan gets a raise      |
+| haywire    | Before Night 20 (first time)          | Gus's eyes go red and the fuse boxes fry             |
+| gusDown    | Gus beaten                            | His glitch is gone; everyone's friends; the junk pile moves |
+| junkRises  | Before Night 21 (first time)          | The Junk Monster climbs out of Parts & Service       |
+| finale     | Junk Monster beaten                   | Employee of the Month                                |
+
+## They followed me home
+
+After Night 10's 6 AM, instead of the daytime at the PlayPlace, Jonathan goes home
+([js/house.js](js/house.js)): a bedroom, bathroom, kitchen, hallway, living room and a garage
+with the PlayPlace van backed in. It's a second building on the same grid system, 100 m east
+of the PlayPlace; only one is ever visible. Cranker, Chomper, Gerald and Flipper are loose in
+it (Gus stays on the stage — he only comes out in a blackout). Flipper hides in the bathtub.
+
+There's no clock: zap all four and load each one into the back of the van (E near its open
+doors). They wake up after the usual power-down time, so don't dawdle. Everyone is at
+aggression level 8 (adjusted by the kids' mood) and starts moving after 6 seconds. Caught?
+Try the house again. Done, and the van takes them back; then it's Night 11.
 
 ## A night
 
@@ -284,6 +329,9 @@ js/weapons.js     Taser, baseballs, knife, Magnum
 js/animatronics.js  The five's AI, Gus's hunts, the friends, the Junk Monster
 js/night.js       The clock, wake-ups, breakages, blackouts, bosses, the 6 AM report
 js/day.js         Daytime: kids, music, the show
+js/house.js       Jonathan's house: its floor plan, furniture and the van
+js/cutscene.js    The cutscene player
+js/story.js       Every cutscene script
 js/machines.js    Broken/fixed state and looks for games and fuse boxes
 js/repair.js      The three repair puzzles
 js/cameras.js     The security monitor and office monitor feeds
@@ -323,6 +371,6 @@ from a background tab needs `__game.update(1/60)` called yourself.
 ## Save data
 
 One profile in `localStorage` under `survive_gus_save_v1` — current night, kids' happiness,
-whether the intro has been seen, the two boss wins, the furthest night reached, and lifetime
-stats. It's merged over a fresh profile on load, so a save written by an older build never
+whether the intro has been seen, whether the house level is done, which one-time cutscenes
+have played, the two boss wins, the furthest night reached, and lifetime stats. It's merged over a fresh profile on load, so a save written by an older build never
 arrives missing a field newer code reads, and it only changes at 6 AM (or a boss win).

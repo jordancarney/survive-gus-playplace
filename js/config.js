@@ -81,9 +81,11 @@ export const moodOf = (h) => {
 export const ANIMATRONICS = {
   cranker: {
     name: 'Cranker', species: 'Penguin', hits: 1,
-    walk: 2.3, chase: 3.4, slide: 9.0, sight: 15,
+    walk: 2.3, chase: 3.4, sight: 15,
     likes: ['H', 'D', 'T', 'E'],
-    trait: 'Belly-slides straight at you, super fast. Step aside and he crashes into the wall.',
+    squeaky: true, stubborn: true,
+    trait: 'His feet squeak, so you can hear him coming from far away. Slow, but once he is ' +
+      'after you he does not give up.',
   },
   chomper: {
     name: 'Chomper', species: 'Beaver', hits: 1,
@@ -135,8 +137,11 @@ export const AI = {
 // Unlocked by reaching a night, never bought — every night survived is the reward.
 
 export const WEAPONS = [
-  { id: 'taser', name: 'Taser', unlock: 1, slot: 1, range: 3.6, cooldown: 2.4, hits: 1,
-    desc: 'Zaps one animatronic up close. Needs a moment to recharge between zaps.' },
+  // Three zaps, then it has to recharge. It also tops itself up, one zap at a time, while
+  // you're not using it.
+  { id: 'taser', name: 'Taser', unlock: 1, slot: 1, range: 3.6, charges: 3, gap: 0.35,
+    recharge: 4.0, topUp: 2.5, hits: 1,
+    desc: 'Three zaps up close, then it needs a few seconds to recharge.' },
   { id: 'baseball', name: 'Baseball', unlock: 3, slot: 2, speed: 19, stun: 3.5, count: 3,
     desc: 'Throw it to freeze an animatronic from far away. Go pick it back up.' },
   { id: 'knife', name: 'Knife', unlock: 7, slot: 3, range: 2.3, cooldown: 0.55, hits: 1,
@@ -215,6 +220,13 @@ export const NIGHTS = [
   n(20, 12, 12, 12, 12, 0, 20, { title: 'Gus', boss: 'gus' }),
   n(21, 0,  0,  0,  0,  0, 0,  { title: 'The Junk Monster', boss: 'junk', secret: true }),
 ];
+
+// The house level after Night 10: the four who followed Jonathan home.
+export const HOME_DEF = {
+  night: 10, title: 'They Followed Me Home', home: true, blackouts: 0,
+  ai: { cranker: 8, chomper: 8, gerald: 8, flipper: 8, gus: 0 },
+  wake: { cranker: 0, chomper: 0, gerald: 0, flipper: 0 },
+};
 
 export const LAST_STORY_NIGHT = 20;
 export const nightDef = (night) => NIGHTS[Math.max(0, Math.min(NIGHTS.length - 1, night - 1))];

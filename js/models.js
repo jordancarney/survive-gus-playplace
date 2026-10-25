@@ -431,15 +431,6 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
       jaw = 1.0;
       break;
     }
-    case 'slide':     // Cranker on his belly: arms back, feet up
-      armLx = 0.4; armRx = 0.4; armLz = 1.3; armRz = -1.3;
-      headX = -1.2;
-      legL = 1.2; legR = 1.2;
-      break;
-    case 'windup':
-      torsoX = 0.5; headX = -0.4; armLz = 1.1; armRz = -1.1;
-      hipDrop = 0.2;
-      break;
     case 'wave': {
       bob = Math.sin(t * 1.4) * 0.012;
       armRx = -2.7; armRz = -0.5 + Math.sin(t * 6) * 0.35;
@@ -480,40 +471,70 @@ const SHIRTS = [0xff5a5f, 0x3ec1d3, 0xffd23f, 0x7ad151, 0xa970ff, 0xff9a1f, 0xff
 const SKIN = [0xf1c7a5, 0xd9a07a, 0xa86b45, 0x6e4529, 0xf6d7bf];
 const HAIR = [0x2b1a10, 0x6b3e1f, 0xd9b45a, 0x111111, 0xa0461d];
 
-export function buildKid(rand = Math.random) {
-  const pick = (a) => a[Math.floor(rand() * a.length)];
-  const h = 1.05 + rand() * 0.4;
-  const shirt = mat(pick(SHIRTS)), skin = mat(pick(SKIN), { rough: 0.6 }), pants = mat(pick([0x2a3a5a, 0x3a3a3a, 0x5a3a2a, 0x1f6f5a]), { rough: 0.7 });
+// A person: kids by day, and Jonathan and the manager in the cutscenes. Kids get big heads
+// and random clothes; grown-ups are built from the same parts at adult proportions.
+export function buildPerson({
+  height: h, shirt, pants, skin, hair = null, cap = null, tie = null, badge = false, glasses = false,
+  headScale = 0.075, shoulders = 0.2, shadows = false,
+}) {
+  const sm = mat(shirt), sk = mat(skin, { rough: 0.6 }), pm = mat(pants, { rough: 0.7 });
   const root = new THREE.Group();
-  const legLen = h * 0.42;
+  const legLen = h * (headScale > 0.09 ? 0.42 : 0.47);
   const rig = { root, height: h, radius: 0.25, swing: 0.6, hipY: legLen };
   rig.hips = group(root, [0, legLen, 0]);
-  rig.legL = group(rig.hips, [-0.08, 0, 0]);
-  rig.legR = group(rig.hips, [0.08, 0, 0]);
+  rig.legL = group(rig.hips, [-shoulders * 0.45, 0, 0]);
+  rig.legR = group(rig.hips, [shoulders * 0.45, 0, 0]);
   for (const leg of [rig.legL, rig.legR]) {
-    part(G.cyl, pants, leg, { p: [0, -legLen / 2, 0], s: [0.06, legLen, 0.06] });
-    part(G.box, mat(0xf4f1ea), leg, { p: [0, -legLen + 0.03, 0.04], s: [0.09, 0.06, 0.16] });
+    part(G.cyl, pm, leg, { p: [0, -legLen / 2, 0], s: [shoulders * 0.32, legLen, shoulders * 0.32] });
+    part(G.box, mat(headScale > 0.09 ? 0xf4f1ea : 0x1a1a1a), leg, { p: [0, -legLen + 0.03, 0.04], s: [0.1, 0.06, 0.2] });
   }
   rig.torso = group(rig.hips, [0, 0, 0]);
   const th = h * 0.3;
-  part(G.cyl, shirt, rig.torso, { p: [0, th / 2, 0], s: [0.15, th, 0.11] });
+  part(G.cyl, sm, rig.torso, { p: [0, th / 2, 0], s: [shoulders * 0.8, th, shoulders * 0.58] });
+  if (tie !== null) part(G.box, mat(tie), rig.torso, { p: [0, th * 0.55, shoulders * 0.58], s: [0.05, th * 0.7, 0.02] });
+  if (badge) part(G.box, mat(0xffd23f, { metal: 0.6, rough: 0.3 }), rig.torso, { p: [-shoulders * 0.35, th * 0.75, shoulders * 0.58], s: [0.06, 0.07, 0.02] });
   rig.neck = group(rig.torso, [0, th, 0]);
   rig.head = group(rig.neck, [0, 0.02, 0]);
-  const hr = h * 0.11;
-  part(G.sphereLo, skin, rig.head, { p: [0, hr, 0], s: [hr, hr, hr] });
-  if (rand() < 0.35) part(G.sphereLo, mat(pick(SHIRTS)), rig.head, { p: [0, hr * 1.5, -0.01], s: [hr * 1.02, hr * 0.5, hr * 1.02] });  // cap
-  else part(G.sphereLo, mat(pick(HAIR), { rough: 0.8 }), rig.head, { p: [0, hr * 1.25, -0.02], s: [hr * 1.05, hr * 0.8, hr * 1.05] });
+  const hr = h * headScale;
+  part(G.sphereLo, sk, rig.head, { p: [0, hr, 0], s: [hr, hr * 1.08, hr] });
+  if (cap !== null) {
+    part(G.sphereLo, mat(cap), rig.head, { p: [0, hr * 1.5, -0.01], s: [hr * 1.04, hr * 0.5, hr * 1.04] });
+    part(G.cyl, mat(cap), rig.head, { p: [0, hr * 1.42, hr * 0.75], s: [hr * 0.8, 0.015, hr * 0.6] });
+  } else if (hair !== null) {
+    part(G.sphereLo, mat(hair, { rough: 0.8 }), rig.head, { p: [0, hr * 1.25, -0.02], s: [hr * 1.05, hr * 0.8, hr * 1.05] });
+  }
   for (const sx of [-1, 1]) part(G.sphereLo, mat(0x111111), rig.head, { p: [sx * hr * 0.35, hr * 1.05, hr * 0.9], s: [0.015, 0.02, 0.01] });
-  rig.armL = group(rig.torso, [-0.19, th * 0.9, 0]);
-  rig.armR = group(rig.torso, [0.19, th * 0.9, 0]);
+  if (glasses) for (const sx of [-1, 1]) part(G.torus, mat(0x111111), rig.head, { p: [sx * hr * 0.38, hr * 1.05, hr * 0.95], s: [hr * 0.28, hr * 0.28, hr * 0.28] });
+  rig.armL = group(rig.torso, [-(shoulders + 0.03), th * 0.9, 0]);
+  rig.armR = group(rig.torso, [shoulders + 0.03, th * 0.9, 0]);
   for (const arm of [rig.armL, rig.armR]) {
-    part(G.cyl, shirt, arm, { p: [0, -th * 0.25, 0], s: [0.045, th * 0.5, 0.045] });
-    part(G.cyl, skin, arm, { p: [0, -th * 0.7, 0], s: [0.04, th * 0.45, 0.04] });
+    part(G.cyl, sm, arm, { p: [0, -th * 0.25, 0], s: [shoulders * 0.24, th * 0.5, shoulders * 0.24] });
+    part(G.cyl, sk, arm, { p: [0, -th * 0.7, 0], s: [shoulders * 0.2, th * 0.45, shoulders * 0.2] });
   }
   rig.armBase = { L: [0, 0, 0.15], R: [0, 0, -0.15] };
-  root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+  root.traverse((o) => { if (o.isMesh) o.castShadow = shadows && SHADOWS; });
   return rig;
 }
+
+export function buildKid(rand = Math.random) {
+  const pick = (a) => a[Math.floor(rand() * a.length)];
+  const capped = rand() < 0.35;
+  return buildPerson({
+    height: 1.05 + rand() * 0.4, headScale: 0.11, shoulders: 0.15,
+    shirt: pick(SHIRTS), skin: pick(SKIN), pants: pick([0x2a3a5a, 0x3a3a3a, 0x5a3a2a, 0x1f6f5a]),
+    cap: capped ? pick(SHIRTS) : null, hair: capped ? null : pick(HAIR),
+  });
+}
+
+// Jonathan, as other people see him: fifteen, in his security uniform and cap.
+export const buildJonathan = () => buildPerson({
+  height: 1.72, shirt: 0x2b4a7a, pants: 0x1f2533, skin: 0xd9a07a, cap: 0x1f3360, badge: true, shadows: true,
+});
+
+export const buildManager = () => buildPerson({
+  height: 1.82, shirt: 0xf4f1ea, pants: 0x2a2a2a, skin: 0xf1c7a5, hair: 0x8a8a8a, tie: 0xc0262d,
+  glasses: true, shoulders: 0.23, shadows: true,
+});
 
 // ── Jonathan's hands ────────────────────────────────────────────────────
 //

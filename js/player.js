@@ -79,8 +79,14 @@ export class Player {
     this.battery = FLASHLIGHT.battery;
     this.lightOn = true;
     this.bigLight = hasGear(night, 'bigLight');
-    this.taserCool = weaponById('taser').cooldown * (hasGear(night, 'taser2') ? 0.5 : 1);
-    this.taserRange = weaponById('taser').range * (hasGear(night, 'taser2') ? 1.45 : 1);
+    const taser = weaponById('taser');
+    const mk2 = hasGear(night, 'taser2');
+    this.taserRecharge = taser.recharge * (mk2 ? 0.5 : 1);
+    this.taserTopUp = taser.topUp * (mk2 ? 0.5 : 1);
+    this.taserRange = taser.range * (mk2 ? 1.45 : 1);
+    this.taserCharges = taser.charges;
+    this.taserEmpty = 0;      // counts down while recharging from empty
+    this.taserIdle = 0;       // time since the last zap, for topping up
     this.flashlight.angle = FLASHLIGHT.angle * (this.bigLight ? 1.3 : 1);
     this.flashlight.distance = FLASHLIGHT.range * (this.bigLight ? 1.3 : 1);
     this.carrying = null;
@@ -127,6 +133,7 @@ export class Player {
     this.move(dt, canMove);
     this.flash(dt);
     for (const k of Object.keys(this.cool)) this.cool[k] = Math.max(0, this.cool[k] - dt);
+    this.taserTick(dt);
     this.dazed = Math.max(0, this.dazed - dt);
     this.useAnim = Math.max(0, this.useAnim - dt * 4);
     this.shake = Math.max(0, this.shake - dt * 2.5);
@@ -216,6 +223,27 @@ export class Player {
     if (k && this.battery < 15 && Math.random() < 0.08) k = 0.2;
     this.flashlight.intensity = FLASHLIGHT.intensity * (this.bigLight ? 1.5 : 1) * k;
     if (this.vm && this.vm.lens) this.vm.lens.material.color.set(this.lightOn ? 0xfff4c8 : 0x333333);
+  }
+
+  // Empty: a full recharge. Not empty: one zap back every few seconds of not zapping.
+  taserTick(dt) {
+    const max = weaponById('taser').charges;
+    if (this.taserEmpty > 0) {
+      this.taserEmpty -= dt;
+      if (this.taserEmpty <= 0) { this.taserCharges = max; sfx.recharged(); }
+      return;
+    }
+    this.taserIdle += dt;
+    if (this.taserCharges < max && this.taserIdle >= this.taserTopUp) {
+      this.taserCharges++;
+      this.taserIdle = 0;
+    }
+  }
+
+  useTaserCharge() {
+    this.taserCharges--;
+    this.taserIdle = 0;
+    if (this.taserCharges <= 0) { this.taserCharges = 0; this.taserEmpty = this.taserRecharge; }
   }
 
   toggleLight() {

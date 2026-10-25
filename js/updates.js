@@ -24,7 +24,7 @@ async function fetchRemoteVersion() {
   } catch { return null; }
 }
 
-const SAFE_MODES = new Set(['title', 'howto', 'story', 'card', 'morning', 'caught', 'select', 'day']);
+const SAFE_MODES = new Set(['title', 'howto', 'card', 'morning', 'caught', 'select', 'day']);
 const safeToReload = () => !game || SAFE_MODES.has(game.mode);
 
 function apply() {

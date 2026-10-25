@@ -11,7 +11,7 @@ import { mat } from './models.js';
 import * as T from './textures.js';
 import { SHADOWS } from './config.js';
 
-const G = {
+export const G = {
   box: new THREE.BoxGeometry(1, 1, 1),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 16),
   cylLo: new THREE.CylinderGeometry(1, 1, 1, 8),
@@ -21,14 +21,14 @@ const G = {
 };
 
 const lambert = new Map();
-function lam(color) {
+export function lam(color) {
   if (!lambert.has(color)) lambert.set(color, new THREE.MeshLambertMaterial({ color }));
   return lambert.get(color);
 }
-const glowMat = (color) => new THREE.MeshBasicMaterial({ color });
+export const glowMat = (color) => new THREE.MeshBasicMaterial({ color });
 
 // Rotation that turns a +Z-facing thing to face one of the four walls' directions.
-const FACE = { south: 0, north: Math.PI, east: Math.PI / 2, west: -Math.PI / 2 };
+export const FACE = { south: 0, north: Math.PI, east: Math.PI / 2, west: -Math.PI / 2 };
 
 export class Decor {
   constructor(place) {
@@ -68,7 +68,7 @@ export class Decor {
 
   // A box sitting on the floor (or at `y`), centred on plan (px, pz). Solid by default.
   block(px, pz, w, d, h, material, { y = 0, solid = true, nav = solid, parent = this.group, shadow = true } = {}) {
-    const c = P(px, pz, y + h / 2);
+    const c = this.place.P(px, pz, y + h / 2);
     const m = this.mesh(G.box, typeof material === 'number' ? lam(material) : material, parent,
       { p: [c.x, c.y, c.z], s: [w, h, d], shadow });
     if (solid) this.place.addBlock(px - w / 2, pz - d / 2, px + w / 2, pz + d / 2, y + h, { nav });
@@ -79,7 +79,7 @@ export class Decor {
   // A group positioned at plan (px, pz) and turned to face `facing`.
   anchor(px, pz, facing = 'south', y = 0) {
     const g = new THREE.Group();
-    g.position.copy(P(px, pz, y));
+    g.position.copy(this.place.P(px, pz, y));
     g.rotation.y = typeof facing === 'number' ? facing : FACE[facing];
     this.group.add(g);
     return g;
@@ -111,7 +111,7 @@ export class Decor {
 
   light(px, pz, y, color, day, night, { room = null, distance = 14, flicker = false } = {}) {
     const l = new THREE.PointLight(color, day, distance, 1.6);
-    l.position.copy(P(px, pz, y));
+    l.position.copy(this.place.P(px, pz, y));
     this.group.add(l);
     this.lights.push({ light: l, day, night, room, flicker });
     return l;
@@ -147,7 +147,7 @@ export class Decor {
     build(g, parts);
     const yaw = FACE[facing];
     const front = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-    const base = P(px, pz);
+    const base = this.place.P(px, pz);
     const m = {
       id, name, room, type, fuse,
       group: g,
@@ -516,6 +516,8 @@ export class Decor {
     }
     this.sign('CLOSED', 42.5, 42.9, 2.95, 1.4, 0.4, 'north', { bg: '#300', fg: '#ff3b30', glow: '#ff3b30', w: 256, h: 64, font: 'bold 40px sans-serif' });
     this.block(44.3, 41, 1.2, 3.2, 1.1, 0x5b2a86);                  // ticket booth
+    this.sign('NOW HIRING\nNIGHT SECURITY', 44.95, 38.2, 2.1, 1.6, 0.8, 'west',
+      { w: 320, h: 160, bg: '#f4f1ea', fg: '#c0262d', glow: '#c0262d', font: 'bold 44px sans-serif' });
     this.sign('WELCOME TO\nGUS\'S PLAYPLACE', 39.95 + 0.1, 35, 3.0, 3.6, 1.2, 'east', { w: 512, h: 170 });
 
     this.machine('spinride', "Gus's Spin Ride", 'E', 'timing', 42.5, 35.6, 'south', (g, parts) => {

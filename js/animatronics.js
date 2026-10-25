@@ -13,9 +13,7 @@ import { ANIMATRONICS, AI, BOSS, moodOf } from './config.js';
 import { buildAnimatronic, poseRig, setEyes } from './models.js';
 import { resolveCircle } from './physics.js';
 import { sfx, startMusicBox, stopMusicBox } from './audio.js';
-import { ROOMS } from './map.js';
 
-const ROOM_IDS = Object.keys(ROOMS).filter((r) => r !== 'J' && r !== 'O');
 const tmp = new THREE.Vector3();
 
 export class Animatronic {
@@ -45,9 +43,6 @@ export class Animatronic {
     this.sink = 0;
     this.mischief = null;
     this.mischiefDone = false;
-    this.slideDir = new THREE.Vector3();
-    this.slideDist = 0;
-    this.slideCool = 0;
     this.noticeTimer = 0;
     this.speed = 0;
     this.health = 0;
@@ -58,12 +53,13 @@ export class Animatronic {
   }
 
   get name() { return this.def.name; }
-  get home() { return this.game.decor.stageSpots[this.id]; }
+  // Where a night (or the house level) starts it: the stage, or somewhere in Jonathan's house.
+  get home() { return this.game.area.spawn[this.id]; }
   get chestY() { return this.rig.height * 0.6; }
 
   // True while it can still catch you.
   get dangerous() {
-    return ['roam', 'linger', 'chase', 'search', 'notice', 'windup', 'slide', 'hunt', 'return'].includes(this.state);
+    return ['roam', 'linger', 'chase', 'search', 'notice', 'hunt', 'return'].includes(this.state);
   }
   // True while a zap or a Magnum shot can land on it.
   get hittable() {
@@ -83,7 +79,9 @@ export class Animatronic {
     this.sink = 0;
     this.freezeTimer = 0;
     this.root.visible = true;
-    this.root.rotation.x = 0;
+    this.root.rotation.set(0, this.yaw, 0);
+    // Put the model there now, not on the next update — cutscenes don't run updates.
+    this.root.position.set(this.pos.x, this.game.place.floorAt(this.pos.x, this.pos.z), this.pos.z);
     setEyes(this.rig, 'on');
   }
 
@@ -151,8 +149,9 @@ export class Animatronic {
       this.mischief = null;
       return this.goTo(room === 'O' ? player.pos : place.randomPointIn(room));
     }
+    const area = this.game.area;
     // Chewers and pounders go looking for a game to wreck.
-    if ((this.def.chews || this.def.pounds) && Math.random() < 0.55) {
+    if (area.isPlayPlace && (this.def.chews || this.def.pounds) && Math.random() < 0.55) {
       const working = this.game.machines.list.filter((m) => !m.broken);
       if (working.length) {
         const m = working[Math.floor(Math.random() * working.length)];
@@ -161,18 +160,19 @@ export class Animatronic {
         return this.goTo(m.point);
       }
     }
-    // Flipper likes to lurk under the balls.
+    // Flipper likes to lurk under the balls (or in the bathtub).
     if (this.id === 'flipper' && Math.random() < 0.4) {
       this.mischief = 'pit';
-      return this.goTo(place.randomPointIn('B'));
+      return this.goTo(area.hideSpot || place.randomPointIn(area.hideRoom));
     }
     this.mischief = null;
-    const weights = ROOM_IDS.map((r) => (this.def.likes.includes(r) ? 3 : 1));
+    const rooms = area.roam;
+    const weights = rooms.map((r) => (area.isPlayPlace && this.def.likes.includes(r) ? 3 : 1));
     let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
-    let room = ROOM_IDS[0];
-    for (let i = 0; i < ROOM_IDS.length; i++) {
+    let room = rooms[0];
+    for (let i = 0; i < rooms.length; i++) {
       roll -= weights[i];
-      if (roll <= 0) { room = ROOM_IDS[i]; break; }
+      if (roll <= 0) { room = rooms[i]; break; }
     }
     this.goTo(place.randomPointIn(room));
   }
@@ -183,7 +183,7 @@ export class Animatronic {
 
   senses() {
     const player = this.game.player;
-    if (this.game.mode !== 'night') return false;
+    if (!this.game.hunting) return false;
     const dx = player.pos.x - this.pos.x, dz = player.pos.z - this.pos.z;
     const d = Math.hypot(dx, dz);
     const sight = this.def.sight * (0.8 + this.level() * 0.02);
@@ -354,7 +354,6 @@ export class Animatronic {
         }
         break;
       case 'stagger':
-      case 'dizzy':
         this.timer -= dt;
         if (this.timer <= 0) this.startChase();
         break;
@@ -364,12 +363,6 @@ export class Animatronic {
         if (this.timer <= 0) this.reboot();
         break;
       case 'carried': this.updateCarried(dt); break;
-      case 'windup':
-        this.timer -= dt;
-        this.facePlayer(dt, 12);
-        if (this.timer <= 0) this.startSlide();
-        break;
-      case 'slide': this.updateSlide(dt); break;
       case 'hunt': this.updateHunt(dt); break;
       case 'return':
         if (this.follow(dt, this.def.walk)) {
@@ -395,7 +388,7 @@ export class Animatronic {
       if (this.stepAcc > 0.85) { this.stepAcc = 0; sfx.step(this.id, this.pos); }
     }
 
-    if (night && this.game.mode === 'night' && this.dangerous && this.state !== 'return' && this.state !== 'stage') {
+    if (night && this.game.hunting && this.dangerous && this.state !== 'return' && this.state !== 'stage') {
       const reach = AI.catchRadius + this.rig.radius * 0.5;
       if (this.distToPlayer() < reach && Math.abs(this.game.player.pos.y - this.pos.y) < 1.2) this.game.caught(this);
     }
@@ -421,7 +414,7 @@ export class Animatronic {
     this.timer = 16 - lvl * 0.6 + Math.random() * 4;
     this.mischiefDone = false;
     // Chomper sometimes chews through the camera cable in whatever room he's in.
-    if (this.def.chews && Math.random() < 0.35) {
+    if (this.def.chews && this.game.area.isPlayPlace && Math.random() < 0.35) {
       const room = this.game.place.roomAt(this.pos.x, this.pos.z);
       for (const c of this.game.decor.cams) if (c.room === room) c.chewed = 25;
       sfx.chew(this.pos);
@@ -465,20 +458,9 @@ export class Animatronic {
       this.lostTimer = 0;
     } else {
       this.lostTimer += dt;
-      if (this.lostTimer > AI.loseSight) {
+      if (this.lostTimer > AI.loseSight * (this.def.stubborn ? 2 : 1)) {
         this.state = 'search';
         this.goTo(this.lastSeen);
-        return;
-      }
-    }
-    // Cranker would rather slide.
-    this.slideCool -= dt;
-    if (this.id === 'cranker' && sees && this.slideCool <= 0) {
-      const d = this.distToPlayer();
-      if (d > 3.5 && d < 17 && this.game.place.walkClear(this.pos, player.pos, 0.35)) {
-        this.state = 'windup';
-        this.timer = 0.65;
-        sfx.slideWindup(this.pos);
         return;
       }
     }
@@ -494,39 +476,6 @@ export class Animatronic {
       }
     }
     this.follow(dt, speed);
-  }
-
-  startSlide() {
-    const p = this.game.player.pos;
-    this.slideDir.set(p.x - this.pos.x, 0, p.z - this.pos.z).normalize();
-    this.yaw = Math.atan2(this.slideDir.x, this.slideDir.z);
-    this.slideDist = 0;
-    this.state = 'slide';
-    sfx.slide(this.pos);
-  }
-
-  updateSlide(dt) {
-    const step = this.def.slide * this.speedMult() * dt;
-    const nx = this.pos.x + this.slideDir.x * step;
-    const nz = this.pos.z + this.slideDir.z * step;
-    const s = resolveCircle(this.game.place.colliders, nx, nz, this.rig.radius * 0.8, 0.1, 0.8);
-    const blocked = Math.hypot(s.x - nx, s.z - nz) > 0.02 || !this.game.place.isWalkable(s.x, s.z);
-    this.pos.x = s.x;
-    this.pos.z = s.z;
-    this.speed = 0;
-    this.slideDist += step;
-    if (blocked) {
-      // CRASH. Dizzy for a moment: this is your chance.
-      this.state = 'dizzy';
-      this.timer = 2.6;
-      this.slideCool = 5;
-      sfx.crash(this.pos);
-      this.game.effects.burst(new THREE.Vector3(this.pos.x, 0.6, this.pos.z), 18, 4);
-      this.game.player.shake = Math.max(this.game.player.shake, 0.4 * Math.max(0, 1 - this.distToPlayer() / 12));
-    } else if (this.slideDist > 22) {
-      this.slideCool = 3;
-      this.startChase();
-    }
   }
 
   updateCarried() {
@@ -662,11 +611,9 @@ export class Animatronic {
       case 'chase': case 'hunt':
         pose = this.freezeTimer > 0 ? 'stagger' : (this.speed > 0.2 ? 'chase' : 'stare');
         break;
-      case 'stagger': case 'dizzy': pose = 'stagger'; break;
+      case 'stagger': pose = 'stagger'; break;
       case 'down': pose = 'down'; break;
-      case 'carried': case 'junked': pose = 'limp'; tipX = -Math.PI / 2; r.position.y = 0.25; break;
-      case 'windup': pose = 'windup'; break;
-      case 'slide': pose = 'slide'; tipX = Math.PI / 2; r.position.y = 0.35; break;
+      case 'carried': case 'junked': pose = 'limp'; tipX = -Math.PI / 2; r.position.y = floor + 0.25; break;
       case 'defeated': pose = 'down'; break;
       case 'friend':
         if (this.swipe > 0) { this.swipe -= dt; pose = 'swipe'; amt = 1 - this.swipe / 0.3; }

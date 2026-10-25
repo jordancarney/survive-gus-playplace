@@ -14,14 +14,16 @@ const MODES = {
   day:      { amb: 0.85, hemi: 1.1, panels: 0xfff6e0, fog: 0.0,   bg: 0x201830, decor: 'day',   exit: 1.0, monitors: 0x2a7a4a },
   night:    { amb: 0.06, hemi: 0.07, panels: 0x1b1b22, fog: 0.05, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a },
   blackout: { amb: 0.025, hemi: 0.02, panels: 0x0c0c10, fog: 0.07, bg: 0x010102, decor: 'off',  exit: 0.25, monitors: 0x050505 },
+  home:     { amb: 0.42, hemi: 0.45, panels: 0x1b1b22, fog: 0.012, bg: 0x2a2a35, decor: 'off', exit: 0.25, monitors: 0x050505 },
   title:    { amb: 0.08, hemi: 0.08, panels: 0x1b1b22, fog: 0.035, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, stage: 26 },
 };
 
 export class Lighting {
-  constructor(scene, decor, place) {
+  constructor(scene, decor, place, house = null) {
     this.scene = scene;
     this.decor = decor;
     this.place = place;
+    this.house = house;
     this.ambient = new THREE.AmbientLight(0x8a90c0, 1);
     this.hemi = new THREE.HemisphereLight(0xfff0f8, 0x302040, 1);
     scene.add(this.ambient, this.hemi);
@@ -50,7 +52,7 @@ export class Lighting {
     const m = MODES[this.mode];
     const camBoost = this.cams && this.mode !== 'day';
     this.ambient.intensity = camBoost ? 0.75 : m.amb;
-    this.ambient.color.set(this.mode === 'day' ? 0xffffff : 0x8a90c0);
+    this.ambient.color.set(this.mode === 'day' ? 0xffffff : this.mode === 'home' ? 0xfff0e0 : 0x8a90c0);
     this.hemi.intensity = camBoost ? 0.4 : m.hemi;
     this.fog.density = camBoost ? 0.012 : m.fog;
     this.fog.color.set(m.bg);
@@ -62,6 +64,8 @@ export class Lighting {
       l.light.intensity = v;
       l.base = v;
     }
+    // Jonathan's house has its own lights, on only while you're there.
+    if (this.house) for (const l of this.house.lights) l.light.intensity = this.mode === 'home' ? l.day : 0;
     for (const s of this.decor.exitSigns) s.color.setScalar(m.exit);
     for (const g of this.decor.glows) g.mat.color.copy(g.base).multiplyScalar(this.mode === 'blackout' ? 0.08 : 1);
     // Monitors showing a camera feed keep it bright; blank ones take the room's mood.

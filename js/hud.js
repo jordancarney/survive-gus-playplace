@@ -75,7 +75,7 @@ export class Hud {
     $('happyMood').style.color = mood.color;
 
     $('clock').textContent = day ? 'DAYTIME' : night.clockText();
-    $('nightTag').textContent = day ? `BEFORE NIGHT ${g.profile.night}` : `NIGHT ${night.n}`;
+    $('nightTag').textContent = day ? `BEFORE NIGHT ${g.profile.night}` : g.mode === 'home' ? 'AFTER NIGHT 10' : `NIGHT ${night.n}`;
 
     $('batteryFill').style.width = p.battery + '%';
     $('batteryFill').style.background = p.battery < 20 ? '#ff3b30' : '';
@@ -92,7 +92,11 @@ export class Hud {
     const w = p.weapon;
     $('weaponName').textContent = p.carrying ? `DRAGGING ${p.carrying.name.toUpperCase()}` : w.name.toUpperCase();
     let charge = 1, info = '';
-    if (w.id === 'taser') { charge = 1 - p.cool.taser / p.taserCool; info = charge >= 1 ? 'Ready' : 'Recharging...'; }
+    if (w.id === 'taser') {
+      const max = weaponById('taser').charges;
+      if (p.taserEmpty > 0) { charge = 1 - p.taserEmpty / p.taserRecharge; info = 'Recharging...'; }
+      else { charge = p.taserCharges / max; info = `${'⚡'.repeat(p.taserCharges)}${'·'.repeat(max - p.taserCharges)}  ${p.taserCharges} zaps`; }
+    }
     else if (w.id === 'knife') { charge = 1 - p.cool.knife / weaponById('knife').cooldown; info = 'Get close'; }
     else if (w.id === 'baseball') { charge = p.balls / weaponById('baseball').count; info = `${p.balls} left — walk over thrown balls to pick them up`; }
     else if (w.id === 'magnum') { charge = Math.min(1, p.ammo / weaponById('magnum').ammo); info = `${p.ammo} shots`; }
@@ -102,7 +106,7 @@ export class Hud {
     // Objective line (top right)
     $('objective').innerHTML = this.objective();
     const alert = $('alertTag');
-    const chasing = g.allBots().filter((a) => ['chase', 'hunt', 'slide', 'windup', 'notice'].includes(a.state) && a.root.visible && g.mode === 'night');
+    const chasing = g.allBots().filter((a) => ['chase', 'hunt', 'notice'].includes(a.state) && a.root.visible && g.hunting);
     if (!night.power && g.mode === 'night' && night.boss !== 'gus' && night.boss !== 'junk') {
       alert.textContent = 'POWER OUT — FIX THE FUSE BOX';
       alert.classList.remove('hidden');
@@ -113,7 +117,7 @@ export class Hud {
 
     // Red edges when something dangerous is close.
     let danger = 0;
-    if (g.mode === 'night') {
+    if (g.hunting) {
       for (const a of g.allBots()) {
         if (!a.dangerous || !a.root.visible) continue;
         const d = a.distToPlayer();
@@ -142,6 +146,11 @@ export class Hud {
   objective() {
     const g = this.game;
     if (g.mode === 'day') return 'Daytime! Explore, then <b>clock in</b> at the time clock in the Security Office.';
+    if (g.mode === 'home') {
+      const lines = [`Zap them and load them into the <b>van</b> in the garage: <b>${g.vanCount()} of 4</b>`];
+      if (g.bots.some((a) => a.state === 'down')) lines.push('Drag powered-down animatronics to the van (E)');
+      return lines.join('<br>');
+    }
     const night = g.night;
     if (night.boss === 'gus') return 'Only the <b>Magnum</b> hurts Gus.<br>Grab ammo boxes (yellow glow).';
     if (night.boss === 'junk') return 'Beat the <b>Junk Monster</b>!<br>Every weapon works. Your friends are helping.';
@@ -163,6 +172,7 @@ export class Hud {
     const n = profile.night;
     const fresh = n === 1 && !profile.seenIntro;
     $('btnPlay').innerHTML = fresh ? '▶&nbsp; Start your first night' :
+      n === 11 && !profile.homeDone ? '▶&nbsp; Continue: They Followed Me Home' :
       n > LAST_STORY_NIGHT ? (profile.beatJunk ? '▶&nbsp; Play Secret Night 21 again' : '▶&nbsp; Secret Night 21') :
       `▶&nbsp; Continue: Night ${n}`;
     $('btnNew').classList.toggle('hidden', fresh);
@@ -181,6 +191,16 @@ export class Hud {
       b.title = d.title;
       b.addEventListener('click', () => onPick(d.night));
       grid.appendChild(b);
+      // the house level sits between nights 10 and 11
+      if (d.night === 10) {
+        const h = document.createElement('button');
+        h.className = 'btn';
+        h.textContent = '🏠';
+        h.title = 'They Followed Me Home';
+        h.disabled = !profile.homeDone && profile.best < 11;
+        h.addEventListener('click', () => onPick('home'));
+        grid.appendChild(h);
+      }
     }
   }
 
@@ -226,10 +246,10 @@ export class Hud {
     } else u.classList.add('hidden');
   }
 
-  caught(who, n, tip) {
+  caught(who, retryLabel, tip) {
     $('caughtTitle').textContent = 'GOTCHA!';
     $('caughtBody').textContent = `${who} caught you.`;
     $('caughtTip').textContent = tip;
-    $('btnRetry').textContent = `Try Night ${n} again`;
+    $('btnRetry').textContent = retryLabel;
   }
 }

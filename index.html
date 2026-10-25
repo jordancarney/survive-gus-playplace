@@ -162,16 +162,6 @@
       </div>
     </div>
 
-    <!-- ── Story cards ────────────────────────────────────────────────── -->
-    <div id="story" class="screen">
-      <div id="storyArt" class="story-art"></div>
-      <p id="storyText" class="story-text"></p>
-      <div class="menu-actions">
-        <button id="btnStoryNext" class="btn btn-big">Next</button>
-        <button id="btnStorySkip" class="btn btn-ghost">Skip</button>
-      </div>
-    </div>
-
     <!-- ── Night card ─────────────────────────────────────────────────── -->
     <div id="card" class="screen">
       <div class="eyebrow" id="cardEyebrow">12:00 AM</div>
@@ -218,6 +208,19 @@
       <div class="menu-actions">
         <button id="btnMorningGo" class="btn btn-big">On to the daytime ☀️</button>
       </div>
+    </div>
+
+    <!-- ── Cutscenes ─────────────────────────────────────────────────── -->
+    <div id="cutscene" class="hidden">
+      <div class="letterbox lb-top"></div>
+      <div class="letterbox lb-bottom"></div>
+      <div id="cutCard" class="cut-card hidden"></div>
+      <div id="cutSub" class="cut-sub hidden">
+        <div id="cutWho" class="cut-who"></div>
+        <div id="cutText" class="cut-text"></div>
+      </div>
+      <div class="cut-hint">SPACE or click: next · ESC: skip</div>
+      <button id="cutSkip" class="btn btn-ghost cut-skip">Skip ⏭</button>
     </div>
 
     <div id="jumpFlash" class="hidden"></div>
