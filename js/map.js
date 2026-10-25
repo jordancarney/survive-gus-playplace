@@ -380,7 +380,7 @@ export class PlayPlace {
   // Each room's walls painted on as one merged mesh of quads, one quad per wall-facing cell
   // edge, with UVs in metres so the pattern runs continuously around the room.
   buildPaint() {
-    const eps = 0.01;
+    const eps = 0.02;   // far enough off the wall boxes not to flicker at a distance
     for (const [id, r] of Object.entries(ROOMS)) {
       const pos = [], nrm = [], uv = [], idx = [];
       const quad = (ax, az, bx, bz, nx, nz, u0) => {

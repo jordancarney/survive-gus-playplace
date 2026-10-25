@@ -207,7 +207,9 @@ export class Decor {
     const a = P(19, 1), b = P(41, 6.5);
     this.place.raised.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z, h: 0.35 });
     this.block(30, 3.75, 22, 5.5, 0.35, 0x2a1840, { solid: false, nav: false });
-    this.block(30, 6.45, 22, 0.1, 0.36, this.glow(0xffd23f), { solid: false, nav: false, shadow: false });
+    // The glowing edge sits just proud of the platform's front face. Sharing that face made
+    // the two fight over every pixel (the flickering stripes Safari and Chrome both showed).
+    this.block(30, 6.56, 22.04, 0.08, 0.37, this.glow(0xffd23f), { solid: false, nav: false, shadow: false });
 
     const curtain = new THREE.MeshLambertMaterial({ map: T.withRepeat(T.curtain(), 11, 1) });
     this.block(30, 1.1, 22, 0.15, 4.2, curtain, { y: 0.35, solid: false, nav: false });
@@ -326,7 +328,7 @@ export class Decor {
       this.mesh(G.box, mat(0x8a8f99, { metal: 0.7 }), this.group, { p: [c.x, c.y, c.z], s: [0.3, 0.06, 0.1], r: [0, k, 0] });
     }
     // the junk pile — hazard floor and a heap of old parts
-    const hz = P(4.5, 21.3, 0.01);
+    const hz = P(4.5, 21.3, 0.02);
     this.mesh(G.plane, new THREE.MeshLambertMaterial({ map: T.withRepeat(T.hazard(), 3, 2.5) }), this.group,
       { p: [hz.x, hz.y, hz.z], s: [5.2, 4.6, 1], r: [-Math.PI / 2, 0, 0], shadow: false });
     let seed = 3;

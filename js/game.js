@@ -71,7 +71,7 @@ export class Game {
     this.canvas = canvas;
     this.input = input;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(72, 16 / 9, 0.05, 120);
+    this.camera = new THREE.PerspectiveCamera(72, 16 / 9, 0.1, 120);
     this.scene.add(this.camera);
 
     this.place = new PlayPlace();
