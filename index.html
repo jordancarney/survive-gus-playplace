@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover lets us paint under the notch; user-scalable=no kills pinch/double-tap zoom -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Survive Gus's">
+  <meta name="theme-color" content="#0b0716">
+  <meta name="description" content="A 3D survival game: Jonathan, 15, takes the night security job at Gus's PlayPlace. Survive 20 nights with the animatronics.">
+  <title>Survive Gus's PlayPlace</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230b0716'/><rect x='2' y='6' width='5' height='4' fill='%23333'/><polygon points='7,6 15,2 15,14 7,10' fill='%23ffd23f'/><rect x='3' y='3' width='2' height='2' fill='%23ff3fa4'/></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230b0716'/><rect x='2' y='6' width='5' height='4' fill='%23333'/><polygon points='7,6 15,2 15,14 7,10' fill='%23ffd23f'/><rect x='3' y='3' width='2' height='2' fill='%23ff3fa4'/></svg>">
+  <!-- Bare specifiers resolve to the copy in vendor/ — no CDN, no build step, works offline -->
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <!-- ── In-game HUD ───────────────────────────────────────────────── -->
+    <div id="hud" class="hidden">
+      <div id="crosshair"></div>
+      <div id="danger"></div>
+      <div id="hitFlash"></div>
+
+      <div class="hud-corner hud-tl">
+        <div class="meter-label">KIDS' HAPPINESS</div>
+        <div class="happy-row">
+          <span id="happyFace" class="happy-face">🙂</span>
+          <div class="bar happy"><div id="happyFill" class="fill"></div></div>
+        </div>
+        <div id="happyMood" class="mood">Happy</div>
+      </div>
+
+      <div class="hud-top">
+        <div id="clock" class="clock">12 AM</div>
+        <div id="nightTag" class="night-tag">NIGHT 1</div>
+        <div id="bossBar" class="boss hidden">
+          <div id="bossName" class="boss-name">GUS</div>
+          <div class="bar boss-track"><div id="bossFill" class="fill"></div></div>
+        </div>
+      </div>
+
+      <div class="hud-corner hud-tr">
+        <div id="objective" class="objective"></div>
+        <div id="alertTag" class="alert-tag hidden"></div>
+      </div>
+
+      <div class="hud-corner hud-bl">
+        <div class="meter-label">FLASHLIGHT</div>
+        <div class="bar battery"><div id="batteryFill" class="fill"></div></div>
+        <div class="meter-label">STAMINA</div>
+        <div class="bar stamina"><div id="staminaFill" class="fill"></div></div>
+      </div>
+
+      <div class="hud-corner hud-br">
+        <div id="weaponSlots" class="weapon-slots"></div>
+        <div id="weaponName" class="weapon-name">TASER</div>
+        <div class="bar charge"><div id="chargeFill" class="fill"></div></div>
+        <div id="weaponInfo" class="weapon-info"></div>
+      </div>
+
+      <div id="prompt" class="prompt hidden"></div>
+      <div id="toast" class="toast"></div>
+      <div id="carryTag" class="carry-tag hidden"></div>
+      <div id="clickToPlay" class="click-to-play hidden">Click to look around</div>
+
+      <!-- Touch controls: created on demand by js/touch.js, parented here -->
+      <div id="touchLayer"></div>
+    </div>
+
+    <!-- ── Security camera monitor ───────────────────────────────────── -->
+    <div id="camUI" class="hidden">
+      <canvas id="camNoise"></canvas>
+      <div class="cam-scan"></div>
+      <div class="cam-vignette"></div>
+      <div class="cam-top">
+        <span class="rec">● REC</span>
+        <span id="camName" class="cam-name">CAM 01 · SHOW STAGE</span>
+        <span id="camClock" class="cam-clock">12 AM</span>
+      </div>
+      <div id="camOffline" class="cam-offline hidden">NO SIGNAL</div>
+      <div id="camAlert" class="cam-alert hidden">⚠ SOMETHING IS RIGHT OUTSIDE YOUR OFFICE</div>
+      <div id="camMap" class="cam-map"></div>
+      <div class="cam-hint">
+        <span><b>← →</b> switch camera</span>
+        <span><b>E</b> put the monitor down</span>
+      </div>
+      <button id="btnCamClose" class="btn btn-ghost cam-close">Put down</button>
+    </div>
+
+    <!-- ── Repair puzzle ──────────────────────────────────────────────── -->
+    <div id="repairUI" class="hidden">
+      <div class="repair-panel">
+        <div id="repairTitle" class="repair-title">FIX THE CLAW MACHINE</div>
+        <div id="repairHint" class="repair-hint">Press the arrows in order!</div>
+        <div id="repairBody" class="repair-body"></div>
+        <div id="repairPads" class="repair-pads"></div>
+        <div class="repair-cancel">ESC to stop</div>
+      </div>
+    </div>
+
+    <!-- ── Daytime panel ──────────────────────────────────────────────── -->
+    <div id="dayPanel" class="hidden">
+      <div class="day-card">
+        <div class="eyebrow">DAYTIME · GUS'S PLAYPLACE IS OPEN</div>
+        <div id="dayText" class="day-text">Look around! When you're ready, clock in at the time clock in the Security Office.</div>
+        <button id="btnClockIn" class="btn">Clock in for Night 1</button>
+      </div>
+    </div>
+
+    <!-- ── Title ──────────────────────────────────────────────────────── -->
+    <div id="title" class="screen screen-clear">
+      <div class="title-plate">
+        <div class="eyebrow">NOW HIRING · NIGHT SECURITY</div>
+        <h1 class="game-title">SURVIVE<span>GUS'S PLAYPLACE</span></h1>
+        <p class="tagline">Twenty nights. Five animatronics. One fifteen-year-old with a taser.</p>
+      </div>
+      <div class="menu-actions">
+        <button id="btnPlay" class="btn btn-big">▶&nbsp; Start Night 1</button>
+        <button id="btnNew" class="btn btn-ghost hidden">New game</button>
+        <button id="btnSelect" class="btn btn-ghost hidden">Pick a night</button>
+        <button id="btnHowTo" class="btn btn-ghost">How to Play</button>
+      </div>
+      <div id="buildTag" class="build-tag"></div>
+    </div>
+
+    <!-- ── How to play ────────────────────────────────────────────────── -->
+    <div id="howto" class="screen">
+      <h2 class="screen-title">HOW TO PLAY</h2>
+      <div class="howto-cols">
+        <div class="howto-text">
+          <p><b>Survive until 6 AM.</b> Watch the cameras from your desk. If you see an animatronic
+            off the stage — or anything weird — go out and check.</p>
+          <p><b>Zap them</b> with your taser, then <b>drag them</b> (E) to <b>Parts &amp; Service</b>
+            and chuck them in the junk pile. They're out for the rest of the night.</p>
+          <p><b>Fix broken games.</b> Happy kids make happy animatronics, and that makes every
+            night easier.</p>
+          <p><b>If the power goes out,</b> fix the fuse box fast. That's when <b>Gus</b> comes out —
+            and nothing stops Gus except the Magnum.</p>
+          <p>Get caught and you start the night over.</p>
+        </div>
+        <div id="howtoList" class="controls-list"></div>
+      </div>
+      <div class="menu-actions">
+        <button id="btnHowToBack" class="btn btn-ghost btn-big">Back</button>
+      </div>
+    </div>
+
+    <!-- ── Night select ───────────────────────────────────────────────── -->
+    <div id="select" class="screen">
+      <h2 class="screen-title">PICK A NIGHT</h2>
+      <div id="selectGrid" class="select-grid"></div>
+      <div class="menu-actions">
+        <button id="btnSelectBack" class="btn btn-ghost btn-big">Back</button>
+      </div>
+    </div>
+
+    <!-- ── Story cards ────────────────────────────────────────────────── -->
+    <div id="story" class="screen">
+      <div id="storyArt" class="story-art"></div>
+      <p id="storyText" class="story-text"></p>
+      <div class="menu-actions">
+        <button id="btnStoryNext" class="btn btn-big">Next</button>
+        <button id="btnStorySkip" class="btn btn-ghost">Skip</button>
+      </div>
+    </div>
+
+    <!-- ── Night card ─────────────────────────────────────────────────── -->
+    <div id="card" class="screen">
+      <div class="eyebrow" id="cardEyebrow">12:00 AM</div>
+      <h2 class="screen-title night-number" id="cardNight">NIGHT 1</h2>
+      <div class="card-sub" id="cardTitle">First Shift</div>
+      <div id="cardUnlock" class="card-unlock hidden"></div>
+      <div class="note">
+        <div class="note-head">📋 A note from the manager</div>
+        <p id="cardNote"></p>
+      </div>
+      <div id="cardRoster" class="roster"></div>
+      <div class="menu-actions">
+        <button id="btnCardGo" class="btn btn-big">Start the night</button>
+      </div>
+    </div>
+
+    <!-- ── Pause ──────────────────────────────────────────────────────── -->
+    <div id="pause" class="screen">
+      <h2 class="screen-title">PAUSED</h2>
+      <div id="controlsList" class="controls-list"></div>
+      <div class="menu-actions">
+        <button id="btnResume" class="btn btn-big">Resume</button>
+        <button id="btnQuit" class="btn btn-ghost">Quit to title</button>
+      </div>
+    </div>
+
+    <!-- ── Caught ─────────────────────────────────────────────────────── -->
+    <div id="caught" class="screen screen-red">
+      <h2 class="screen-title caught-title" id="caughtTitle">GOTCHA!</h2>
+      <p class="brief-body" id="caughtBody">Gerald caught you.</p>
+      <p class="caught-tip" id="caughtTip"></p>
+      <div class="menu-actions">
+        <button id="btnRetry" class="btn btn-big">Try Night 1 again</button>
+        <button id="btnCaughtMenu" class="btn btn-ghost">Quit to title</button>
+      </div>
+    </div>
+
+    <!-- ── 6 AM ───────────────────────────────────────────────────────── -->
+    <div id="morning" class="screen screen-sun">
+      <div class="six-am">6 AM</div>
+      <h2 class="screen-title" id="morningTitle">YOU SURVIVED NIGHT 1!</h2>
+      <div id="morningReport" class="report"></div>
+      <div id="morningUnlock" class="card-unlock hidden"></div>
+      <div class="menu-actions">
+        <button id="btnMorningGo" class="btn btn-big">On to the daytime ☀️</button>
+      </div>
+    </div>
+
+    <div id="jumpFlash" class="hidden"></div>
+    <div id="fade"></div>
+
+    <!-- ── Loading ────────────────────────────────────────────────────── -->
+    <div id="loading" class="screen show">
+      <div class="loading-text">UNLOCKING THE PLAYPLACE…</div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
