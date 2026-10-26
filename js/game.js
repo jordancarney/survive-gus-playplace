@@ -10,7 +10,7 @@
 // told in cutscenes (story.js).
 import * as THREE from 'three';
 import {
-  DEBUG, ANIMATRONIC_ORDER, ROAMERS, PLAYER, TIMMY, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef,
+  DEBUG, ANIMATRONIC_ORDER, ROAMERS, PLAYER, TIMMY, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef, REALISTIC,
 } from './config.js';
 import { input, requestPointerLock, exitPointerLock, onPointerLockChange } from './input.js';
 import { audio, sfx, playMusic, stopMusic, setListener, startAmbience, stopAmbience, stopMusicBox } from './audio.js';
@@ -33,7 +33,7 @@ import { Hud } from './hud.js';
 import { Touch } from './touch.js';
 import { Timmy } from './timmy.js';
 import { Phone } from './phone.js';
-import { loadProfile, saveProfile, freshProfile } from './save.js';
+import { loadProfile, saveProfile, freshProfile, saveGraphics } from './save.js';
 import { setEyes, buildJonathan, buildManager, buildGramma } from './models.js';
 import { signTex } from './textures.js';
 import { VERSION } from './version.js';
@@ -52,8 +52,9 @@ const TIPS = {
 };
 
 export class Game {
-  constructor(renderer, canvas) {
+  constructor(renderer, canvas, graphics) {
     this.renderer = renderer;
+    this.graphics = graphics;
     this.canvas = canvas;
     this.input = input;
     this.scene = new THREE.Scene();
@@ -113,6 +114,8 @@ export class Game {
     this.cut = new Cutscene(this);
     this.phone = new Phone(this);
     this.setArea('playplace');
+    graphics.prepare(this.scene);
+    this.lighting.apply();
 
     this.profile = loadProfile();
     this.mode = 'loading';
@@ -193,6 +196,9 @@ export class Game {
     click('btnSelectBack', () => this.toTitle());
     click('btnHowTo', () => this.showScreen('howto'));
     click('btnHowToBack', () => this.toTitle());
+    // Realistic is the full look; Fast is the original, for phones and tablets.
+    $('btnGfx').textContent = `Graphics: ${REALISTIC ? 'Realistic ✨' : 'Fast ⚡'}`;
+    click('btnGfx', () => saveGraphics(REALISTIC ? 'fast' : 'real'));
     click('btnCardGo', () => this.beginNight(this.cardNight));
     click('btnResume', () => this.togglePause());
     click('btnQuit', () => this.toTitle());
@@ -824,7 +830,7 @@ export class Game {
 
   render(dt) {
     this.cams.renderMonitors(this.renderer, this.scene, dt);
-    this.renderer.render(this.scene, this.cams.active ? this.cams.cam : this.camera);
+    this.graphics.render(this.scene, this.cams.active ? this.cams.cam : this.camera, { spot: this.player.flashlight, dt });
   }
 
   resize(w, h) {

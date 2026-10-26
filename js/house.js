@@ -9,6 +9,7 @@ import { Building } from './map.js';
 import { Decor, G, lam, glowMat } from './decor.js';
 import { mat } from './models.js';
 import * as T from './textures.js';
+import { surface } from './materials.js';
 import { SHADOWS } from './config.js';
 
 export const HOUSE = {
@@ -76,7 +77,7 @@ export class HouseDecor extends Decor {
 
   rug(px, pz, w, d, a, b) {
     const c = this.place.P(px, pz, 0.015);
-    this.mesh(G.plane, new THREE.MeshLambertMaterial({ map: T.rug(a, b) }), this.group,
+    this.mesh(G.plane, surface({ map: T.rug(a, b) }), this.group,
       { p: [c.x, c.y, c.z], s: [w, d, 1], r: [-Math.PI / 2, 0, 0], shadow: false });
   }
 
@@ -108,7 +109,7 @@ export class HouseDecor extends Decor {
     this.block(10.25, 2.0, 0.12, 1.6, 0.55, porcelain);
     this.block(14.15, 2.0, 0.12, 1.6, 0.55, porcelain);
     const water = this.place.P(12.2, 2.0, 0.42);
-    this.mesh(G.plane, new THREE.MeshLambertMaterial({ color: 0x7fd0f0, transparent: true, opacity: 0.75 }), this.group,
+    this.mesh(G.plane, surface({ color: 0x7fd0f0, transparent: true, opacity: 0.75 }), this.group,
       { p: [water.x, water.y, water.z], s: [3.8, 1.4, 1], r: [-Math.PI / 2, 0, 0], shadow: false });
     const a = this.place.P(10.4, 1.4), b = this.place.P(14.0, 2.6);
     this.place.slowZones.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z });

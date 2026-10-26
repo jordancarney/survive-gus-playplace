@@ -234,11 +234,13 @@ export class Animatronic {
 
   // ── Being hit ─────────────────────────────────────────────────────────
   //
-  // Returns a word for the HUD: 'down', 'stagger', 'fizzle', 'freeze' or 'damage'.
+  // Returns a word for the HUD: 'down', 'stagger', 'fizzle', 'freeze', 'damage' or 'asleep'.
 
   hit(kind) {
     const fx = this.game.effects;
     const at = new THREE.Vector3(this.pos.x, this.pos.y + this.chestY, this.pos.z);
+    // Still asleep on the stage: nothing works on them until they wake up and step off it.
+    if (this.state === 'stage') { sfx.zapFizzle(); fx.burst(at, 6, 2, 2); return 'asleep'; }
     if (this.id === 'gus') {
       if (kind !== 'magnum') { sfx.zapFizzle(); fx.burst(at, 6, 2, 2); return 'fizzle'; }
       fx.burst(at, 24, 5);

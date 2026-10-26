@@ -33,7 +33,8 @@ back out.
 
 ## Tone
 
-Scary like a haunted house is scary. The jumpscare is loud and in your face, the nights are
+Scary like a haunted house is scary, and on realistic graphics it looks like a real place:
+old fur suits, grubby floors, a flashlight beam full of dust. The jumpscare is loud and in your face, the nights are
 dark and quiet, and the music box means Gus is coming. But:
 
 - The animatronics are robots. Zapped, they power down with a whirr and slump. Nothing
@@ -71,6 +72,13 @@ After the second build, he asked for:
 - **On Night 2 you meet a kid** who lost his parents and follows you. The next day he gives
   you his gramma's phone number, you type it on the keyboard, and she picks him up. He's
   **Timmy**; the number is **145-247-3719**; and the animatronics **try to catch him too**.
+
+After the third build, he asked for:
+
+- **Graphics that look like real life** — everything, not just one thing. Up close the
+  animatronics are **old furry costumes, worn and dirty, like FNAF 1**, and the **nights are
+  darker** so the flashlight matters more. Then: **make the day less bright**.
+- **No zapping them before they wake up.** Asleep on the stage, the zap just bounces off.
 
 His original brief also fixed: Jonathan is 15 and found the job opening; five animatronics
 (Gus the platypus is the leader, Gerald the gorilla, Chomper the beaver, Cranker the penguin,
@@ -158,7 +166,8 @@ Every animatronic is a physical thing walking the navigation grid (A*, smoothed 
 string-pulling) — no teleporting, so the cameras never lie.
 
 1. **On the stage** until its wake hour, then every 5 s it rolls a d20 against its aggression
-   level (0–20). Nobody moves in the first 30 s of a night.
+   level (0–20). Nobody moves in the first 30 s of a night. While it's asleep up there no
+   weapon works on it: the zap bounces off with a fizz ("Cranker is still asleep").
 2. **Roam** to a destination: with probability 0.05 + 0.02 × level + 0.025 × hour it heads for
    wherever you are; chewers and smashers usually pick a working game; Flipper often picks
    the ball pit; otherwise a room it likes (×3 weight) or any other.
@@ -338,6 +347,41 @@ north-east corner of Parts & Service. At
 two-thirds health it speeds up; at one-third it rips out the power and the friends' blue
 eyes are the only lights left.
 
+## Graphics
+
+Two looks, picked on the title screen (Graphics: Realistic / Fast) and stored apart from the
+save under `survive_gus_gfx`. Phones and tablets start on Fast; everything else on Realistic.
+Switching reloads the page. `?gfx=real` or `?gfx=fast` overrides it for testing.
+
+**Fast** is the original toy-box look: flat Lambert surfaces, chunky low-resolution
+textures, no post-processing. It still gets the designer's darker nights, dimmer days and
+matte fur.
+
+**Realistic** ([js/graphics.js](js/graphics.js), [js/materials.js](js/materials.js),
+[js/realtex.js](js/realtex.js)):
+
+- Every surface is physically based. Textures are painted at real-world detail at startup
+  (50 cm vinyl checker tiles with grout and scuffs, carpet fibres, cinder block, foam play
+  mats, floorboards, a black drop ceiling, a tiled wainscot) with a height map turned into a
+  normal map and a roughness map. A world-space grime texture keeps any two metres from
+  matching, and dirt gathers along the bottom of walls and furniture.
+- Floors reflect the room: the scene is drawn a second time from a mirror camera under the
+  floor at half size, blurrier where the floor is rougher.
+- The animatronics are fur costumes: ten shells of strands stand off every furry part (one
+  instanced draw each), with matted patches, plastic bills and beaks that are scuffed and
+  grubby, yellowed glass eyes under heavy fur lids. The old originals are the same, faded,
+  dustier and matted flatter. People get faces, hands, fabric clothes and strand hair.
+- Post-processing: ambient occlusion, bloom on anything brighter than white (eyes, neon,
+  exit signs, light panels, pushed to `GLOW` × their colour), the flashlight's beam
+  ray-marched through dusty air with its own shadows in it, lens fringing, vignette, a
+  highlight shoulder that leaves the darks alone, and film grain.
+- The flashlight has a truer falloff (22 at decay 1.5, against 70 at 1.2 on Fast).
+  Jonathan's hands are capped in brightness so the bulb beside them doesn't blind you.
+
+Lighting moods ([js/lighting.js](js/lighting.js)) scale the room lights for both looks:
+nights at 0.55 of each light's night value (the office lamp excepted — it's the one safe,
+lit place), days at 0.7, with day exposure at 0.8 on Realistic.
+
 ## Controls
 
 Bindings live in `KEYMAP` ([js/config.js](js/config.js)) and reach players through the
@@ -362,8 +406,11 @@ js/config.js      Every tuning number and content table — animatronics, weapon
 js/map.js         Floor plan, walls, collision, line of sight, A* navigation
 js/decor.js       Furniture, kid games, fuse boxes, signs, cameras and room lights
 js/textures.js    Every texture, painted onto canvases
-js/models.js      Every character mesh and its poses, and Jonathan's hands
+js/models.js      Every character mesh and its poses, fur shells, and Jonathan's hands
 js/lighting.js    Day / night / blackout / title light rigs
+js/graphics.js    The realistic look's passes: floor mirror, AO, bloom, beam, composite
+js/materials.js   Building surfaces: Lambert on Fast, physically based with grime on Realistic
+js/realtex.js     The realistic textures, their normal and roughness maps, fur, worn plastic
 js/player.js      Jonathan: movement, stamina, flashlight, camera
 js/weapons.js     Taser, baseballs, knife, Magnum
 js/animatronics.js  The five's AI, Gus's hunts, the friends, the Junk Monster
@@ -389,7 +436,7 @@ dev/preview.html  Art preview: framed day/night shots of rooms and characters
 
 ## Debug handles
 
-Load with `?debug=1` to get:
+Load with `?debug=1` to get (add `&gfx=fast` or `&gfx=real` to force a graphics setting):
 
 - `window.__game` — the running game. `__game.profile` is the save; `__game.night`,
   `__game.bots`, `__game.player`, `__game.machines` are the live state.

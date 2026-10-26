@@ -1,27 +1,31 @@
 // Boot + fixed-timestep game loop.
 import * as THREE from 'three';
-import { DEBUG, SHADOWS } from './config.js';
+import { DEBUG, SHADOWS, REALISTIC } from './config.js';
 import { initInput, input } from './input.js';
 import { audio } from './audio.js';
 import { initUpdateCheck } from './updates.js';
 import { Game } from './game.js';
+import { Graphics } from './graphics.js';
 
 const canvas = document.getElementById('game');
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: window.devicePixelRatio < 2,   // a retina phone doesn't need MSAA on top
+  // a retina phone doesn't need MSAA on top; the realistic look antialiases its own targets
+  antialias: window.devicePixelRatio < 2 && !REALISTIC,
   powerPreference: 'high-performance',
 });
-// Cap the pixel ratio: a 3× phone display renders 9× the pixels for no visible gain.
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Cap the pixel ratio: a 3× phone display renders 9× the pixels for no visible gain. The
+// realistic look runs several full-screen passes per frame, so it stops a little lower.
+renderer.setPixelRatio(Math.min(devicePixelRatio, REALISTIC ? 1.5 : 2));
 renderer.shadowMap.enabled = SHADOWS;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 initInput(canvas);
 audio.init();
 
-const game = new Game(renderer, canvas);
+const graphics = new Graphics(renderer);
+const game = new Game(renderer, canvas, graphics);
 
 // The AudioContext can only start inside a real user gesture.
 for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
@@ -34,6 +38,7 @@ function resize() {
   const w = innerWidth;
   const h = innerHeight;
   renderer.setSize(w, h, false);
+  graphics.setSize(w, h);
   game.resize(w, h);
 }
 addEventListener('resize', resize);

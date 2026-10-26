@@ -8,6 +8,20 @@ export const DEBUG = new URLSearchParams(location.search).has('debug');
 export const TOUCH_DEVICE = matchMedia('(pointer: coarse)').matches;
 export const SHADOWS = !TOUCH_DEVICE;
 
+// Graphics: 'real' (lifelike lighting, reflections, fur, film effects) or 'fast' (the
+// original toy-box look, for phones and tablets). Picked on the title screen and kept
+// apart from the save, so a new game doesn't reset it. `?gfx=fast` overrides, for testing.
+export const GFX_KEY = 'survive_gus_gfx';
+const gfxChoice = (() => {
+  const q = new URLSearchParams(location.search).get('gfx');
+  if (q === 'real' || q === 'fast') return q;
+  try { return localStorage.getItem(GFX_KEY); } catch { return null; }
+})();
+export const REALISTIC = (gfxChoice || (TOUCH_DEVICE ? 'fast' : 'real')) === 'real';
+// Self-lit things (eyes, neon, exit signs, light panels) are pushed past white in the
+// realistic look so they bloom.
+export const GLOW = REALISTIC ? 6 : 1;
+
 // ── Jonathan ────────────────────────────────────────────────────────────
 
 export const PLAYER = {
@@ -34,7 +48,9 @@ export const FLASHLIGHT = {
   officeRegen: 9,           // % per second in the Security Office, where the charger is
   range: 24,
   angle: 0.48,
-  intensity: 70,
+  // The realistic look uses a truer falloff: blinding up close, dimmer far away.
+  intensity: REALISTIC ? 22 : 70,
+  decay: REALISTIC ? 1.5 : 1.2,
 };
 
 // ── The clock ───────────────────────────────────────────────────────────

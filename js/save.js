@@ -2,7 +2,7 @@
 //
 // The save only ever changes at 6 AM. That is what makes "lose and you start the night over"
 // work for free: a caught Jonathan reloads the profile as it was when the night began.
-import { HAPPINESS, NIGHTS } from './config.js';
+import { HAPPINESS, NIGHTS, GFX_KEY } from './config.js';
 
 const KEY = 'survive_gus_save_v1';
 
@@ -41,4 +41,11 @@ export function saveProfile(p) {
 
 export function clearProfile() {
   try { localStorage.removeItem(KEY); } catch {}
+}
+
+// The graphics setting lives beside the save, not in it. Switching rebuilds every material,
+// so it reloads the page.
+export function saveGraphics(mode) {
+  try { localStorage.setItem(GFX_KEY, mode); } catch {}
+  location.reload();
 }

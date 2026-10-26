@@ -47,15 +47,20 @@ means starting the night over.
   under dust sheets for years, wake up to help you get them back
 - A manager's note before every night teaches whatever is new tonight
 - Saves automatically at 6 AM, and you can replay any night you've reached
+- Realistic graphics: the animatronics are old furry costumes with real-looking fur, the
+  floors shine and reflect the room, and the flashlight beam is full of dust, with soft
+  shadows, glowing eyes and film grain. A Fast setting on the title screen keeps the
+  original look for phones, tablets and slower computers
 
 ## Built with
 
 Vanilla JavaScript ES modules and [Three.js](https://threejs.org) for WebGL. No build step
 and nothing to install — Three.js is committed in [vendor/](vendor/) and loaded through an
 import map, so the game works offline and doesn't depend on a CDN. There are no model,
-texture or audio files either: every mesh is built from primitives in code, every texture is
-painted onto a canvas at startup, and every sound (the techno included) is synthesized at
-runtime.
+texture or audio files either: every mesh is built from primitives in code, every texture
+(with its bump and shine maps) is painted onto a canvas at startup, and every sound (the
+techno included) is synthesized at runtime. The realistic look's reflections, ambient
+occlusion, bloom and volumetric flashlight are hand-written shader passes on top of Three.js.
 
 ## Run locally
 

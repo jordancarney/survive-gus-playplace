@@ -7,6 +7,7 @@
 // the plan shifted so the building is centred on the origin.
 import * as THREE from 'three';
 import * as T from './textures.js';
+import { surface } from './materials.js';
 
 export const GRID_W = 60;
 export const GRID_H = 44;
@@ -334,10 +335,11 @@ export class Building {
     const add = (x0, z0, x1, z1, tex) => {
       const w = x1 - x0 + 1, d = z1 - z0 + 1;
       const t = T.withRepeat(tex, w / 2, d / 2);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: t }));
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), surface({ map: t, floor: true }));
       m.rotation.x = -Math.PI / 2;
       m.position.copy(this.P(x0 + w / 2, z0 + d / 2, 0));
       m.receiveShadow = true;
+      m.userData.floor = true;
       m.matrixAutoUpdate = false;
       m.updateMatrix();
       this.group.add(m);
@@ -350,7 +352,7 @@ export class Building {
   buildWalls() {
     const used = new Uint8Array(this.w * this.h);
     const isWall = (x, z) => this.grid[z][x] === WALL;
-    const mat = new THREE.MeshLambertMaterial({ color: this.layout.wallColor || 0x1a1722 });
+    const mat = surface({ color: this.layout.wallColor || 0x1a1722 });
     for (let z = 0; z < this.h; z++) {
       for (let x = 0; x < this.w; x++) {
         if (!isWall(x, z) || used[z * this.w + x]) continue;
@@ -376,7 +378,7 @@ export class Building {
     }
 
     // Door headers: a lintel over every opening, so doors read as doors.
-    const header = new THREE.MeshLambertMaterial({ color: this.layout.headerColor || 0x2b2440 });
+    const header = surface({ color: this.layout.headerColor || 0x2b2440 });
     const doorTop = Math.min(3.0, this.wallH - 0.5);
     for (const d of this.doors) {
       const w = d.x1 - d.x0 + 1, dd = d.z1 - d.z0 + 1;
@@ -418,7 +420,7 @@ export class Building {
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
       geo.setIndex(idx);
       const [upper, band, lower, pattern] = r.wall;
-      const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: T.wallPaint(upper, band, lower, pattern) }));
+      const m = new THREE.Mesh(geo, surface({ map: T.wallPaint(upper, band, lower, pattern) }));
       m.receiveShadow = true;
       m.matrixAutoUpdate = false;
       this.group.add(m);
@@ -427,7 +429,7 @@ export class Building {
 
   buildCeiling() {
     const t = T.withRepeat((this.layout.ceiling || T.ceiling)(), this.w / 2, this.h / 2);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(this.w, this.h), new THREE.MeshLambertMaterial({ map: t }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(this.w, this.h), surface({ map: t }));
     m.rotation.x = Math.PI / 2;
     m.position.copy(this.P(this.w / 2, this.h / 2, this.wallH));
     m.matrixAutoUpdate = false;

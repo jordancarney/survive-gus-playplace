@@ -9,14 +9,23 @@
 // material when the light count changes, which would hitch the frame each time the power
 // went out.
 import * as THREE from 'three';
+import { GLOW } from './config.js';
 
+// `env` is the environment map shiny things reflect in the realistic look, at `envI`, and
+// `exposure` its camera exposure.
 const MODES = {
-  day:      { amb: 0.85, hemi: 1.1, panels: 0xfff6e0, fog: 0.0,   bg: 0x201830, decor: 'day',   exit: 1.0, monitors: 0x2a7a4a },
-  night:    { amb: 0.06, hemi: 0.07, panels: 0x1b1b22, fog: 0.05, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a },
-  blackout: { amb: 0.025, hemi: 0.02, panels: 0x0c0c10, fog: 0.07, bg: 0x010102, decor: 'off',  exit: 0.25, monitors: 0x050505 },
-  home:     { amb: 0.42, hemi: 0.45, panels: 0x1b1b22, fog: 0.012, bg: 0x2a2a35, decor: 'off', exit: 0.25, monitors: 0x050505 },
-  title:    { amb: 0.08, hemi: 0.08, panels: 0x1b1b22, fog: 0.035, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, stage: 26 },
+  day:      { amb: 0.55, hemi: 0.7, panels: 0xfff6e0, fog: 0.0,   bg: 0x201830, decor: 'day',   exit: 1.0, monitors: 0x2a7a4a, env: 'day', envI: 0.4, exposure: 0.8 },
+  night:    { amb: 0.03, hemi: 0.035, panels: 0x1b1b22, fog: 0.055, bg: 0x020104, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, env: 'night', envI: 0.5 },
+  blackout: { amb: 0.012, hemi: 0.01, panels: 0x0c0c10, fog: 0.075, bg: 0x010102, decor: 'off',  exit: 0.25, monitors: 0x050505, env: 'night', envI: 0.12 },
+  home:     { amb: 0.42, hemi: 0.45, panels: 0x1b1b22, fog: 0.012, bg: 0x2a2a35, decor: 'off', exit: 0.25, monitors: 0x050505, env: 'day', envI: 0.25 },
+  title:    { amb: 0.08, hemi: 0.08, panels: 0x1b1b22, fog: 0.035, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, stage: 26, env: 'night', envI: 0.6 },
 };
+
+// The designer asked for darker nights (so the flashlight matters more) and a less
+// glaring daytime; these scale the room lights' own day and night values. The office desk
+// lamp is left alone: it's the one safe, lit place.
+const NIGHT_DIM = 0.55;
+const DAY_DIM = 0.7;
 
 export class Lighting {
   constructor(scene, decor, place, house = null) {
@@ -57,16 +66,22 @@ export class Lighting {
     this.fog.density = camBoost ? 0.012 : m.fog;
     this.fog.color.set(m.bg);
     this.scene.background.set(m.bg);
-    for (const p of this.place.ceilingLights) p.mat.color.set(m.panels);
+    const env = this.scene.userData.env;
+    this.scene.userData.exposure = m.exposure ?? 1;
+    if (env) {
+      this.scene.environment = env[m.env];
+      this.scene.environmentIntensity = camBoost ? 0.6 : m.envI;
+    }
+    for (const p of this.place.ceilingLights) p.mat.color.set(m.panels).multiplyScalar(this.mode === 'day' ? GLOW : 1);
     for (const l of this.decor.lights) {
-      let v = m.decor === 'day' ? l.day : m.decor === 'night' ? l.night : 0;
+      let v = m.decor === 'day' ? l.day * DAY_DIM : m.decor === 'night' ? l.night * (l.room === 'O' ? 1 : NIGHT_DIM) : 0;
       if (m.stage && l.room === 'D') v = l.day > 40 ? m.stage : l.night * 3;
       l.light.intensity = v;
       l.base = v;
     }
     // Jonathan's house has its own lights, on only while you're there.
     if (this.house) for (const l of this.house.lights) l.light.intensity = this.mode === 'home' ? l.day : 0;
-    for (const s of this.decor.exitSigns) s.color.setScalar(m.exit);
+    for (const s of this.decor.exitSigns) s.color.setScalar(m.exit * GLOW);
     for (const g of this.decor.glows) g.mat.color.copy(g.base).multiplyScalar(this.mode === 'blackout' ? 0.08 : 1);
     // Monitors showing a camera feed keep it bright; blank ones take the room's mood.
     for (const s of this.decor.monitors) s.color.set(s.map && this.mode !== 'blackout' ? 0x9fffb0 : m.monitors);

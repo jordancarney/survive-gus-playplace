@@ -9,7 +9,8 @@ import * as THREE from 'three';
 import { P, ROOMS, WALL_H } from './map.js';
 import { mat } from './models.js';
 import * as T from './textures.js';
-import { SHADOWS } from './config.js';
+import { surface } from './materials.js';
+import { SHADOWS, GLOW } from './config.js';
 
 export const G = {
   box: new THREE.BoxGeometry(1, 1, 1),
@@ -20,12 +21,14 @@ export const G = {
   plane: new THREE.PlaneGeometry(1, 1),
 };
 
+// One shared material per plain colour.
 const lambert = new Map();
 export function lam(color) {
-  if (!lambert.has(color)) lambert.set(color, new THREE.MeshLambertMaterial({ color }));
+  if (!lambert.has(color)) lambert.set(color, surface({ color }));
   return lambert.get(color);
 }
-export const glowMat = (color) => new THREE.MeshBasicMaterial({ color });
+// `k` tones down the realistic look's bloom for big glowing areas.
+export const glowMat = (color, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(Math.max(1, GLOW * k)) });
 
 // Rotation that turns a +Z-facing thing to face one of the four walls' directions.
 export const FACE = { south: 0, north: Math.PI, east: Math.PI / 2, west: -Math.PI / 2 };
@@ -86,8 +89,8 @@ export class Decor {
   }
 
   // A self-lit material that goes dark when the power does.
-  glow(color) {
-    const m = glowMat(color);
+  glow(color, k = 1) {
+    const m = glowMat(color, k);
     this.glows.push({ mat: m, base: m.color.clone() });
     return m;
   }
@@ -104,7 +107,7 @@ export class Decor {
 
   poster(title, color, face, px, pz, y, facing) {
     const g = this.anchor(px, pz, facing, y);
-    const m = new THREE.Mesh(G.plane, new THREE.MeshLambertMaterial({ map: T.posterTex(title, color, face) }));
+    const m = new THREE.Mesh(G.plane, surface({ map: T.posterTex(title, color, face) }));
     m.scale.set(1.0, 1.4, 1);
     g.add(m);
   }
@@ -190,7 +193,7 @@ export class Decor {
   fuseBox(id, name, room, px, pz, facing) {
     return this.machine(id, name, room, 'fuse', px, pz, facing, (g, parts) => {
       this.mesh(G.box, mat(0x6f747c, { metal: 0.6, rough: 0.4 }), g, { p: [0, 1.4, 0.08], s: [0.7, 0.9, 0.16] });
-      this.mesh(G.box, new THREE.MeshLambertMaterial({ map: T.hazard() }), g, { p: [0, 0.88, 0.1], s: [0.7, 0.1, 0.18] });
+      this.mesh(G.box, surface({ map: T.hazard() }), g, { p: [0, 0.88, 0.1], s: [0.7, 0.1, 0.18] });
       this.mesh(G.box, lam(0x222222), g, { p: [0.22, 1.4, 0.2], s: [0.06, 0.3, 0.06] });   // lever
       const lamp = glowMat(0x3cff6b);
       this.mesh(G.sphere, lamp, g, { p: [-0.2, 1.7, 0.18], s: [0.05, 0.05, 0.05] });
@@ -209,11 +212,11 @@ export class Decor {
     this.block(30, 3.75, 22, 5.5, 0.35, 0x2a1840, { solid: false, nav: false });
     // The glowing edge sits just proud of the platform's front face. Sharing that face made
     // the two fight over every pixel (the flickering stripes Safari and Chrome both showed).
-    this.block(30, 6.56, 22.04, 0.08, 0.37, this.glow(0xffd23f), { solid: false, nav: false, shadow: false });
+    this.block(30, 6.56, 22.04, 0.08, 0.37, this.glow(0xffd23f, 0.3), { solid: false, nav: false, shadow: false });
 
-    const curtain = new THREE.MeshLambertMaterial({ map: T.withRepeat(T.curtain(), 11, 1) });
+    const curtain = surface({ map: T.withRepeat(T.curtain(), 11, 1) });
     this.block(30, 1.1, 22, 0.15, 4.2, curtain, { y: 0.35, solid: false, nav: false });
-    for (const x of [19.4, 40.6]) this.block(x, 1.6, 0.8, 1.2, 4.2, new THREE.MeshLambertMaterial({ map: T.curtain() }), { y: 0.35, solid: false, nav: false });
+    for (const x of [19.4, 40.6]) this.block(x, 1.6, 0.8, 1.2, 4.2, surface({ map: T.curtain() }), { y: 0.35, solid: false, nav: false });
     this.sign("GUS'S PLAYPLACE", 30, 1.25, 3.85, 9, 1.4, 'south',
       { w: 768, h: 128, fg: '#ffd23f', glow: '#ff3fa4', bg: '#2a0f45' });
 
@@ -329,7 +332,7 @@ export class Decor {
     }
     // the junk pile — hazard floor and a heap of old parts
     const hz = P(4.5, 21.3, 0.02);
-    this.mesh(G.plane, new THREE.MeshLambertMaterial({ map: T.withRepeat(T.hazard(), 3, 2.5) }), this.group,
+    this.mesh(G.plane, surface({ map: T.withRepeat(T.hazard(), 3, 2.5) }), this.group,
       { p: [hz.x, hz.y, hz.z], s: [5.2, 4.6, 1], r: [-Math.PI / 2, 0, 0], shadow: false });
     let seed = 3;
     const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
@@ -344,7 +347,7 @@ export class Decor {
     // come out on Night 21.
     this.oldSpots = { gus: P(9.7, 14.3), gerald: P(10.7, 14.3), chomper: P(11.6, 14.3), cranker: P(12.4, 14.3), flipper: P(13.2, 14.3) };
     const heights = { gus: 2.25, gerald: 2.45, chomper: 1.55, cranker: 1.65, flipper: 2.0 };
-    const sheet = new THREE.MeshLambertMaterial({ color: 0xcfc8b8 });
+    const sheet = surface({ color: 0xcfc8b8 });
     this.sheets = [];
     for (const [id, p] of Object.entries(this.oldSpots)) {
       const h = heights[id];
@@ -381,7 +384,7 @@ export class Decor {
     this.place.slowZones.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z });
 
     const count = 2400;
-    const balls = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshLambertMaterial(), count);
+    const balls = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 8, 6), surface({ rough: 0.28, grimeAmt: 0.3 }), count);
     const colors = [0xff3b30, 0xffd23f, 0x3ec1d3, 0x7ad151, 0xa970ff, 0xff7eb6].map((c) => new THREE.Color(c));
     const m4 = new THREE.Matrix4();
     for (let i = 0; i < count; i++) {
@@ -423,7 +426,7 @@ export class Decor {
       this.block(cx, cz, 5.8, 5.8, 0.15, c, { y, solid: false, nav: false });
     }
     // net walls and a bright roof
-    const net = new THREE.MeshLambertMaterial({ color: 0x222244, transparent: true, opacity: 0.45 });
+    const net = surface({ color: 0x222244, transparent: true, opacity: 0.45 });
     for (const [dx, dz, w, d] of [[0, -2.9, 5.8, 0.05], [0, 2.9, 5.8, 0.05], [-2.9, 0, 0.05, 5.8], [2.9, 0, 0.05, 5.8]]) {
       this.block(cx + dx, cz + dz, w, d, 1.2, net, { y: 1.45, solid: false, nav: false, shadow: false });
     }
@@ -520,7 +523,7 @@ export class Decor {
     // employee of the month: empty until you earn it
     const eg = this.anchor(34.5, 42.97, 'north', 2.1);
     this.mesh(G.box, lam(0xc9a227), eg, { p: [0, 0, 0], s: [1.0, 1.25, 0.05] });
-    const photo = new THREE.MeshLambertMaterial({ map: T.signTex('EMPLOYEE\nOF THE\nMONTH\n?', { bg: '#f4f1ea', fg: '#333', glow: '#c9a227', w: 256, h: 320, font: 'bold 40px sans-serif' }) });
+    const photo = surface({ map: T.signTex('EMPLOYEE\nOF THE\nMONTH\n?', { bg: '#f4f1ea', fg: '#333', glow: '#c9a227', w: 256, h: 320, font: 'bold 40px sans-serif' }) });
     this.mesh(G.plane, photo, eg, { p: [0, 0, 0.03], s: [0.85, 1.1, 1] });
     this.employeePhoto = photo;
 
@@ -655,7 +658,7 @@ export class Decor {
 
     this.machine('claw', 'Claw Machine', 'R', 'timing', 47.4, 33, 'east', (g, parts) => {
       this.mesh(G.box, lam(0xff3fa4), g, { p: [0, 0.45, 0], s: [1.2, 0.9, 1.2] });
-      const glass = new THREE.MeshLambertMaterial({ color: 0xbfe9ff, transparent: true, opacity: 0.25 });
+      const glass = surface({ color: 0xbfe9ff, transparent: true, opacity: 0.25 });
       this.mesh(G.box, glass, g, { p: [0, 1.4, 0], s: [1.15, 1.0, 1.15], shadow: false });
       const top = glowMat(0xffd23f);
       this.mesh(G.box, top, g, { p: [0, 2.05, 0], s: [1.2, 0.3, 1.2] });

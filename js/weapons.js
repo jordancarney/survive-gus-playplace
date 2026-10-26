@@ -67,9 +67,10 @@ export class Weapons {
   report(a, result) {
     const hud = this.game.hud;
     if (RESULT_TEXT[result]) hud.toast(RESULT_TEXT[result]);
+    else if (result === 'asleep') hud.toast(`${a.name} is still asleep — the zap doesn't work yet!`);
     else if (result === 'down' && a.id !== 'gus' && a.id !== 'junk') hud.toast(`${a.name} powered down! Press E to drag them to Parts & Service`);
     else if (result === 'stagger' && (a.def.hits || 1) > 1 && a.hitsTaken > 0) hud.toast(`${a.name} is still up — zap again!`);
-    if (result !== 'fizzle') hud.hitmark();
+    if (result !== 'fizzle' && result !== 'asleep') hud.hitmark();
   }
 
   tipPos() {

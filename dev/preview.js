@@ -7,6 +7,7 @@ import { Decor } from '../js/decor.js';
 import { Lighting } from '../js/lighting.js';
 import { buildAnimatronic, buildKid, buildViewmodel, poseRig, setEyes } from '../js/models.js';
 import { FLASHLIGHT } from '../js/config.js';
+import { Graphics } from '../js/graphics.js';
 
 const params = new URLSearchParams(location.search);
 if (params.has('clean')) document.body.classList.add('clean');
@@ -16,6 +17,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const graphics = new Graphics(renderer);
 
 const scene = new THREE.Scene();
 const place = new PlayPlace();
@@ -27,7 +29,7 @@ const lighting = new Lighting(scene, decor, place);
 const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 120);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
-const torch = new THREE.SpotLight(0xfff1d0, 0, FLASHLIGHT.range, FLASHLIGHT.angle, 0.45, 1.2);
+const torch = new THREE.SpotLight(0xfff1d0, 0, FLASHLIGHT.range, FLASHLIGHT.angle, 0.45, FLASHLIGHT.decay);
 torch.castShadow = true;
 torch.shadow.mapSize.set(1024, 1024);
 torch.shadow.camera.near = 0.2;
@@ -38,6 +40,7 @@ torch.target.position.set(0, -0.3, -6);
 const vm = buildViewmodel('taser');
 camera.add(vm.root);
 vm.root.visible = false;
+vm.root.userData.noReflect = true;
 
 // ── Cast ────────────────────────────────────────────────────────────────
 
@@ -202,10 +205,12 @@ addEventListener('pointermove', (e) => {
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
+  graphics.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
+graphics.prepare(scene);
 resize();
 shot(params.get('shot') || 'stage-day');
 
@@ -237,7 +242,7 @@ function frame() {
   }
   decor.update(dt, t, () => false);
   lighting.update(dt);
-  renderer.render(scene, camera);
+  graphics.render(scene, camera, { spot: torch, dt });
 }
 frame();
 

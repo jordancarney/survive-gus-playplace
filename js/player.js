@@ -3,7 +3,7 @@
 // What he does with the weapon in his hand lives in weapons.js; what he can press E on is
 // worked out by the game, which knows about every machine and animatronic.
 import * as THREE from 'three';
-import { PLAYER, FLASHLIGHT, SHADOWS, weaponById, hasGear } from './config.js';
+import { PLAYER, FLASHLIGHT, SHADOWS, GLOW, weaponById, hasGear } from './config.js';
 import { input } from './input.js';
 import { buildViewmodel } from './models.js';
 import { resolveCircle } from './physics.js';
@@ -46,12 +46,13 @@ export class Player {
     this.shake = 0;
 
     this.vmGroup = new THREE.Group();
+    this.vmGroup.userData.noReflect = true;   // no floating hands in the shiny floor
     this.camera.add(this.vmGroup);
     this.vm = null;
 
     // The flashlight hangs off the camera a little to the left — where the hand is — so the
     // shadows it throws are offset and move as you turn.
-    this.flashlight = new THREE.SpotLight(0xfff1d0, FLASHLIGHT.intensity, FLASHLIGHT.range, FLASHLIGHT.angle, 0.45, 1.2);
+    this.flashlight = new THREE.SpotLight(0xfff1d0, FLASHLIGHT.intensity, FLASHLIGHT.range, FLASHLIGHT.angle, 0.45, FLASHLIGHT.decay);
     this.flashlight.position.set(-0.22, -0.12, 0);
     this.flashlight.target.position.set(-0.05, -0.08, -4);
     this.camera.add(this.flashlight, this.flashlight.target);
@@ -222,7 +223,7 @@ export class Player {
     // a dying battery flickers
     if (k && this.battery < 15 && Math.random() < 0.08) k = 0.2;
     this.flashlight.intensity = FLASHLIGHT.intensity * (this.bigLight ? 1.5 : 1) * k;
-    if (this.vm && this.vm.lens) this.vm.lens.material.color.set(this.lightOn ? 0xfff4c8 : 0x333333);
+    if (this.vm && this.vm.lens) this.vm.lens.material.color.set(this.lightOn ? 0xfff4c8 : 0x333333).multiplyScalar(this.lightOn ? GLOW * 0.5 : 1);
   }
 
   // Empty: a full recharge. Not empty: one zap back every few seconds of not zapping.

@@ -5,10 +5,10 @@
 // point. You only get a ⚠ for it on the camera map once you've actually looked at that
 // room while it was broken.
 import * as THREE from 'three';
-import { HAPPINESS, startBroken } from './config.js';
+import { HAPPINESS, startBroken, GLOW } from './config.js';
 import { sfx } from './audio.js';
 
-const RED = new THREE.Color(0xff1a1a);
+const RED = new THREE.Color(0xff1a1a).multiplyScalar(GLOW);
 const OFF = new THREE.Color(0x111111);
 
 export class Machines {
