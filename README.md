@@ -26,6 +26,8 @@ means starting the night over.
   he walks and never gives up, **Chomper** the beaver chews wires, **Gerald** the gorilla
   takes two zaps, **Flipper** the dolphin hides in the ball pit and hears you running, and
   **Gus** the platypus
+- Crouch (C) and no animatronic can see you — except Gus. But you can't zap or drag anything
+  while you're down there
 - A taser with three zaps before it needs to recharge. Zap them, then drag them to the junk
   pile in Parts & Service, where they stay until morning
 - Broken kid games to fix with arrow-key puzzles. Happy kids make happy animatronics, so the
@@ -42,24 +44,43 @@ means starting the night over.
   so she can come and get him
 - After Night 10 Jonathan goes home to sleep — and they follow him. Zap them all through his
   house and load them into the PlayPlace van to send them back
+- On Day 11 the PlayPlace gets a lot bigger: a whole new wing with a Mega Arcade, a go-kart
+  track, a huge laser tag maze and a giant foggy play maze — and two new animatronics live in
+  it: **Moony**, a possessed Gus who teleports around Laser Tag and only the Magnum stops,
+  and **Sunny**, made of fog, who drifts through the maze walls and only shows up in your
+  flashlight
+- A Gallery on the title screen with pictures from making the game
 - A boss fight with Gus on Night 20, and a secret Night 21 where all five get pulled into the
   junk pile and come out as one Junk Monster — and the old original animatronics, retired
   under dust sheets for years, wake up to help you get them back
-- A manager's note before every night teaches whatever is new tonight
+- Nobody knows the animatronics move at night — until Jonathan hears squeaky footsteps on his
+  first shift and finds a note from the old night guard, who knew all along. A page of the
+  old guard's notebook before every night teaches whatever is new tonight
+- Spooky, Horror and Nightmare, in the Settings tab at the bottom of the title screen. Spooky
+  has an unlimited flashlight, taser and sprint, no blackouts until Night 10, and one second
+  chance a night. Nightmare makes everything far scarier — a worn, blood-red title dripping
+  black liquid, whispers, red eyes, your own heartbeat, things that aren't there — and every
+  night beaten on it gets a ⭐
+- After the ending, meet Old John, the old night guard: he tells you how it all started and
+  gives you his badge
+- Jonathan and Timmy say their lines out loud, recorded by real people
+- Debug mode (Settings → Debug): every night open, for testing. Nothing played in debug mode
+  is saved, and it never touches real progress
 - Saves automatically at 6 AM, and you can replay any night you've reached
 - Realistic graphics: the animatronics are old furry costumes with real-looking fur, the
   floors shine and reflect the room, and the flashlight beam is full of dust, with soft
-  shadows, glowing eyes and film grain. A Fast setting on the title screen keeps the
+  shadows, glowing eyes and film grain. A Fast setting in Settings keeps the
   original look for phones, tablets and slower computers
 
 ## Built with
 
 Vanilla JavaScript ES modules and [Three.js](https://threejs.org) for WebGL. No build step
 and nothing to install — Three.js is committed in [vendor/](vendor/) and loaded through an
-import map, so the game works offline and doesn't depend on a CDN. There are no model,
-texture or audio files either: every mesh is built from primitives in code, every texture
-(with its bump and shine maps) is painted onto a canvas at startup, and every sound (the
-techno included) is synthesized at runtime. The realistic look's reflections, ambient
+import map, so the game works offline and doesn't depend on a CDN. There are no model
+or texture files either: every mesh is built from primitives in code, every texture (with its
+bump and shine maps) is painted onto a canvas at startup, and every sound (the techno
+included) is synthesized at runtime. The only audio files are Jonathan's and Timmy's voices,
+recorded by real people with [dev/record.html](dev/record.html). The realistic look's reflections, ambient
 occlusion, bloom and volumetric flashlight are hand-written shader passes on top of Three.js.
 
 ## Run locally

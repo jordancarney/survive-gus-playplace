@@ -6,8 +6,8 @@
 // its cells off the navigation grid; small things (chairs, balloons, hats) are decoration
 // only, so nobody gets stuck on a party hat.
 import * as THREE from 'three';
-import { P, ROOMS, WALL_H } from './map.js';
-import { mat } from './models.js';
+import { P, ROOMS, WALL_H, MAZES, WING_HOMES } from './map.js';
+import { mat, cloth } from './models.js';
 import * as T from './textures.js';
 import { surface } from './materials.js';
 import { SHADOWS, GLOW } from './config.js';
@@ -29,6 +29,10 @@ export function lam(color) {
 }
 // `k` tones down the realistic look's bloom for big glowing areas.
 export const glowMat = (color, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(Math.max(1, GLOW * k)) });
+
+// A square `s` metres across with its corner at plan (x, z), in the same inclusive-cell terms
+// as a wall rectangle (so `boxes` can take either).
+const spot = (x, z, s) => ({ x0: x, z0: z, x1: x + s - 1, z1: z + s - 1 });
 
 // Rotation that turns a +Z-facing thing to face one of the four walls' directions.
 export const FACE = { south: 0, north: Math.PI, east: Math.PI / 2, west: -Math.PI / 2 };
@@ -135,6 +139,7 @@ export class Decor {
     this.partyRoom();
     this.arcade();
     this.prizeCounter();
+    this.newWing();
     this.cameras();
     this.exits();
     return this.group;
@@ -624,7 +629,8 @@ export class Decor {
         49.6 + k * 1.6, 19.6, 'north', C[(k + 1) % 6]);
       this.cabinet(null, 'Mega Bounce', 'A', 49.6 + k * 1.6, 20.5, 'south', C[(k + 3) % 6]);
     }
-    for (const z of [16, 17.6, 23, 24.6]) this.cabinet(null, 'Neon Run', 'A', 58.3, z, 'west', C[Math.round(z) % 6]);
+    // (clear of the doorway into the new wing)
+    for (const z of [19.8, 21.4, 23, 24.6]) this.cabinet(null, 'Neon Run', 'A', 58.3, z, 'west', C[Math.round(z) % 6]);
 
     this.machine('airhockey', 'Air Hockey', 'A', 'timing', 52.5, 25, 'south', (g, parts) => {
       this.mesh(G.box, lam(0x1f2a6a), g, { p: [0, 0.4, 0], s: [1.2, 0.8, 2.2] });
@@ -688,6 +694,255 @@ export class Decor {
     this.light(52, 36, 3.6, 0xffd23f, 20, 1.4, { room: 'R', distance: 14 });
   }
 
+
+  // ── The new wing (opens on Day 11) ────────────────────────────────────
+  //
+  // Everything in it goes in `wingGroup`, hidden until the wing opens; the boards over its
+  // two doorways go in `gateGroup`. Its lights live in the main group like every other
+  // light (Lighting turns them off while it's shut), so the light count never changes.
+
+  newWing() {
+    const main = this.group;
+    this.wingGroup = new THREE.Group();
+    this.gateGroup = new THREE.Group();
+    main.add(this.wingGroup, this.gateGroup);
+    this.group = this.gateGroup;
+    this.wingBoards();
+    this.group = this.wingGroup;
+    this.megaArcade();
+    this.wingHall();
+    this.kartTrack();
+    this.laserTag();
+    this.playMaze();
+    this.group = main;
+    for (const m of this.machines) if (ROOMS[m.room].wing) m.wing = true;
+    this.light(66.5, 9, 3.6, 0xa970ff, 22, 1.8, { room: 'C', distance: 16 });
+    this.light(63.5, 34, 3.6, 0xfff1d0, 18, 1.2, { room: 'W', distance: 18 });
+    this.light(85, 12, 3.6, 0xfff1d0, 24, 1.5, { room: 'G', distance: 20 });
+    this.light(89, 37.5, 3.6, 0xa970ff, 12, 1.2, { room: 'L', distance: 24 });
+    this.light(84.5, 64.5, 3.6, 0xffd23f, 14, 1.0, { room: 'M', distance: 24 });
+  }
+
+  setWingOpen(open) {
+    this.wingGroup.visible = open;
+    this.gateGroup.visible = !open;
+  }
+
+  // Plywood over each doorway, taped off, with a sign.
+  wingBoards() {
+    const ply = surface({ map: T.wood('#c8a26a') });
+    for (const d of this.place.doors.filter((x) => x.wing)) {
+      const z = (d.z0 + d.z1 + 1) / 2, len = d.z1 - d.z0 + 1;
+      this.block(d.x0 + 0.15, z, 0.3, len, 3.0, ply, { solid: false, nav: false });
+      for (const y of [0.35, 2.7]) {
+        this.block(d.x0 - 0.02, z, 0.04, len, 0.14, surface({ map: T.hazard() }), { y, solid: false, nav: false, shadow: false });
+      }
+      this.sign('NEW WING\nCOMING SOON!', d.x0 - 0.05, z, 1.6, 2.2, 0.9, 'west', { bg: '#ffd23f', fg: '#1a0a24', glow: '#ff3fa4' });
+    }
+  }
+
+  megaArcade() {
+    const C = [0xff3fa4, 0x2de2e6, 0xffd23f, 0x7cff6b, 0xa970ff, 0xff9a1f];
+    const names = ['Penguin Party', 'Beaver Builder', 'Dolphin Dive', 'Gorilla Smash', 'Robo Rumble', 'Neon Ninja',
+      'Pizza Panic', 'Star Blaster', 'Turbo Tag', 'Monkey Mayhem', 'Space Puggle', 'Mega Bounce'];
+    [61, 62.2, 63.4, 69.6, 70.8, 72].forEach((x, k) => this.cabinet(null, names[k], 'C', x, 1.5, 'south', C[k % 6]));
+    // two islands of cabinets, back to back
+    [62, 63.2, 64.4, 65.6, 66.8, 68].forEach((x, k) => {
+      this.cabinet(k === 2 ? 'mega1' : null, k === 2 ? 'Gus Kart GP' : names[(k + 3) % 12], 'C', x, 7.5, 'south', C[(k + 1) % 6]);
+      this.cabinet(null, names[(k + 6) % 12], 'C', x, 6.5, 'north', C[(k + 4) % 6]);
+    });
+    [63.2, 64.4, 65.6, 66.8].forEach((x, k) => {
+      this.cabinet(null, names[(k + 8) % 12], 'C', x, 12, 'south', C[(k + 2) % 6]);
+      this.cabinet(null, names[k % 12], 'C', x, 11, 'north', C[(k + 5) % 6]);
+    });
+
+    // A dance machine: step on the pad, hit the arrows.
+    this.machine('mega2', 'Dance Dash', 'C', 'timing', 72.65, 13.5, 'west', (g, parts) => {
+      this.mesh(G.box, lam(0x1f2a6a), g, { p: [0, 1.1, 0], s: [1.4, 2.2, 0.6] });
+      const okTex = T.screenTex('Dance Dash', '#ff3fa4');
+      const scr = new THREE.MeshBasicMaterial({ map: okTex });
+      this.mesh(G.plane, scr, g, { p: [0, 1.55, 0.31], s: [1.0, 0.7, 1] });
+      parts.screens.push({ mat: scr, ok: okTex, bad: T.screenTex('Dance Dash', '#f00', true) });
+      this.mesh(G.box, lam(0x222233), g, { p: [0, 0.05, 1.1], s: [1.5, 0.1, 1.5] });
+      [[0, 1.55, 0xff3fa4], [0, 0.65, 0x2de2e6], [-0.45, 1.1, 0xffd23f], [0.45, 1.1, 0x7cff6b]].forEach(([x, z, c]) => {
+        const m = glowMat(c);
+        this.mesh(G.box, m, g, { p: [x, 0.11, z], s: [0.36, 0.02, 0.36] });
+        parts.lights.push({ mat: m, on: new THREE.Color(c) });
+      });
+      const top = glowMat(0xa970ff);
+      this.mesh(G.box, top, g, { p: [0, 2.3, 0], s: [1.4, 0.2, 0.6] });
+      parts.lights.push({ mat: top, on: new THREE.Color(0xa970ff) });
+    }, { reach: 1.1 });
+    this.place.addBlock(72.3, 12.8, 73, 14.2, 2.4);
+
+    // Hoop shot: a ramp, a backboard and a hoop.
+    this.machine('mega3', 'Hoop Shot', 'C', 'timing', 71.8, 3.6, 'west', (g, parts) => {
+      this.mesh(G.box, lam(0xff9a1f), g, { p: [0, 0.45, 0], s: [1.0, 0.9, 2.4] });
+      this.mesh(G.box, lam(0x2a1a10), g, { p: [0, 0.92, 0.1], s: [0.9, 0.04, 2.0], r: [0.08, 0, 0] });
+      for (let k = 0; k < 5; k++) this.mesh(G.sphere, lam(0xff7a1a), g, { p: [-0.3 + k * 0.15, 1.0, 1.0], s: [0.12, 0.12, 0.12] });
+      this.mesh(G.box, lam(0xf4f1ea), g, { p: [0, 2.6, -1.15], s: [1.0, 0.8, 0.06] });
+      this.mesh(G.box, lam(0xff3b30), g, { p: [0, 2.45, -1.1], s: [0.4, 0.3, 0.02] });
+      this.mesh(new THREE.TorusGeometry(0.2, 0.02, 6, 16), lam(0xff3b30), g, { p: [0, 2.3, -0.88], r: [Math.PI / 2, 0, 0] });
+      const sign = glowMat(0xffd23f);
+      this.mesh(G.box, sign, g, { p: [0, 3.15, -1.15], s: [1.0, 0.3, 0.1] });
+      parts.lights.push({ mat: sign, on: new THREE.Color(0xffd23f) });
+    }, { reach: 1.7 });
+    this.place.addBlock(70.6, 3.1, 73, 4.1, 1.0);
+
+    this.sign('MEGA ARCADE', 66.25, 1.05, 3.4, 5.4, 1.1, 'south', { bg: '#1a0e3a', fg: '#ff3fa4', glow: '#2de2e6' });
+  }
+
+  kartTrack() {
+    // The infield, ringed with tyres; the track is the lane all the way round it.
+    const x0 = 80, x1 = 90, z0 = 7, z1 = 17;
+    this.block((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0, 0.5, 0x2f6f3a);
+    this.place.addBlock(x0 - 0.5, z0 - 0.5, x1 + 0.5, z1 + 0.5, 0.9);
+    const ring = [];
+    const step = 0.72;
+    for (let x = x0; x <= x1 + 1e-6; x += step) ring.push([x, z0 - 0.3], [x, z1 + 0.3]);
+    for (let z = z0 + step; z < z1; z += step) ring.push([x0 - 0.3, z], [x1 + 0.3, z]);
+    const tyres = new THREE.InstancedMesh(new THREE.TorusGeometry(0.28, 0.12, 6, 12), lam(0x151515), ring.length * 2);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+    ring.forEach(([x, z], i) => {
+      for (let h = 0; h < 2; h++) {
+        const p = P(x, z, 0.12 + h * 0.24);
+        tyres.setMatrixAt(i * 2 + h, m4.compose(p, q, new THREE.Vector3(1, 1, 1)));
+      }
+    });
+    tyres.castShadow = SHADOWS;
+    tyres.receiveShadow = true;
+    this.group.add(tyres);
+    // start/finish line across the west straight, and a banner over it
+    const line = P(77, 12, 0.012);
+    this.mesh(G.plane, surface({ map: T.withRepeat(T.checker('#f4f1ea', '#111111'), 6, 1) }), this.group,
+      { p: [line.x, line.y, line.z], s: [6, 1, 1], r: [-Math.PI / 2, 0, 0], shadow: false });
+    this.sign('START · FINISH', 77, 12, 3.3, 5.6, 0.8, 'south', { bg: '#111111', fg: '#f4f1ea', glow: '#ff3b30' });
+    this.sign('START · FINISH', 77, 12.02, 3.3, 5.6, 0.8, 'north', { bg: '#111111', fg: '#f4f1ea', glow: '#ff3b30' });
+    this.sign('GUS GP', 85, 12, 1.9, 4, 1.2, 'west', { bg: '#ff3b30', fg: '#ffd23f', glow: '#1a0a24' });
+    this.sign('GUS GP', 85.02, 12, 1.9, 4, 1.2, 'east', { bg: '#ff3b30', fg: '#ffd23f', glow: '#1a0a24' });
+    // karts lined up on the south straight, out of the way
+    [[76.2, 20.6, 0xff3fa4], [78.6, 20.6, 0x2de2e6], [76.2, 22.6, 0xffd23f], [78.6, 22.6, 0x7cff6b]].forEach(([x, z, c]) => {
+      const g = this.anchor(x, z, 'east');
+      this.mesh(G.box, mat(c, { rough: 0.3 }), g, { p: [0, 0.28, 0], s: [0.8, 0.22, 1.4] });
+      this.mesh(G.box, lam(0x111111), g, { p: [0, 0.48, 0.25], s: [0.5, 0.35, 0.4] });
+      this.mesh(new THREE.TorusGeometry(0.14, 0.025, 6, 12), lam(0x111111), g, { p: [0, 0.62, -0.15], r: [-1.1, 0, 0] });
+      for (const [wx, wz] of [[-0.45, 0.5], [0.45, 0.5], [-0.45, -0.5], [0.45, -0.5]]) {
+        this.mesh(G.cylLo, lam(0x151515), g, { p: [wx, 0.16, wz], s: [0.16, 0.14, 0.16], r: [0, 0, Math.PI / 2] });
+      }
+      this.place.addBlock(x - 0.75, z - 0.45, x + 0.75, z + 0.45, 0.7);
+    });
+
+    this.machine('laptimer', 'Lap Timer', 'G', 'sequence', 74.3, 4, 'east', (g, parts) => {
+      this.mesh(G.box, lam(0x111111), g, { p: [0, 2.0, 0], s: [1.6, 1.0, 0.2] });
+      const okTex = T.screenTex('Lap Timer', '#3cff6b');
+      const scr = new THREE.MeshBasicMaterial({ map: okTex });
+      this.mesh(G.plane, scr, g, { p: [0, 2.0, 0.11], s: [1.4, 0.8, 1] });
+      parts.screens.push({ mat: scr, ok: okTex, bad: T.screenTex('Lap Timer', '#f00', true) });
+      this.mesh(G.box, lam(0x333333), g, { p: [0, 1.1, 0.05], s: [0.5, 0.8, 0.3] });
+      const lamp = glowMat(0x3cff6b);
+      this.mesh(G.sphere, lamp, g, { p: [0, 2.65, 0.08], s: [0.08, 0.08, 0.08] });
+      parts.lights.push({ mat: lamp, on: new THREE.Color(0x3cff6b) });
+    }, { reach: 1.0 });
+    this.place.addBlock(74, 3.2, 74.6, 4.8, 1.6);
+  }
+
+  // The hall that joins the wing up: the way in from the Prize Counter, and doors to
+  // everything else, each with its sign over it.
+  wingHall() {
+    for (const z of [24, 44]) {
+      this.block(66.9, z, 0.6, 2.2, 0.45, cloth(0x2a4fa0));
+      this.block(67.15, z, 0.15, 2.2, 0.5, cloth(0x2a4fa0), { y: 0.45, solid: false, nav: false });
+    }
+    for (const [x, z] of [[60.6, 19.6], [67.4, 19.6], [60.6, 50.4], [67.4, 50.4]]) {
+      this.block(x, z, 0.5, 0.5, 0.5, 0x7a4a2b, { solid: false, nav: false });
+      const leaf = P(x, z, 0.85);
+      this.mesh(G.sphere, mat(0x2f8f4a, { rough: 0.8 }), this.group, { p: [leaf.x, leaf.y, leaf.z], s: [0.45, 0.5, 0.45] });
+    }
+    this.sign('THE NEW WING!', 60.03, 27, 3.3, 5, 1.0, 'east', { bg: '#2a4fa0', fg: '#ffd23f', glow: '#ff3fa4' });
+    this.sign('MEGA ARCADE', 63, 19.03, 3.5, 3.4, 0.7, 'south', { bg: '#1a0e3a', fg: '#ff3fa4', glow: '#2de2e6' });
+    this.sign('LASER TAG', 67.97, 34.5, 3.5, 3.4, 0.7, 'west', { bg: '#07051a', fg: '#3cff6b', glow: '#a970ff' });
+    this.sign('PLAY MAZE', 64, 50.97, 3.5, 3.4, 0.7, 'north', { bg: '#2a4fa0', fg: '#7cff6b', glow: '#ff9a1f' });
+  }
+
+  // One instanced box per rectangle, so a whole maze's worth is a single draw call.
+  boxes(rects, material, y, h, grow = 0.06) {
+    const im = new THREE.InstancedMesh(G.box, material, rects.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    rects.forEach((w, i) => {
+      const c = P((w.x0 + w.x1 + 1) / 2, (w.z0 + w.z1 + 1) / 2, y + h / 2);
+      im.setMatrixAt(i, m4.compose(c, q, new THREE.Vector3(w.x1 - w.x0 + 1 + grow, h, w.z1 - w.z0 + 1 + grow)));
+    });
+    this.group.add(im);
+    return im;
+  }
+
+  // Moony's home: a big, dark laser tag maze with neon on every wall, and his base in a
+  // clearing in the middle under a glowing crescent moon.
+  laserTag() {
+    this.boxes(MAZES.L, this.glow(0x3cff6b, 0.6), 1.0, 0.06);
+    this.boxes(MAZES.L, this.glow(0xa970ff, 0.6), 2.3, 0.06);
+    const dots = [];
+    for (let i = 0; i < 90; i++) {
+      const x = 69.3 + ((i * 7.31) % 40.4), z = 25.3 + ((i * 4.77) % 25.4);
+      const p = this.place.P(x, z);
+      if (this.place.isWalkable(p.x, p.z)) dots.push(spot(x, z, 0.12));
+    }
+    this.boxes(dots, this.glow(0x2de2e6, 0.4), 0.005, 0.01, 0);
+
+    const [hx, hz] = WING_HOMES.moony;
+    const base = P(hx, hz, 0.04);
+    const pad = this.glow(0xa970ff, 0.5);
+    this.mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.08, 6), pad, this.group, { p: [base.x, base.y, base.z], shadow: false });
+    const moon = this.anchor(hx, hz + 2.6, 'north', 3.4);
+    this.mesh(new THREE.TorusGeometry(0.8, 0.16, 8, 28, Math.PI * 1.2), this.glow(0xcfe6ff, 0.18), moon,
+      { p: [0, 0, 0], r: [0, 0, 1.1], shadow: false });
+    this.sign("MOONY'S BASE", hx, hz + 3.4, 2.4, 2.6, 0.6, 'north', { bg: '#07051a', fg: '#cfe6ff', glow: '#a970ff' });
+
+    this.machine('vests', 'Vest Charger', 'L', 'simon', 88, 34.4, 'south', (g, parts) => {
+      this.mesh(G.box, lam(0x222233), g, { p: [0, 1.3, 0.05], s: [1.8, 1.6, 0.1] });
+      [0xff3b30, 0xffd23f, 0x3cff6b, 0x3ec1d3].forEach((c, i) => {
+        const x = -0.6 + i * 0.4;
+        this.mesh(G.box, lam(0x111111), g, { p: [x, 1.25, 0.18], s: [0.3, 0.45, 0.12] });
+        const m = glowMat(c);
+        this.mesh(G.sphere, m, g, { p: [x, 1.35, 0.26], s: [0.06, 0.06, 0.03] });
+        this.mesh(G.cyl, m, g, { p: [x, 1.85, 0.12], s: [0.07, 0.04, 0.07], r: [Math.PI / 2, 0, 0] });
+        parts.lights.push({ mat: m, on: new THREE.Color(c) });
+      });
+    }, { reach: 0.9 });
+    this.place.addBlock(87.1, 34.05, 88.9, 34.65, 2.2);
+  }
+
+  // Sunny's home: a giant maze of real walls, full of fog. Fog machines puff away, there's
+  // fog lying in the corridors, and in the clearing at the middle a big sun on a pole.
+  playMaze() {
+    const fogMat = new THREE.MeshBasicMaterial({ color: 0xdfe4ee, transparent: true, opacity: 0.18, depthWrite: false });
+    const pools = [];
+    for (let i = 0; i < 70; i++) {
+      const x = 60.4 + ((i * 11.37) % 49.2), z = 52.4 + ((i * 6.91) % 25.2);
+      const p = this.place.P(x, z);
+      if (this.place.isWalkable(p.x, p.z)) pools.push(spot(x, z, 1.4));
+    }
+    this.boxes(pools, fogMat, 0.03, 0.02, 0);
+
+    const [hx, hz] = WING_HOMES.sunny;
+    const pole = P(hx, hz - 2.6, 0);
+    this.mesh(G.cylLo, mat(0x8a8f99, { rough: 0.35, metal: 0.7 }), this.group, { p: [pole.x, 1.6, pole.z], s: [0.06, 3.2, 0.06] });
+    const sun = this.anchor(hx, hz - 2.6, 'south', 3.4);
+    this.mesh(G.cyl, this.glow(0xffd23f, 0.5), sun, { p: [0, 0, 0], s: [0.55, 0.06, 0.55], r: [Math.PI / 2, 0, 0], shadow: false });
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      this.mesh(G.cone, this.glow(0xff9a1f, 0.5), sun,
+        { p: [Math.cos(a) * 0.78, Math.sin(a) * 0.78, 0], s: [0.1, 0.35, 0.05], r: [0, 0, a - Math.PI / 2], shadow: false });
+    }
+    this.sign("SUNNY'S SPOT", hx, hz - 2.62, 2.3, 2.4, 0.55, 'south', { bg: '#2a4fa0', fg: '#ffd23f', glow: '#ff9a1f' });
+    // fog machines in two corners of the clearing
+    for (const [x, z] of [[81.6, 61.6], [87.4, 67.4]]) {
+      this.block(x, z, 0.8, 0.8, 0.6, mat(0x2b2d33, { metal: 0.4 }));
+      const v = P(x, z, 0.62);
+      this.mesh(G.cylLo, lam(0x111111), this.group, { p: [v.x, v.y, v.z], s: [0.15, 0.06, 0.15] });
+    }
+  }
+
   // ── Security cameras ──────────────────────────────────────────────────
 
   cameras() {
@@ -704,6 +959,14 @@ export class Decor {
       ['Arcade', 'A', [58.4, 3.9, 27.4], [49, 0.6, 16]],
       ['Prize Counter', 'R', [46.6, 3.9, 29.6], [55, 0.4, 40]],
       ['Lobby', 'E', [40.6, 3.9, 32.4], [43, 0.4, 41]],
+      // the new wing
+      ['Mega Arcade', 'C', [72.4, 3.9, 17.4], [63, 0.6, 3]],
+      ['Wing Hall', 'W', [67.4, 3.9, 19.6], [62, 0.6, 48]],
+      ['Go-Karts', 'G', [95.4, 3.9, 23.4], [78, 0.4, 3]],
+      ["Moony's Base", 'L', [87.2, 3.9, 41.4], [90, 0.4, 35]],
+      ['Laser Tag', 'L', [109.4, 3.9, 25.6], [96, 0.4, 38]],
+      ["Sunny's Spot", 'M', [81.2, 3.9, 68.4], [86, 0.4, 62]],
+      ['Play Maze', 'M', [60.6, 3.9, 52.6], [72, 0.4, 62]],
     ];
     defs.forEach(([name, room, [px, y, pz], [lx, ly, lz]], i) => {
       const pos = P(px, pz, y);
@@ -716,7 +979,7 @@ export class Decor {
       const led = glowMat(0xff2020);
       this.mesh(G.sphere, led, housing, { p: [0.06, 0.06, 0.05], s: [0.015, 0.015, 0.015], shadow: false });
       this.group.add(housing);
-      this.cams.push({ id: i + 1, name, room, pos, look, led, chewed: 0 });
+      this.cams.push({ id: i + 1, name, room, pos, look, led, chewed: 0, wing: !!ROOMS[room].wing });
     });
   }
 
@@ -728,7 +991,8 @@ export class Decor {
       this.exitSigns.push(m);
     }
     // ammo crate spots for the boss nights
-    this.crateSpots = [P(21, 28), P(52.5, 21.6), P(7, 17), P(36, 13.3), P(24, 33.2), P(52, 39.5)];
+    this.crateSpots = [P(21, 28), P(52.5, 21.6), P(7, 17), P(36, 13.3), P(24, 33.2), P(52, 39.5),
+      P(64, 35.5), P(85, 20.5), P(70, 26), P(61, 53)];
   }
 
   // ── Per-frame decoration ──────────────────────────────────────────────

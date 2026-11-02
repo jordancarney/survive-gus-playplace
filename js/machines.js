@@ -14,7 +14,8 @@ const OFF = new THREE.Color(0x111111);
 export class Machines {
   constructor(game, decor) {
     this.game = game;
-    this.list = decor.machines;
+    this.all = decor.machines;
+    this.list = this.all;     // the games there are right now: the new wing's only once it's open
     this.fuses = decor.fuses;
     this.t = 0;
     this.sparkTimer = 0;
@@ -25,8 +26,10 @@ export class Machines {
   isBroken(id) { const m = this.byId(id); return !!(m && m.broken); }
   brokenCount() { return this.list.filter((m) => m.broken).length; }
 
+  setWing(open) { this.list = this.all.filter((m) => open || !m.wing); }
+
   resetAll() {
-    for (const m of [...this.list, ...this.fuses]) {
+    for (const m of [...this.all, ...this.fuses]) {
       m.broken = false;
       m.spotted = false;
       this.paint(m);

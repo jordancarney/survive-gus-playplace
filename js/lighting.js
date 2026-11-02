@@ -25,6 +25,16 @@ const MODES = {
 // glaring daytime; these scale the room lights' own day and night values. The office desk
 // lamp is left alone: it's the one safe, lit place.
 const NIGHT_DIM = 0.55;
+
+// How much scarier each `scare` level makes the nights. `stutter` is how rarely the lights
+// stutter (the higher, the rarer; over 2 never) and `dip` how far they drop when they do.
+const SCARE = [
+  { amb: 1, hemi: 1, fog: 1, lights: 1, office: 1, red: false, stutter: 9, dip: 1 },
+  { amb: 0.8, hemi: 0.8, fog: 1.15, lights: 0.8, office: 0.95, red: false, stutter: 1.93, dip: 0.35 },
+  { amb: 0.55, hemi: 0.5, fog: 1.5, lights: 0.5, office: 0.8, red: true, stutter: 1.75, dip: 0.2 },
+];
+
+const FOG_COLOR = { day: new THREE.Color(0xb8b6c6), night: new THREE.Color(0x2a2a36) };
 const DAY_DIM = 0.7;
 
 export class Lighting {
@@ -42,6 +52,16 @@ export class Lighting {
     this.mode = 'night';
     this.cams = false;
     this.flickerT = 0;
+    // The Play Maze is full of fog: `foggy` is set while you're in it, and the fog rolls in.
+    this.foggy = false;
+    this.fogK = 0;
+    // The difficulty's `scare`: Horror's nights are a little darker with the odd stutter of the
+    // lights; Nightmare's are much darker and redder, stutter often and sometimes cut out
+    // altogether (`glitch`). The daytime and Jonathan's house are left alone.
+    this.scare = 0;
+    this.cut = 0;
+    this.baseFog = 0.05;
+    this.baseFogColor = new THREE.Color();
     this.set('night');
   }
 
@@ -60,10 +80,13 @@ export class Lighting {
   apply() {
     const m = MODES[this.mode];
     const camBoost = this.cams && this.mode !== 'day';
-    this.ambient.intensity = camBoost ? 0.75 : m.amb;
-    this.ambient.color.set(this.mode === 'day' ? 0xffffff : this.mode === 'home' ? 0xfff0e0 : 0x8a90c0);
-    this.hemi.intensity = camBoost ? 0.4 : m.hemi;
-    this.fog.density = camBoost ? 0.012 : m.fog;
+    const sc = this.scared();
+    this.ambient.intensity = camBoost ? 0.75 : m.amb * sc.amb;
+    this.ambient.color.set(this.mode === 'day' ? 0xffffff : this.mode === 'home' ? 0xfff0e0 : sc.red ? 0xa04040 : 0x8a90c0);
+    this.hemi.intensity = camBoost ? 0.4 : m.hemi * sc.hemi;
+    this.baseFog = camBoost ? 0.012 : m.fog * sc.fog;
+    this.baseFogColor.set(sc.red ? 0x1a0306 : m.bg);
+    this.fog.density = this.baseFog;
     this.fog.color.set(m.bg);
     this.scene.background.set(m.bg);
     const env = this.scene.userData.env;
@@ -72,10 +95,16 @@ export class Lighting {
       this.scene.environment = env[m.env];
       this.scene.environmentIntensity = camBoost ? 0.6 : m.envI;
     }
-    for (const p of this.place.ceilingLights) p.mat.color.set(m.panels).multiplyScalar(this.mode === 'day' ? GLOW : 1);
+    // The new wing is dark until it opens.
+    const shut = (room) => !this.place.wingOpen && !!this.place.rooms[room]?.wing;
+    for (const p of this.place.ceilingLights) {
+      p.mat.color.set(shut(p.room) ? MODES.blackout.panels : m.panels).multiplyScalar(this.mode === 'day' && !shut(p.room) ? GLOW : 1);
+    }
     for (const l of this.decor.lights) {
       let v = m.decor === 'day' ? l.day * DAY_DIM : m.decor === 'night' ? l.night * (l.room === 'O' ? 1 : NIGHT_DIM) : 0;
       if (m.stage && l.room === 'D') v = l.day > 40 ? m.stage : l.night * 3;
+      if (shut(l.room)) v = 0;
+      v *= l.room === 'O' ? sc.office : sc.lights;
       l.light.intensity = v;
       l.base = v;
     }
@@ -88,13 +117,39 @@ export class Lighting {
     if (this.decor.outsideGlass) this.decor.outsideGlass.color.set(this.mode === 'day' ? 0x9fd8ff : 0x0c1830);
   }
 
+  // Nightmare: every light goes out for `t` seconds.
+  glitch(t) { this.cut = Math.max(this.cut, t); }
+
+  // How scared to look right now: never by day or at the house, and Horror leaves the title
+  // screen alone.
+  scared() {
+    if (this.mode === 'day' || this.mode === 'home') return SCARE[0];
+    if (this.mode === 'title' && this.scare < 2) return SCARE[0];
+    return SCARE[this.scare];
+  }
+
   update(dt) {
+    const want = this.foggy && !this.cams ? 1 : 0;
+    this.fogK += (want - this.fogK) * Math.min(1, dt * 1.5);
+    this.fog.density = this.baseFog + this.fogK * (this.mode === 'day' ? 0.09 : 0.14);
+    this.fog.color.copy(this.baseFogColor).lerp(FOG_COLOR[this.mode === 'day' ? 'day' : 'night'], this.fogK * 0.8);
     // the Parts & Service bulb never quite works
     this.flickerT += dt;
+    // On Horror and Nightmare (not by day) every light stutters now and then — far more often
+    // in Nightmare — and Nightmare's glitches go dark.
+    this.cut = Math.max(0, this.cut - dt);
+    const sc = this.scared();
+    const stutter = Math.sin(this.flickerT * 7.3) + Math.sin(this.flickerT * 19.1) > sc.stutter;
     for (const l of this.decor.lights) {
-      if (!l.flicker || !l.base) continue;
-      const f = Math.sin(this.flickerT * 13) + Math.sin(this.flickerT * 31.7) * 0.6;
-      l.light.intensity = l.base * (f > 1.1 ? 0.15 : 1);
+      if (!l.base) continue;
+      let k = 1;
+      if (l.flicker) {
+        const f = Math.sin(this.flickerT * 13) + Math.sin(this.flickerT * 31.7) * 0.6;
+        if (f > 1.1) k = 0.15;
+      }
+      if (stutter) k *= sc.dip;
+      if (this.cut > 0) k = 0;
+      l.light.intensity = l.base * k;
     }
   }
 }

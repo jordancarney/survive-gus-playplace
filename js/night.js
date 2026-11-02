@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import {
   CLOCK, AI, HAPPINESS, BOSS, HOME_DEF, TIMMY, nightDef, wakeHour, breakEvery, moodOf, ROAMERS, repairLevel,
+  blackoutCount, wingLevel,
 } from './config.js';
 import { sfx, startAmbience, stopAmbience, stopMusicBox, playMusic, stopMusic } from './audio.js';
 
@@ -40,6 +41,7 @@ export class NightDirector {
     this.freeTimer = -1;
     this.blackouts = [];
     this.won = false;
+    this.secondChance = this.game.diff.secondChance;
   }
 
   start(n, happiness) {
@@ -57,11 +59,12 @@ export class NightDirector {
     this.gusTimer = -1;
     this.freeTimer = -1;
     this.won = false;
+    this.secondChance = g.diff.secondChance;
     this.breakTimer = breakEvery(n) * (0.5 + Math.random() * 0.6);
 
     // Spread the blackouts across 1 AM – 5 AM, never two close together.
     this.blackouts = [];
-    const k = this.def.blackouts;
+    const k = blackoutCount(this.def, g.diff);
     for (let i = 0; i < k; i++) {
       const span = 4.4 / k;
       const at = 1 + i * span + span * (0.25 + Math.random() * 0.5);
@@ -97,6 +100,7 @@ export class NightDirector {
       // Night 21: the five are inside the Junk Monster. The old originals come out from
       // under their sheets to fight it with you.
       for (const a of g.bots) { a.state = 'hidden'; a.root.visible = false; }
+      for (const a of g.wingBots) a.hide();
       for (const sheet of g.decor.sheets) sheet.visible = false;
       const roles = { gus: 'fighter', gerald: 'fighter', cranker: 'fighter', chomper: 'fixer', flipper: 'fixer' };
       for (const a of g.oldBots) { a.resetToStage(); a.befriend(roles[a.id]); }
@@ -107,9 +111,9 @@ export class NightDirector {
   }
 
   levelOf(id) {
-    const base = this.def.ai[id] || 0;
+    const base = this.def.ai[id] ?? wingLevel(id, this.n);
     if (!base) return 0;
-    return Math.max(1, Math.min(20, base + moodOf(this.happiness).level));
+    return Math.max(1, Math.min(20, base + moodOf(this.happiness).level + this.game.diff.level));
   }
 
   isAwake(id) {
@@ -282,7 +286,7 @@ export class NightDirector {
       this.freeTimer -= dt;
       if (this.freeTimer <= 0 && !this.power) {
         let n = 0;
-        for (const a of g.bots) if (a.state === 'junked') { a.wakeFromJunk(); n++; }
+        for (const a of [...g.bots, ...g.wingBots]) if (a.state === 'junked') { a.wakeFromJunk(); n++; }
         if (n) g.hud.toast(`Gus woke up the junk room! ${n === 1 ? 'Someone is' : n + ' animatronics are'} loose again.`, 4);
       }
     }

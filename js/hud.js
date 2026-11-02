@@ -1,8 +1,9 @@
 // HUD updates and the content of every menu screen.
 import {
-  KEYMAP, MOUSE_HELP, moodOf, ANIMATRONICS, ANIMATRONIC_ORDER, NIGHTS, MANAGER_NOTES,
-  unlocksAt, weaponById, wakeHour, LAST_STORY_NIGHT,
+  KEYMAP, MOUSE_HELP, moodOf, ANIMATRONICS, ANIMATRONIC_ORDER, NIGHTS, NIGHT_NOTES,
+  unlocksAt, weaponById, wakeHour, LAST_STORY_NIGHT, blackoutCount, WING_BOTS, wingLevel, GALLERY,
 } from './config.js';
+import { ROOMS } from './map.js';
 
 const $ = (id) => document.getElementById(id);
 const ICONS = { taser: '⚡', baseball: '⚾', knife: '🔪', magnum: '🔫' };
@@ -75,7 +76,9 @@ export class Hud {
     $('happyMood').style.color = mood.color;
 
     $('clock').textContent = day ? 'DAYTIME' : night.clockText();
-    $('nightTag').textContent = day ? `BEFORE NIGHT ${g.profile.night}` : g.mode === 'home' ? 'AFTER NIGHT 10' : `NIGHT ${night.n}`;
+    const tag = day ? `BEFORE NIGHT ${g.profile.night}` : g.mode === 'home' ? 'AFTER NIGHT 10' : `NIGHT ${night.n}`;
+    $('nightTag').textContent = `${tag} · ${g.diff.name.toUpperCase()}${g.debugMode ? ' · DEBUG' : ''}`;
+    $('chanceTag').classList.toggle('hidden', !(g.hunting && night.secondChance));
 
     $('batteryFill').style.width = p.battery + '%';
     $('batteryFill').style.background = p.battery < 20 ? '#ff3b30' : '';
@@ -95,6 +98,7 @@ export class Hud {
     if (w.id === 'taser') {
       const max = weaponById('taser').charges;
       if (p.taserEmpty > 0) { charge = 1 - p.taserEmpty / p.taserRecharge; info = 'Recharging...'; }
+      else if (g.diff.unlimited) info = `${'⚡'.repeat(max)}  ∞ zaps`;
       else { charge = p.taserCharges / max; info = `${'⚡'.repeat(p.taserCharges)}${'·'.repeat(max - p.taserCharges)}  ${p.taserCharges} zaps`; }
     }
     else if (w.id === 'knife') { charge = 1 - p.cool.knife / weaponById('knife').cooldown; info = 'Get close'; }
@@ -131,6 +135,9 @@ export class Hud {
       const left = Math.ceil(p.carrying.timer);
       carry.textContent = `Dragging ${p.carrying.name} — get to Parts & Service! (wakes up in ${left}s)`;
       carry.classList.remove('hidden');
+    } else if (p.crouching) {
+      carry.textContent = 'Crouching — only Gus can see you. No zapping or dragging. (C to stand)';
+      carry.classList.remove('hidden');
     } else carry.classList.add('hidden');
 
     // Boss bar
@@ -160,10 +167,11 @@ export class Hud {
       return `Fix the fuse box in the <b>${f ? g.roomName(f.room) : '?'}</b>!`;
     }
     const broken = g.machines.brokenCount();
-    const lines = [g.timmy.found ? 'Keep <b>Timmy</b> safe until <b>6 AM</b>' : 'Survive until <b>6 AM</b>'];
+    const lines = [g.timmy.found ? 'Keep <b>Timmy</b> safe until <b>6 AM</b>' : g.secret === 'quiet' ? 'Keep watch until <b>6 AM</b>' : 'Survive until <b>6 AM</b>'];
+    if (g.secret === 'heard') lines.push('Something is MOVING out there!', 'There\'s a <b>note</b> on the desk in the Security Office');
     if (g.timmy.state === 'crying') lines.push('A kid is crying somewhere — find him (try the cameras)');
     if (broken) lines.push(`${broken} broken game${broken > 1 ? 's' : ''} — find ${broken > 1 ? 'them' : 'it'} on the cameras`);
-    const down = g.bots.filter((a) => a.state === 'down').length;
+    const down = g.allBots().filter((a) => a.state === 'down').length;
     if (down) lines.push('Drag powered-down animatronics to <b>Parts &amp; Service</b>');
     return lines.join('<br>');
   }
@@ -178,17 +186,25 @@ export class Hud {
       n > LAST_STORY_NIGHT ? (profile.beatJunk ? '▶&nbsp; Play Secret Night 21 again' : '▶&nbsp; Secret Night 21') :
       `▶&nbsp; Continue: Night ${n}`;
     $('btnNew').classList.toggle('hidden', fresh);
-    $('btnSelect').classList.toggle('hidden', profile.best < 2);
+    // Nightmare rewrites the title screen's words too (its title itself is the #nmTitle SVG).
+    const nm = this.game.diff.nightmare;
+    $('titleEyebrow').textContent = nm ? "DON'T TAKE THE JOB" : 'NOW HIRING · NIGHT SECURITY';
+    $('tagline').textContent = nm ? 'Twenty nights. Seven animatronics. Nobody makes it out alive.'
+      : 'Twenty nights. Seven animatronics. One fifteen-year-old with a taser.';
+    // Earned by finishing the whole game (Old John hands it over after Night 21).
+    $('badgeTag').classList.toggle('hidden', !profile.badge);
+    $('btnSelect').classList.toggle('hidden', profile.best < 2 && !this.game.debugMode);
   }
 
-  select(profile, onPick) {
+  // `all` opens every night (debug mode).
+  select(profile, onPick, all = false) {
     const grid = $('selectGrid');
     grid.innerHTML = '';
     for (const d of NIGHTS) {
       const b = document.createElement('button');
-      b.className = 'btn' + (d.secret ? ' secret' : '');
+      b.className = 'btn' + (d.secret ? ' secret' : '') + (profile.stars[d.night] ? ' star' : '');
       b.textContent = d.secret ? '21★' : String(d.night);
-      const open = d.night <= profile.best || (d.secret && profile.beatGus);
+      const open = all || d.night <= profile.best || (d.secret && profile.beatGus);
       b.disabled = !open;
       b.title = d.title;
       b.addEventListener('click', () => onPick(d.night));
@@ -196,45 +212,78 @@ export class Hud {
       // the house level sits between nights 10 and 11
       if (d.night === 10) {
         const h = document.createElement('button');
-        h.className = 'btn';
+        h.className = 'btn' + (profile.stars.home ? ' star' : '');
         h.textContent = '🏠';
         h.title = 'They Followed Me Home';
-        h.disabled = !profile.homeDone && profile.best < 11;
+        h.disabled = !all && !profile.homeDone && profile.best < 11;
         h.addEventListener('click', () => onPick('home'));
         grid.appendChild(h);
       }
     }
   }
 
+  // The pictures, as a grid; tap one to see it big, tap again to close it.
+  gallery() {
+    const grid = $('galleryGrid');
+    if (grid.childElementCount) return;
+    const view = $('galleryView');
+    view.addEventListener('click', () => view.classList.add('hidden'));
+    for (const p of GALLERY) {
+      const fig = document.createElement('figure');
+      const img = document.createElement('img');
+      img.src = `gallery/${p.file}`;
+      img.alt = p.caption;
+      img.loading = 'lazy';
+      const cap = document.createElement('figcaption');
+      cap.textContent = p.caption;
+      fig.append(img, cap);
+      fig.addEventListener('click', () => {
+        $('galleryImg').src = img.src;
+        $('galleryImg').alt = p.caption;
+        $('galleryCaption').textContent = p.caption;
+        view.classList.remove('hidden');
+      });
+      grid.appendChild(fig);
+    }
+  }
+
   card(n) {
     const d = NIGHTS[n - 1];
-    $('cardEyebrow').textContent = d.boss ? 'BOSS NIGHT' : '12:00 AM';
+    $('cardEyebrow').textContent = `${d.boss ? 'BOSS NIGHT' : '12:00 AM'} · ${this.game.diff.name.toUpperCase()}`;
     $('cardNight').textContent = d.secret ? 'SECRET NIGHT 21' : `NIGHT ${n}`;
     $('cardTitle').textContent = d.title;
-    $('cardNote').textContent = MANAGER_NOTES[n] || '';
+    $('cardNoteHead').textContent = n === 1 ? '📋 A note from the manager' : '📒 The old night guard\'s notebook';
+    $('cardNote').textContent = NIGHT_NOTES[n] || '';
+    // Until Jonathan finds out, as far as anyone knows they just stand there.
+    const secret = !this.game.profile.seen.guardNote;
     const un = unlocksAt(n);
     const u = $('cardUnlock');
     if (un.length) {
       u.innerHTML = un.map((x) => `NEW: <b>${x.name}</b> — ${x.desc}`).join('<br>');
       u.classList.remove('hidden');
     } else u.classList.add('hidden');
-    $('cardRoster').innerHTML = ANIMATRONIC_ORDER.map((id) => {
+    // Moony and Sunny join the roster once the new wing is open.
+    const wing = WING_BOTS.filter((id) => wingLevel(id, n) > 0).map((id) =>
+      `<div class="who wing"><b>${ANIMATRONICS[id].name}</b>${ANIMATRONICS[id].species} · Lives in ${ROOMS[ANIMATRONICS[id].room].name}</div>`);
+    $('cardRoster').innerHTML = wing.join('') + ANIMATRONIC_ORDER.map((id) => {
       const a = ANIMATRONICS[id];
       const lvl = d.ai[id];
       let state;
       if (d.boss === 'junk') state = 'Your friend!';
-      else if (id === 'gus') state = d.boss === 'gus' ? 'BOSS' : d.blackouts ? 'Waits for a blackout' : 'Stays on stage';
-      else if (!lvl) state = 'Stays on stage';
+      else if (id === 'gus') state = d.boss === 'gus' ? 'BOSS' : blackoutCount(d, this.game.diff) && !secret ? 'Waits for a blackout' : 'Stays on stage';
+      else if (!lvl || secret) state = 'Stays on stage';
       else {
         const wake = wakeHour(d, id);
         state = `Wakes at ${wake === 0 ? 12 : wake} AM`;
       }
-      return `<div class="who ${!lvl && !d.boss ? 'asleep' : ''} ${id === 'gus' ? 'gus' : ''}"><b>${a.name}</b>${a.species} · ${state}</div>`;
+      return `<div class="who ${(!lvl || secret) && !d.boss ? 'asleep' : ''} ${id === 'gus' ? 'gus' : ''}"><b>${a.name}</b>${a.species} · ${state}</div>`;
     }).join('');
   }
 
-  morning(n, report, unlocks) {
+  morning(n, report, unlocks, star) {
     $('morningTitle').textContent = `YOU SURVIVED NIGHT ${n}!`;
+    $('morningStar').textContent = `⭐ You beat Night ${n} on ${this.game.diff.name.toUpperCase()}! It gets a star.`;
+    $('morningStar').classList.toggle('hidden', !star);
     const rows = report.rows.map((r) =>
       `<div class="row"><span>${r.label}</span><span class="${r.value >= 0 ? 'plus' : 'minus'}">${r.value >= 0 ? '+' : ''}${r.value}</span></div>`).join('');
     const m = moodOf(report.after);

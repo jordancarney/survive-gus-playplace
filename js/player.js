@@ -77,13 +77,16 @@ export class Player {
     this.maxStamina = PLAYER.stamina * (hasGear(night, 'shoes') ? 2 : 1);
     this.stamina = this.maxStamina;
     this.winded = false;
+    this.crouching = false;
+    this.height = PLAYER.eyeHeight;
     this.battery = FLASHLIGHT.battery;
     this.lightOn = true;
     this.bigLight = hasGear(night, 'bigLight');
     const taser = weaponById('taser');
     const mk2 = hasGear(night, 'taser2');
-    this.taserRecharge = taser.recharge * (mk2 ? 0.5 : 1);
-    this.taserTopUp = taser.topUp * (mk2 ? 0.5 : 1);
+    const gear = this.game.diff.gear;
+    this.taserRecharge = taser.recharge * (mk2 ? 0.5 : 1) * gear;
+    this.taserTopUp = taser.topUp * (mk2 ? 0.5 : 1) * gear;
     this.taserRange = taser.range * (mk2 ? 1.45 : 1);
     this.taserCharges = taser.charges;
     this.taserEmpty = 0;      // counts down while recharging from empty
@@ -118,6 +121,13 @@ export class Player {
   }
 
   eye() { return new THREE.Vector3(this.pos.x, this.pos.y + this.height, this.pos.z); }
+
+  // Crouching hides you from everyone but Gus. You can't crouch while dragging one.
+  toggleCrouch() {
+    if (this.carrying) { this.game.hud.toast(`Let go of ${this.carrying.name} first!`); return; }
+    this.crouching = !this.crouching;
+    sfx.ui();
+  }
 
   aimDir() {
     const cp = Math.cos(this.pitch);
@@ -166,10 +176,10 @@ export class Player {
     if (len > 0) { fx /= len; fz /= len; }
 
     // Sprinting drains stamina; run it dry and you're winded until it's half back.
-    const wantSprint = canMove && input.down('sprint') && len > 0 && !this.carrying && !this.winded;
+    const wantSprint = canMove && input.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching;
     this.sprinting = wantSprint && this.stamina > 0;
     if (this.sprinting) {
-      this.stamina = Math.max(0, this.stamina - dt);
+      if (!this.game.diff.unlimited) this.stamina = Math.max(0, this.stamina - dt);
       if (this.stamina === 0) this.winded = true;
     } else {
       this.stamina = Math.min(this.maxStamina, this.stamina + PLAYER.staminaRegen * dt);
@@ -177,7 +187,10 @@ export class Player {
     }
 
     const place = this.game.place;
-    let speed = this.carrying ? PLAYER.carrySpeed : this.sprinting ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
+    let speed = this.carrying ? PLAYER.carrySpeed : this.crouching ? PLAYER.crouchSpeed
+      : this.sprinting ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
+    const wantHeight = this.crouching ? PLAYER.crouchHeight : PLAYER.eyeHeight;
+    this.height += (wantHeight - this.height) * Math.min(1, dt * 10);
     if (place.inSlowZone(this.pos.x, this.pos.z)) speed *= PLAYER.ballPitSpeed;
     if (this.dazed > 0) speed *= 0.45;
 
@@ -211,8 +224,8 @@ export class Player {
 
   flash(dt) {
     const inOffice = this.game.place.roomAt(this.pos.x, this.pos.z) === 'O';
-    const drain = FLASHLIGHT.drain * (this.bigLight ? 0.5 : 1);
-    if (this.lightOn && this.battery > 0) {
+    const drain = FLASHLIGHT.drain * (this.bigLight ? 0.5 : 1) * this.game.diff.gear;
+    if (this.lightOn && this.battery > 0 && !this.game.diff.unlimited) {
       this.battery = Math.max(0, this.battery - drain * dt);
       if (this.battery === 0) { this.lightOn = false; sfx.flashlight(); }
     }
@@ -242,6 +255,7 @@ export class Player {
   }
 
   useTaserCharge() {
+    if (this.game.diff.unlimited) return;
     this.taserCharges--;
     this.taserIdle = 0;
     if (this.taserCharges <= 0) { this.taserCharges = 0; this.taserEmpty = this.taserRecharge; }

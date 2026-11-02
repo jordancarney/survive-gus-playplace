@@ -100,6 +100,11 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 
 .title-plate { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 4vh; }
 
+.badge-tag {
+  font-size: 14px; font-weight: 800; letter-spacing: 0.06em; color: #1a0a24;
+  background: linear-gradient(180deg, #ffe27a, #f2c230); border-radius: 999px; padding: 4px 14px;
+  box-shadow: 0 0 18px rgba(255, 210, 63, 0.6);
+}
 .tagline {
   color: var(--dim);
   font-size: clamp(13px, 2.2vw, 17px);
@@ -149,6 +154,17 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 
 .menu-actions { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-bottom: 3vh; }
 
+/* The Gallery and Settings tabs hang off the bottom middle of the title screen */
+#title .menu-actions { margin-bottom: calc(3vh + 34px); }
+.title-tabs { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: flex; gap: 10px; }
+.settings-tab {
+  font-family: var(--ui-font); font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink); white-space: nowrap;
+  background: var(--panel); border: 2px solid var(--edge); border-bottom: none; border-radius: 14px 14px 0 0;
+  padding: 9px 30px calc(9px + env(safe-area-inset-bottom)); cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
+}
+.settings-tab:hover { background: rgba(60, 16, 60, 0.92); border-color: var(--pink); padding-top: 12px; }
+
 .build-tag {
   position: absolute;
   bottom: calc(12px + env(safe-area-inset-bottom));
@@ -169,11 +185,62 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   border: 1px solid var(--edge); border-radius: 6px; padding: 2px 8px; justify-self: end; white-space: nowrap;
 }
 
+/* ── Gallery ────────────────────────────────────────────────────────── */
+
+#gallery { justify-content: flex-start; }
+.gallery-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 14px;
+  width: min(980px, 100%);
+}
+.gallery-grid figure {
+  margin: 0; background: var(--panel); border: 2px solid var(--edge); border-radius: 12px; overflow: hidden;
+  cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.gallery-grid figure:hover { border-color: var(--pink); transform: translateY(-2px); }
+.gallery-grid img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; }
+.gallery-grid figcaption { padding: 8px 10px; font-size: 13px; color: var(--ink); text-align: left; line-height: 1.35; }
+.gallery-view {
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 16px; background: rgba(5, 2, 12, 0.92); cursor: zoom-out;
+}
+.gallery-view img { max-width: 100%; max-height: 80vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+.gallery-caption { color: var(--ink); font-size: 16px; font-weight: 700; text-align: center; }
+
+/* ── Settings ───────────────────────────────────────────────────────── */
+
+/* Taller than a short screen: scroll from the top instead of centring off the top edge */
+#settings { justify-content: flex-start; }
+#settings > :first-child { margin-top: auto; }
+#settings > :last-child { margin-bottom: auto; }
+.settings { display: flex; flex-direction: column; gap: 14px; width: min(560px, 100%); }
+.setting {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: var(--panel); border: 2px solid var(--edge); border-radius: 14px; padding: 12px 18px;
+}
+.setting-head { font-family: var(--hud-font); font-size: 12px; letter-spacing: 0.34em; color: var(--yellow); }
+.choice { display: flex; gap: 10px; justify-content: center; width: 100%; max-width: 440px; }
+.choice .btn { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+.setting-desc { color: var(--dim); font-size: 14px; line-height: 1.45; max-width: 46ch; margin: 0; }
+
+/* Debug mode is on (menus only; in the night it's on the HUD's night tag) */
+.debug-badge {
+  position: absolute; z-index: 25; pointer-events: none;
+  top: calc(12px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left));
+  font-family: var(--hud-font); font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+  color: #1a0a24; background: var(--yellow); border-radius: 8px; padding: 4px 10px;
+}
+
 /* ── Night select ───────────────────────────────────────────────────── */
 
 .select-grid { display: grid; grid-template-columns: repeat(7, minmax(52px, 72px)); gap: 10px; }
 .select-grid .btn { min-width: 0; padding: 12px 0; font-size: 18px; }
 .select-grid .btn.secret { background: var(--pink); box-shadow: 0 4px 0 #8a1a5a; color: #fff; }
+/* Beaten on Hard */
+.select-grid .btn.star { position: relative; }
+.select-grid .btn.star::after {
+  content: '⭐'; position: absolute; top: -11px; right: -9px; font-size: 19px;
+  filter: drop-shadow(0 1px 2px #000);
+}
 @media (max-width: 560px) { .select-grid { grid-template-columns: repeat(5, 56px); } }
 
 /* ── Night card ─────────────────────────────────────────────────────── */
@@ -186,6 +253,11 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); font-size: 15px; line-height: 1.5;
 }
 .note-head { font-weight: 800; margin-bottom: 4px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b4a1a; }
+/* The old night guard's note: scrawled, a bit crumpled */
+.guard-note { transform: rotate(1.2deg); background: #efe6c8; font-size: 16px; }
+.guard-note p { margin: 8px 0; }
+.guard-note b { color: #8a1a1a; }
+.guard-sign { text-align: right; font-style: italic; color: #6b4a1a; }
 .roster { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .roster .who {
   border: 2px solid var(--edge); border-radius: 10px; padding: 6px 12px; font-size: 13px;
@@ -194,6 +266,7 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 .roster .who b { display: block; font-size: 15px; }
 .roster .who.asleep { opacity: 0.35; }
 .roster .who.gus { border-color: var(--yellow); }
+.roster .who.wing { border-color: #a970ff; }
 .card-unlock {
   background: linear-gradient(90deg, rgba(255, 210, 63, 0.18), rgba(255, 63, 164, 0.18));
   border: 2px solid var(--yellow); border-radius: 12px; padding: 10px 18px; max-width: 560px;
@@ -206,6 +279,10 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 .caught-title { font-size: clamp(46px, 11vw, 110px); color: var(--danger); text-shadow: 0 0 40px rgba(255, 0, 0, 0.7); }
 .caught-tip { color: var(--dim); font-size: 14px; max-width: 50ch; }
 .six-am { font-family: var(--hud-font); font-size: clamp(56px, 13vw, 130px); color: var(--yellow); text-shadow: 0 0 40px rgba(255, 210, 63, 0.7); letter-spacing: 0.05em; }
+.morning-star {
+  font-size: clamp(16px, 2.6vw, 20px); font-weight: 800; color: var(--yellow);
+  text-shadow: 0 0 18px rgba(255, 210, 63, 0.6);
+}
 .report { display: flex; flex-direction: column; gap: 6px; min-width: min(420px, 90vw); font-size: 15px; }
 .report .row { display: flex; justify-content: space-between; gap: 20px; padding: 4px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .report .row .plus { color: var(--green); font-weight: 700; }
@@ -249,6 +326,7 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 .happy-row { display: flex; align-items: center; gap: 8px; }
 .happy-face { font-size: 26px; filter: drop-shadow(0 1px 2px #000); }
 .mood { font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+.chance-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--green); text-shadow: 0 1px 2px #000; }
 
 .hud-top {
   position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
@@ -462,11 +540,114 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   color: rgba(243, 238, 254, 0.88); font-family: var(--hud-font); font-size: 18px;
   pointer-events: auto; touch-action: none;
 }
-.tbtn.pressed { background: rgba(255, 63, 164, 0.4); border-color: var(--pink); }
+.tbtn.pressed, .tbtn.on { background: rgba(255, 63, 164, 0.4); border-color: var(--pink); }
 
 @media (max-width: 700px) {
   .hud-tl { width: 150px; }
   .hud-br { width: 180px; }
   .clock { font-size: 22px; }
   .objective { font-size: 11px; }
+}
+
+/* ── Nightmare ──────────────────────────────────────────────────────────
+   The scariest difficulty dresses everything up: a blood-red title that shakes and
+   flickers, static and a pulsing red edge over the title screen, red buttons, and a
+   red night tag. (The game side is Game.applyNightmare.) */
+
+@keyframes nm-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px) skewX(-1deg); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -2px) skewX(1deg); }
+  80% { transform: translate(1px, 2px); }
+}
+@keyframes nm-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.2; }
+  95% { opacity: 0.9; }
+  96% { opacity: 0.1; }
+  98% { opacity: 1; }
+}
+@keyframes nm-pulse {
+  0%, 100% { box-shadow: inset 0 0 90px 8px rgba(110, 0, 10, 0.5); }
+  50% { box-shadow: inset 0 0 150px 20px rgba(170, 0, 16, 0.7); }
+}
+@keyframes nm-static {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 6px; }
+}
+
+body.nightmare .screen-clear {
+  background: radial-gradient(ellipse at 50% 42%, transparent 22%, rgba(5, 0, 1, 0.96) 95%);
+  animation: nm-pulse 2.4s ease-in-out infinite;
+}
+body.nightmare #title::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px);
+  animation: nm-static 0.25s steps(3) infinite, nm-flicker 4.5s infinite;
+}
+body.nightmare .game-title {
+  color: #ffd9d9;
+  text-shadow: 0 0 24px rgba(255, 0, 20, 0.9), 0 4px 0 #3a0006, 3px 0 0 rgba(255, 0, 40, 0.5);
+  animation: nm-shake 0.22s steps(2) infinite, nm-flicker 3.1s infinite;
+}
+body.nightmare .game-title span { color: #ff1a2a; text-shadow: 0 0 26px rgba(255, 0, 20, 1), 0 3px 0 #1a0003; }
+body.nightmare #titleEyebrow { color: #ff3b3b; animation: nm-flicker 2.3s infinite; }
+body.nightmare #tagline { color: #ff8a8a; }
+body.nightmare .btn:not(.btn-ghost) { background: #b3081c; color: #fff; box-shadow: 0 4px 0 #4a0008; }
+body.nightmare .btn-ghost, body.nightmare .settings-tab { border-color: rgba(255, 30, 40, 0.5); }
+body.nightmare .night-tag { color: #ff2a2a; animation: nm-flicker 2.7s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  body.nightmare .game-title, body.nightmare #title::after, body.nightmare .screen-clear { animation: none; }
+}
+
+/* ── Nightmare title ────────────────────────────────────────────────────
+   In Nightmare the title is an SVG (#nmTitle in index.html) instead of the h1: the words
+   sag on a downward curve in dried-blood red, worn and chipped by an SVG filter, with
+   black liquid dripping off them. Each drip grows, its bulb sliding down with it, then a
+   drop falls away and it starts again; --len, --dur and --delay are set per drip. */
+
+#nmTitle { display: none; width: min(860px, 96vw); height: auto; overflow: visible; margin-bottom: -6vh; }
+body.nightmare #title .game-title { display: none; }
+body.nightmare #nmTitle { display: block; animation: nm-title-flicker 6.5s infinite, nm-glitch 4.7s infinite; }
+
+#nmTitle text { font-family: var(--ui-font); font-weight: 900; fill: url(#nmBlood);
+  stroke: #120002; stroke-width: 3; paint-order: stroke; }
+#nmTitle .nm-big { font-size: 132px; letter-spacing: 4px; }
+#nmTitle .nm-small { font-size: 60px; letter-spacing: 3px; fill: #7a0012; }
+#nmTitle .nm-words { filter: url(#nmWorn) drop-shadow(0 0 14px rgba(160, 0, 16, 0.55)); }
+
+#nmTitle .nm-drip { fill: #050003; }
+#nmTitle .nm-bar { transform-box: fill-box; transform-origin: 50% 0;
+  animation: nm-drip-grow var(--dur) cubic-bezier(0.5, 0, 0.9, 0.6) infinite var(--delay); }
+#nmTitle .nm-bulb { animation: nm-drip-bulb var(--dur) cubic-bezier(0.5, 0, 0.9, 0.6) infinite var(--delay); }
+#nmTitle .nm-drop { opacity: 0; animation: nm-drip-fall var(--dur) ease-in infinite var(--delay); }
+
+@keyframes nm-drip-grow { 0% { transform: scaleY(0.1); } 72%, 100% { transform: scaleY(1); } }
+@keyframes nm-drip-bulb {
+  0% { transform: translateY(calc(var(--len) * -0.9px)); }
+  72%, 100% { transform: translateY(0); }
+}
+@keyframes nm-drip-fall {
+  0%, 72% { opacity: 0; transform: translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(150px); }
+}
+@keyframes nm-title-flicker {
+  0%, 41%, 45%, 88%, 100% { opacity: 1; }
+  42%, 44% { opacity: 0.35; }
+  89% { opacity: 0.6; }
+}
+
+/* every few seconds it glitches: a jolt sideways with a red ghost behind it */
+@keyframes nm-glitch {
+  0%, 90%, 97%, 100% { transform: none; filter: none; }
+  91% { transform: translate(-7px, 2px) skewX(-7deg); filter: drop-shadow(9px 0 0 rgba(255, 0, 20, 0.7)); }
+  93% { transform: translate(9px, -3px) skewX(6deg); filter: drop-shadow(-11px 0 0 rgba(255, 0, 20, 0.7)); }
+  95% { transform: translate(-3px, 1px); filter: drop-shadow(5px 0 0 rgba(120, 0, 255, 0.5)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #nmTitle, #nmTitle * { animation: none !important; }
 }

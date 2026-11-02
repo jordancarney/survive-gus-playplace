@@ -3,18 +3,22 @@
 // Camera positions and lookAt targets are [x, z, height] in plan metres of the scene's area
 // (see map.js and house.js). The beats, in order:
 //
-//   intro        Jonathan takes the job; the manager's warning about Gus
+//   intro        Jonathan takes the job. Nobody knows what the animatronics do at night
 //   timmyMeet    Night 2: a kid crying in the ball pit — Timmy, who got left behind
 //   timmyNumber  the next morning: Timmy remembers his gramma's phone number
 //   gramma       the phone call, and gramma coming to pick him up
-//   blackout   before Night 5: the lights flicker, and Gus turns his head
+//   blackout   before Night 2: the lights flicker, and Gus turns his head
 //   home       after Night 10: Jonathan goes home... and they follow him
 //   homeDone   the van takes them back; Gus never left the stage
+//   newWing    Day 11: while Jonathan was home, they built a whole new wing — and Moony and
+//              Sunny live in it
 //   haywire    before Night 20: Gus breaks, the fuse boxes fry
 //   gusDown    after beating Gus: his glitch is gone, everyone's friends
 //   junkRises  before Night 21: the junk pile pulls the five in — and the Junk Monster
 //              climbs out. The old originals wake up to help.
 //   finale     after beating it: the five pop back out; Employee of the Month
+//   oldJohn    after the finale, the first time: Old John, the old night guard, tells the
+//              secret of how it all started, and gives Jonathan his badge
 import * as THREE from 'three';
 import { setEyes } from './models.js';
 import { sfx } from './audio.js';
@@ -41,6 +45,10 @@ function revealOld(g, c) {
 // A warm work light on them, so you can see who just woke up.
 const lightOld = (g) => g.effects.flashAt(g.place.P(11.2, 16.4, 2.2), 0xffe2b0, 6, 0.1);
 
+// Old John and Jonathan face to face in the Security Office.
+const OLD_JOHN_CLOSE = { from: [35.2, 35.7, 1.66], look: [34.5, 33.6, 1.6] };
+const JONATHAN_CLOSE = { from: [34.0, 33.9, 1.62], look: [34.5, 36.2, 1.55] };
+
 // Gus close-up on the stage, the camera creeping in. Used three times.
 const GUS_CLOSE = { from: [30, 8.0, 2.0], to: [30, 6.7, 2.05], look: [30, 3.4, 2.2] };
 
@@ -60,7 +68,7 @@ export const SCRIPTS = {
         update(g, c, k) { c.walk(g.people.jonathan, [42.5, 42.4], [42.7, 39.4], k * 1.3); },
       },
       {
-        who: 'Jonathan', line: '"Now hiring: night security." How hard can that be?',
+        who: 'Jonathan', voice: 'intro-1', line: '"Now hiring: night security." How hard can that be?',
         cam: { from: [42.0, 38.9, 1.8], to: [42.4, 38.6, 1.85], look: [44.9, 38.2, 2.05] },
         start(g, c) { c.hide(g.people.jonathan); },
       },
@@ -79,12 +87,12 @@ export const SCRIPTS = {
       },
       {
         who: 'Manager',
-        line: "And if the animatronics wander off the stage at night... zap 'em, and drag 'em to Parts & Service. They're always back on stage by morning.",
+        line: 'The animatronics? They just stand on the stage all night. Nothing EVER happens here.',
         cam: { from: [35.6, 38.6, 1.65], to: [35.2, 38.2, 1.65], look: [33.4, 36.1, 1.6] },
         start(g, c) { c.pose(g.people.manager, 'wave'); },
       },
       {
-        who: 'Jonathan', line: 'Wait. They WANDER?',
+        who: 'Jonathan', voice: 'intro-2', line: 'Easy money!',
         cam: { from: [33.9, 36.5, 1.65], look: [35.7, 37.5, 1.55] },
         start(g, c) { c.pose(g.people.manager, 'idle', 0.3); },
       },
@@ -94,7 +102,7 @@ export const SCRIPTS = {
         start(g, c) { for (const a of g.bots) c.pose(a, 'dance', 0.7); },
       },
       {
-        who: 'Manager', line: 'Oh — and Jonathan? If the power ever goes out...',
+        line: 'But nobody has ever stayed to watch them after dark...',
         cam: GUS_CLOSE,
         start(g, c) {
           g.lighting.set('title');
@@ -105,7 +113,7 @@ export const SCRIPTS = {
         update(g, c, k) { c.headTo(g.bot('gus'), g.camera.position, smooth(Math.min(1, k * 1.4))); },
       },
       {
-        who: 'Manager', line: "...don't let Gus find you.",
+        who: 'Manager', line: 'See you tonight, Jonathan!',
         cam: { from: [35.2, 38.4, 1.7], to: [34.8, 37.8, 1.7], look: [33.4, 36.1, 1.65] },
         start(g) { g.lighting.set('day'); },
       },
@@ -121,7 +129,7 @@ export const SCRIPTS = {
       c.pose(g.people.jonathan, 'idle', 0.3);
     },
     shots: [
-      { card: 'NIGHT 5', dur: 2 },
+      { card: 'NIGHT 2', dur: 2 },
       {
         line: 'The lights have been flickering all evening.',
         cam: { from: [36.6, 40.2, 2.2], to: [36.0, 39.6, 2.0], look: [32.4, 37.2, 1.2] },
@@ -136,7 +144,7 @@ export const SCRIPTS = {
         update(g, c, k) { c.headTo(g.bot('gus'), g.camera.position, smooth(k)); },
       },
       {
-        who: 'Jonathan', line: 'Did Gus just... look at me?',
+        who: 'Jonathan', voice: 'blackout-1', line: 'Did Gus just... look at me?',
         cam: { from: [34.7, 36.1, 1.7], look: [33.1, 37.2, 1.6] },
         start(g, c) { g.lighting.set('night'); c.put(g.people.jonathan, 33.1, 37.2, E - 0.5); },
       },
@@ -149,7 +157,7 @@ export const SCRIPTS = {
     setup(g) { g.resetBots(); },
     shots: [
       {
-        who: 'Jonathan', line: 'Ten nights down. Time to go home and SLEEP.',
+        who: 'Jonathan', voice: 'home-1', line: 'Ten nights down. Time to go home and SLEEP.',
         cam: { from: [42.5, 33.2, 1.8], look: [42.5, 42, 1.4] },
         update(g, c, k) { c.walk(g.people.jonathan, [42.5, 36.0], [42.5, 42.2], k); },
       },
@@ -174,7 +182,7 @@ export const SCRIPTS = {
         },
       },
       {
-        who: 'Jonathan', line: '...What was THAT?',
+        who: 'Jonathan', voice: 'home-2', line: '...What was THAT?',
         cam: { from: [6.2, 5.8, 1.7], look: [4.6, 2.9, 1.4] },
         start(g, c) {
           sfx.crash(g.place.roomCenter('K'));
@@ -196,7 +204,7 @@ export const SCRIPTS = {
         },
       },
       {
-        who: 'Jonathan', line: 'They FOLLOWED me home?!',
+        who: 'Jonathan', voice: 'home-3', line: 'They FOLLOWED me home?!',
         cam: { from: [3.5, 10.4, 1.6], look: [3.5, 7.6, 1.6] },
         start(g, c) { c.put(g.people.jonathan, 3.5, 7.5, S); c.pose(g.people.jonathan, 'stagger', 0.5); g.bot('cranker').root.visible = false; },
       },
@@ -217,7 +225,7 @@ export const SCRIPTS = {
     },
     shots: [
       {
-        who: 'Jonathan', line: 'And STAY in there!',
+        who: 'Jonathan', voice: 'homeDone-1', line: 'And STAY in there!',
         cam: { from: [21.6, 12.8, 1.8], to: [21.3, 13.1, 1.75], look: [19.2, 15.4, 1.3] },
         update(g, c, k) { g.houseDecor.setVanDoors(false, smooth(Math.min(1, k * 1.6))); },
       },
@@ -250,7 +258,7 @@ export const SCRIPTS = {
         cam: { from: [35.4, 38.9, 1.65], look: [33.4, 36.1, 1.6] },
       },
       {
-        who: 'Jonathan', line: 'Long story.',
+        who: 'Jonathan', voice: 'homeDone-2', line: 'Long story.',
         cam: { from: [33.9, 36.5, 1.65], look: [35.7, 37.5, 1.55] },
       },
       {
@@ -271,6 +279,62 @@ export const SCRIPTS = {
       },
     ],
     cleanup(g) { g.resetHouse(); },
+  },
+
+  newWing: {
+    area: 'playplace', light: 'day', music: 'day',
+    setup(g, c) {
+      g.setWing(true);
+      g.resetBots();
+      g.wingBots.find((a) => a.id === 'sunny').reveal(0.75);
+      c.put(g.people.jonathan, 57.2, 15.5, E);
+      c.pose(g.people.jonathan, 'idle', 0.3);
+      c.put(g.people.manager, 61.5, 15.5, W);
+      c.pose(g.people.manager, 'idle', 0.3);
+    },
+    shots: [
+      { card: 'DAY 11', dur: 2.2 },
+      {
+        who: 'Manager', line: 'Jonathan! Surprise! While you were home, we built a whole NEW WING!',
+        cam: { from: [55.4, 17.0, 1.75], to: [55.9, 16.6, 1.72], look: [61.5, 15.5, 1.6] },
+        start(g, c) { c.pose(g.people.manager, 'wave'); },
+      },
+      {
+        who: 'Manager', line: 'A MEGA ARCADE...',
+        cam: { from: [60.6, 16.6, 3.0], to: [64, 16.6, 3.0], look: [67, 4, 1.0], lookTo: [68, 4, 1.0] },
+        start(g, c) { c.pose(g.people.manager, 'idle', 0.3); },
+      },
+      {
+        who: 'Manager', line: '...a GO-KART TRACK...',
+        cam: { from: [75.5, 22.8, 2.4], to: [79.5, 22.8, 2.4], look: [88, 5, 0.6] },
+      },
+      {
+        who: 'Manager', line: '...a HUGE laser tag maze...',
+        cam: { from: [87.6, 40.6, 2.4], to: [90.4, 40.6, 2.4], look: [89, 33, 1.6] },
+      },
+      {
+        who: 'Manager', line: '...and a GIANT PLAY MAZE! Don\'t mind the fog.',
+        cam: { from: [81.8, 67.6, 2.6], to: [87.2, 67.6, 2.6], look: [84.5, 60, 1.6] },
+      },
+      {
+        who: 'Manager', line: 'And two NEW animatronics live out here! MOONY, in Laser Tag...',
+        cam: { from: [89.6, 40.4, 1.9], to: [89.2, 39.8, 1.95], look: [89, 37.5, 1.95] },
+        start(g) { setEyes(g.wingBots.find((a) => a.id === 'moony').rig, 'on'); },
+      },
+      {
+        who: 'Manager', line: '...and SUNNY, in the Play Maze. She\'s a little... foggy.',
+        cam: { from: [84.9, 67.4, 1.8], to: [84.6, 66.8, 1.85], look: [84.5, 64.5, 1.8] },
+      },
+      {
+        who: 'Jonathan', voice: 'newWing-1', line: "That's a LOT more places for them to hide.",
+        cam: { from: [59.6, 14.6, 1.7], look: [57.2, 15.5, 1.6] },
+      },
+      {
+        who: 'Manager', line: 'Twice the fun! See you tonight!',
+        cam: { from: [58.4, 16.2, 1.7], look: [61.5, 15.5, 1.65] },
+        start(g, c) { c.pose(g.people.manager, 'wave'); },
+      },
+    ],
   },
 
   haywire: {
@@ -318,7 +382,7 @@ export const SCRIPTS = {
         },
       },
       {
-        who: 'Jonathan', line: "Okay, Gus. Let's end this.",
+        who: 'Jonathan', voice: 'haywire-1', line: "Okay, Gus. Let's end this.",
         cam: { from: [35.3, 36.3, 1.7], look: [33.2, 37.3, 1.6] },
         start(g, c) { c.put(g.people.jonathan, 33.2, 37.3, E - 0.4); c.pose(g.people.jonathan, 'idle', 0.3); },
       },
@@ -560,6 +624,106 @@ export const SCRIPTS = {
     cleanup(g) { g.day.stop(); for (const a of g.bots) a.root.scale.setScalar(1); },
   },
 
+  // After Night 21, the first time: the old night guard comes to meet who finally did it.
+  oldJohn: {
+    area: 'playplace', light: 'day', music: 'title',
+    setup(g, c) {
+      g.resetBots();
+      c.put(g.people.jonathan, 34.5, 36.2, N);
+      c.pose(g.people.jonathan, 'idle', 0.3);
+      c.put(g.people.oldJohn, 34.5, 28.4, S);
+      c.pose(g.people.oldJohn, 'idle', 0.2);
+      g.people.oldJohn.rig.badge.visible = false;
+    },
+    shots: [
+      { card: 'ONE MORE THING...', dur: 2.2 },
+      { card: 'THE NEXT MORNING', dur: 2.2 },
+      {
+        line: 'Someone is knocking on the Security Office door.', dur: 3.4,
+        cam: { from: [36.4, 39.6, 1.7], look: [34.5, 31.5, 1.5] },
+        update(g, c, k) { c.walk(g.people.oldJohn, [34.5, 28.4], [34.5, 33.6], Math.min(1, k * 1.2)); },
+      },
+      {
+        who: 'Old John', line: "So. You're the kid who read my note.",
+        cam: OLD_JOHN_CLOSE,
+        start(g, c) { c.put(g.people.oldJohn, 34.5, 33.6, S); c.pose(g.people.oldJohn, 'idle', 0.2); },
+      },
+      {
+        who: 'Jonathan', voice: 'oldJohn-1', line: "YOU'RE the old night guard?!",
+        cam: JONATHAN_CLOSE,
+      },
+      {
+        who: 'Old John', line: 'John. Old John, they call me. Thirty years on the night shift, and nobody ever believed me.',
+        cam: OLD_JOHN_CLOSE,
+      },
+      {
+        who: 'Old John', line: 'Want to know how it all started? A thunderstorm, years ago. Lightning hit the big sign, right in the middle of a blackout.',
+        cam: { from: [30, 12.5, 2.2], to: [30, 11.5, 2.3], look: [30, 1.5, 3.6] },
+        start(g) { g.lighting.set('blackout'); },
+        update(g) {
+          if (Math.random() < 0.05) { g.effects.flashAt(g.place.P(30, 2.5, 4.2), 0xe8f0ff, 40, 0.12); sfx.spark(g.place.P(30, 2, 4)); }
+        },
+      },
+      {
+        who: 'Old John', line: 'Every animatronic got a jolt. The next night... they walked.',
+        cam: { from: [30, 15, 1.8], to: [30, 13.5, 1.8], look: [30, 3, 1.6] },
+        start(g, c) { g.lighting.set('night'); for (const a of g.bots) c.pose(a, 'stare'); },
+      },
+      {
+        who: 'Old John', line: "Gus got the worst of it. His music box was playing when the lightning hit — and it's never stopped.",
+        cam: GUS_CLOSE,
+        start(g, c) { sfx.musicBoxSting(); c.pose(g.bot('gus'), 'stare'); },
+        update(g, c, k) { c.headTo(g.bot('gus'), g.camera.position, smooth(Math.min(1, k * 1.4))); },
+      },
+      {
+        who: 'Old John', line: "And Moony? They built him for the new wing out of Gus's old parts from the junk pile. A little bit of Gus was still in there.",
+        cam: { from: [89, 41.2, 1.8], to: [89, 40.6, 1.75], look: [89, 37.5, 1.6] },
+        start(g) { setEyes(g.bot('moony').rig, 'on'); },
+      },
+      {
+        who: 'Old John', line: 'Sunny, though... nobody knows where SHE came from.',
+        cam: { from: [84.5, 68.4, 1.7], to: [84.5, 67.6, 1.7], look: [84.5, 64.5, 1.5] },
+        start(g) { g.bot('sunny').reveal(0.8); },
+      },
+      {
+        who: 'Jonathan', voice: 'oldJohn-2', line: 'Whoa...',
+        cam: JONATHAN_CLOSE, dur: 2,
+        start(g) { g.lighting.set('day'); },
+      },
+      {
+        who: 'Old John', line: 'You did what I never could, kid. You beat them — and you made them your friends.',
+        cam: OLD_JOHN_CLOSE,
+        start(g) { g.lighting.set('day'); },
+      },
+      {
+        who: 'Old John', line: "This badge was mine for thirty years. Now it's yours.",
+        cam: { from: [35.4, 35.2, 1.35], look: [34.5, 34.0, 1.15] },
+        start(g, c) {
+          g.lighting.set('day');
+          c.put(g.people.oldJohn, 34.5, 33.6, S);
+          c.pose(g.people.oldJohn, 'give');
+          g.people.oldJohn.rig.badge.visible = true;
+        },
+      },
+      { card: "🏅  You got OLD JOHN'S BADGE!", dur: 3 },
+      {
+        who: 'Jonathan', voice: 'oldJohn-3', line: "Thanks, John. I'll take good care of it.",
+        cam: JONATHAN_CLOSE,
+        start(g, c) { g.people.oldJohn.rig.badge.visible = false; c.pose(g.people.oldJohn, 'idle', 0.2); },
+      },
+      {
+        who: 'Old John', line: "Hmph. Good. And kid... don't let Gus find you.", dur: 5,
+        cam: { from: [36.4, 39.6, 1.7], look: [34.5, 32, 1.5] },
+        update(g, c, k) {
+          if (k > 0.55) c.walk(g.people.oldJohn, [34.5, 33.6], [34.5, 28.4], (k - 0.55) / 0.45);
+          else c.face(g.people.oldJohn, g.people.jonathan);
+        },
+      },
+      { card: 'THE END', dur: 3 },
+    ],
+    cleanup(g) { g.people.oldJohn.rig.badge.visible = false; },
+  },
+
   // ── Timmy ─────────────────────────────────────────────────────────────
 
   timmyMeet: {
@@ -574,23 +738,23 @@ export const SCRIPTS = {
     },
     shots: [
       {
-        who: 'Timmy', line: '*sniff* I fell asleep in the ball pit... and when I woke up, my mom and dad were gone.',
+        who: 'Timmy', voice: 'timmyMeet-1', line: '*sniff* I fell asleep in the ball pit... and when I woke up, my mom and dad were gone.',
         cam: { from: [11.7, 29.4, 1.35], to: [11.5, 29.6, 1.3], look: [9.4, 30.9, 0.75] },
         update: torch,
       },
       {
-        who: 'Jonathan', line: "Hey, it's okay. I'm Jonathan — I work here. What's your name?",
+        who: 'Jonathan', voice: 'timmyMeet-2', line: "Hey, it's okay. I'm Jonathan — I work here. What's your name?",
         cam: { from: [10.3, 31.0, 1.0], look: [12.3, 31.6, 1.55] },
         update: torch,
       },
       {
-        who: 'Timmy', line: "Timmy. Those robots keep walking around... I'm scared.",
+        who: 'Timmy', voice: 'timmyMeet-3', line: "Timmy. Those robots keep walking around... I'm scared.",
         cam: { from: [11.6, 31.6, 1.2], look: [9.4, 30.8, 0.85] },
         start(g, c) { const t = g.timmy; c.put(t, TIMMY.pit[0], TIMMY.pit[1], E); t.root.position.y -= 0.2; c.pose(t, 'idle', 0.5); },
         update: torch,
       },
       {
-        who: 'Jonathan', line: "Stay right behind me, Timmy. I won't let them get you.",
+        who: 'Jonathan', voice: 'timmyMeet-4', line: "Stay right behind me, Timmy. I won't let them get you.",
         cam: { from: [11.2, 34.6, 1.7], look: [10.8, 31.2, 1.0] },
         update: torch,
       },
@@ -611,16 +775,16 @@ export const SCRIPTS = {
     shots: [
       { card: 'THE NEXT MORNING', dur: 2.2 },
       {
-        who: 'Timmy', line: 'Good morning, Jonathan! Thanks for keeping me safe all night.',
+        who: 'Timmy', voice: 'timmyNumber-1', line: 'Good morning, Jonathan! Thanks for keeping me safe all night.',
         cam: { from: [29.9, 13.8, 1.5], look: [29.9, 10.5, 1.1] },
       },
       {
-        who: 'Timmy', line: `And guess what? I remembered my gramma's phone number! It's ${TIMMY.number}!`,
+        who: 'Timmy', voice: 'timmyNumber-2', line: `And guess what? I remembered my gramma's phone number! It's ${TIMMY.number}!`,
         cam: { from: [29.5, 11.9, 1.1], look: [30.6, 10.4, 0.95] },
         start(g, c) { c.pose(g.timmy, 'dance', 0.6); },
       },
       {
-        who: 'Jonathan', line: "Awesome! Let's call her from the phone in my office.",
+        who: 'Jonathan', voice: 'timmyNumber-3', line: "Awesome! Let's call her from the phone in my office.",
         cam: { from: [30.8, 11.7, 1.6], look: [29.2, 10.6, 1.55] },
         start(g, c) { c.pose(g.timmy, 'idle', 0.5); },
       },
@@ -640,7 +804,7 @@ export const SCRIPTS = {
     shots: [
       { who: 'Gramma', line: 'Hello?', dur: 2, cam: { from: [35.4, 37.6, 1.7], look: [32.6, 35.5, 1.2] } },
       {
-        who: 'Jonathan', line: "Hi! Is this Timmy's gramma? He's here at Gus's PlayPlace — he's safe and sound!",
+        who: 'Jonathan', voice: 'gramma-1', line: "Hi! Is this Timmy's gramma? He's here at Gus's PlayPlace — he's safe and sound!",
         cam: { from: [34.6, 34.4, 1.6], look: [33.0, 35.6, 1.55] },
       },
       {
@@ -650,7 +814,7 @@ export const SCRIPTS = {
       },
       { card: 'Twenty minutes later...', dur: 2.2 },
       {
-        who: 'Timmy', line: 'GRAMMA!', dur: 3,
+        who: 'Timmy', voice: 'gramma-2', line: 'GRAMMA!', dur: 3,
         cam: { from: [40.6, 36.4, 1.6], look: [42.4, 40.0, 1.2] },
         start(g, c) { c.put(g.people.jonathan, 43.9, 37.6, W + 0.6); c.pose(g.people.jonathan, 'idle', 0.3); },
         update(g, c, k) {
@@ -669,7 +833,7 @@ export const SCRIPTS = {
         },
       },
       {
-        who: 'Jonathan', line: 'Just doing my job!',
+        who: 'Jonathan', voice: 'gramma-3', line: 'Just doing my job!',
         cam: { from: [42.2, 38.0, 1.6], look: [43.9, 37.6, 1.6] },
       },
       {
@@ -687,4 +851,4 @@ export const SCRIPTS = {
 };
 
 // Cutscenes that play before a night starts (the first time only).
-export const BEFORE_NIGHT = { 5: 'blackout', 20: 'haywire', 21: 'junkRises' };
+export const BEFORE_NIGHT = { 2: 'blackout', 20: 'haywire', 21: 'junkRises' };

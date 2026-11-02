@@ -4,6 +4,10 @@
 // on a laptop you should never see it. Left side of the screen is a floating movement stick
 // (origin = wherever the thumb lands), the right side looks around. The camera monitor and
 // the repair puzzles have their own on-screen buttons.
+//
+// The stick only ever walks. Running is the 🏃 button: tap it to run, tap again to walk, and
+// it switches itself off once you've stood still for a couple of seconds. (It used to run
+// whenever the stick was pushed all the way, which on an iPad was nearly always.)
 import { input } from './input.js';
 
 const BTN = 62;
@@ -20,6 +24,8 @@ export class Touch {
     this.lookId = null;
     this.lookLast = { x: 0, y: 0 };
     this.buttons = [];
+    this.running = false;
+    this.stillFor = 0;
   }
 
   init() {
@@ -41,6 +47,7 @@ export class Touch {
     if (!v) {
       this.moveId = this.lookId = null;
       this.moveVec = { x: 0, y: 0 };
+      this.setRunning(false);
       for (const a of ['forward', 'back', 'left', 'right', 'sprint']) input.held.delete(a);
     }
   }
@@ -57,7 +64,8 @@ export class Touch {
       { id: 'interact', label: 'E',  right: 124, bottom: 28 },
       { id: 'light',    label: '🔦', right: 22,  bottom: 24 },
       { id: 'swap',     label: '⇄',  right: 124, bottom: 108 },
-      { id: 'sprint',   label: '»',  left: 24,   bottom: 150, size: 54 },
+      { id: 'sprint',   label: '🏃', left: 24,   bottom: 150, size: 54 },
+      { id: 'crouch',   label: '⤓',  left: 24,   bottom: 214, size: 54 },
       { id: 'pause',    label: '❚❚', right: 22,  top: 92, size: 46 },
     ];
     for (const d of defs) {
@@ -91,7 +99,8 @@ export class Touch {
       case 'interact': if (down) input.tapAction('interact'); break;
       case 'light': if (down) input.tapAction('flashlight'); break;
       case 'swap': if (down) input.tapAction('swap'); break;
-      case 'sprint': input.held[down ? 'add' : 'delete']('sprint'); break;
+      case 'crouch': if (down) input.tapAction('crouch'); break;
+      case 'sprint': if (down) this.setRunning(!this.running); break;
       case 'pause': if (down) this.game.togglePause(); break;
     }
   }
@@ -158,7 +167,15 @@ export class Touch {
     this.stickBase.style.display = this.stickNub.style.display = 'none';
   }
 
+  setRunning(on) {
+    this.running = on;
+    this.stillFor = 0;
+    const b = this.buttons.find((x) => x.id === 'sprint');
+    if (b) b.el.classList.toggle('on', on);
+  }
+
   // Fold the stick into the keyboard's actions so movement code stays input-agnostic.
+  // Called once per fixed 1/60 s step.
   apply() {
     if (!this.active) return;
     const dead = 0.22;
@@ -167,7 +184,9 @@ export class Touch {
     set('back', this.moveVec.y > dead);
     set('left', this.moveVec.x < -dead);
     set('right', this.moveVec.x > dead);
-    const sprintBtn = this.buttons.find((b) => b.id === 'sprint');
-    if (!sprintBtn || sprintBtn.touchId === null) set('sprint', Math.hypot(this.moveVec.x, this.moveVec.y) > 0.95);
+    const moving = Math.hypot(this.moveVec.x, this.moveVec.y) > dead;
+    this.stillFor = moving ? 0 : this.stillFor + 1 / 60;
+    if (this.running && this.stillFor > 2) this.setRunning(false);
+    set('sprint', this.running && moving);
   }
 }

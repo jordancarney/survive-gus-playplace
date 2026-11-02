@@ -186,9 +186,15 @@ function biped(o) {
 }
 
 // ── Gus the Platypus ────────────────────────────────────────────────────
+//
+// Moony is Gus, possessed: the same costume gone midnight purple, pale moon eyes, a black hat
+// with a glowing crescent on it.
 
-function buildGus() {
-  const brown = fur(0x7a4a2b), tan = fur(0xc99a6b), bill = mat(0x4a5262, { rough: 0.35 });
+const GUS_LOOK = { fur: 0x7a4a2b, belly: 0xc99a6b, bill: 0x4a5262, eye: 0xffa21f, hat: 0x5b2a86, band: 0xf2c230, tail: 0x5a341d };
+const MOONY_LOOK = { fur: 0x1c1530, belly: 0x3b2f5c, bill: 0x23262f, eye: 0xbfe4ff, hat: 0x0d0b14, band: 0xcfe6ff, tail: 0x120d22, moon: true };
+
+function buildGus(look = GUS_LOOK) {
+  const brown = fur(look.fur), tan = fur(look.belly), bill = mat(look.bill, { rough: 0.35 });
   const rig = biped({
     height: 2.35, legLen: 0.78, hipW: 0.2, legR: 0.1, legMat: brown,
     footMat: bill, footW: 0.2, footL: 0.32,
@@ -208,21 +214,89 @@ function buildGus() {
     part(G.cone, mat(0xe8e2d0, { rough: 0.3 }), rig.jaw, { p: [-0.15 + k * 0.06, 0.04, 0.42 - Math.abs(k - 2.5) * 0.03], s: [0.018, 0.05, 0.018] });
   }
   rig.jawMax = 0.45;
-  eyes(h, rig, { color: 0xffa21f, x: 0.15, y: 0.44, z: 0.27 });
+  eyes(h, rig, { color: look.eye, x: 0.15, y: 0.44, z: 0.27 });
   // top hat, a little crooked, and a gold bow tie — he is the star of the show
   const hat = group(h, [0.04, 0.64, -0.02]);
   hat.rotation.z = -0.14;
-  part(G.cyl, cloth(0x5b2a86), hat, { p: [0, 0.02, 0], s: [0.32, 0.04, 0.32] });
-  part(G.cyl, cloth(0x5b2a86), hat, { p: [0, 0.2, 0], s: [0.21, 0.34, 0.21] });
-  part(G.cyl, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), hat, { p: [0, 0.08, 0], s: [0.215, 0.06, 0.215] });
+  part(G.cyl, cloth(look.hat), hat, { p: [0, 0.02, 0], s: [0.32, 0.04, 0.32] });
+  part(G.cyl, cloth(look.hat), hat, { p: [0, 0.2, 0], s: [0.21, 0.34, 0.21] });
+  part(G.cyl, mat(look.band, { metal: 0.5, rough: 0.3 }), hat, { p: [0, 0.08, 0], s: [0.215, 0.06, 0.215] });
+  if (look.moon) {
+    const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(look.eye).multiplyScalar(EYE_GLOW) });
+    part(new THREE.TorusGeometry(0.09, 0.025, 6, 16, Math.PI * 1.2), glow, hat, { p: [0, 0.22, 0.22], r: [0, 0, 1.1] });
+  }
   const tie = group(rig.torso, [0, 0.9, 0.33]);
-  part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [-0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, Math.PI / 2] });
-  part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, -Math.PI / 2] });
+  part(G.cone, mat(look.band, { metal: 0.5, rough: 0.3 }), tie, { p: [-0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, Math.PI / 2] });
+  part(G.cone, mat(look.band, { metal: 0.5, rough: 0.3 }), tie, { p: [0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, -Math.PI / 2] });
   // the beaver-ish tail every platypus has
-  part(G.sphere, fur(0x5a341d, { pile: 0.6 }), rig.hips, { p: [0, -0.2, -0.5], s: [0.3, 0.07, 0.42], r: [0.5, 0, 0] });
+  part(G.sphere, fur(look.tail, { pile: 0.6 }), rig.hips, { p: [0, -0.2, -0.5], s: [0.3, 0.07, 0.42], r: [0.5, 0, 0] });
   // microphone
   part(G.cyl, mat(0x222222), rig.armR, { p: [0, -0.72, 0.12], s: [0.03, 0.22, 0.03], r: [1.2, 0, 0] });
   part(G.sphereLo, METAL(), rig.armR, { p: [0, -0.68, 0.24], s: [0.06, 0.06, 0.06] });
+  return rig;
+}
+
+// ── Sunny, made of fog ──────────────────────────────────────────────────
+//
+// A sun-shaped animatronic made entirely of drifting cloud, head and all: see-through puffs
+// on the usual frame, a misty head with a ring of little puffs for the sun's rays, glowing
+// sun-yellow eyes and a smile. Every material is her own copy, so she can fade in and out
+// of the fog without touching anyone else's; `rig.fogMats` lists them with their full
+// opacity.
+
+function buildSunny() {
+  const fog = (color, opacity, glow = 0) => {
+    const m = new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, transparent: true, opacity });
+    if (glow) { m.emissive = new THREE.Color(color); m.emissiveIntensity = glow; }
+    return m;
+  };
+  // her head is fog too, just a warmer, sunnier fog
+  const cloud = fog(0xd8dde8, 0.5, 0.12), mist = fog(0xeee4c4, 0.5, 0.25);
+  const rig = biped({
+    height: 2.1, legLen: 0.8, hipW: 0.18, legR: 0.11, legMat: cloud, footMat: cloud,
+    torsoH: 0.9, torsoW: 0.8, torsoD: 0.6, bodyMat: cloud, headR: 0.3, headMat: mist,
+    armLen: 0.62, armR: 0.09,
+  });
+  // puffs of cloud all over, so she reads as fog rather than a body
+  const puffs = [[rig.torso, [[-0.3, 0.3, 0.1], [0.32, 0.5, 0], [0, 0.85, -0.15], [-0.15, 0.1, -0.2], [0.2, 0.15, 0.22]]],
+    [rig.armL, [[0, -0.3, 0], [0, -0.55, 0.05]]], [rig.armR, [[0, -0.3, 0], [0, -0.55, 0.05]]],
+    [rig.legL, [[0, -0.35, 0], [0, -0.65, 0.05]]], [rig.legR, [[0, -0.35, 0], [0, -0.65, 0.05]]]];
+  for (const [g, list] of puffs) {
+    for (const [x, y, z] of list) part(G.sphereLo, cloud, g, { p: [x, y, z], s: [0.2, 0.17, 0.2] });
+  }
+  const h = rig.head;
+  for (const [x, y, z] of [[-0.2, 0.4, 0.04], [0.22, 0.34, 0.02], [0, 0.56, -0.06], [0.04, 0.12, -0.1]]) {
+    part(G.sphereLo, mist, h, { p: [x, y, z], s: [0.16, 0.14, 0.16] });
+  }
+  // the sun's rays, as a ring of little puffs
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    part(G.sphereLo, mist, h, { p: [Math.cos(a) * 0.44, 0.3 + Math.sin(a) * 0.44, -0.02], s: [0.08, 0.08, 0.07] });
+  }
+  rig.jaw = group(h, [0, 0.18, 0.2]);
+  const mouth = fog(0x3a2a20, 0.6);
+  part(G.sphere, mouth, rig.jaw, { p: [0, -0.02, 0.07], s: [0.13, 0.05, 0.05] });
+  rig.jawMax = 0.5;
+  eyes(h, rig, { color: 0xffd23f, x: 0.11, y: 0.36, z: 0.27, r: 0.1, white: false });
+  // The frame's metal joints and neck turn to cloud too; then everything gets her own
+  // see-through copy — one per material, so both eyes still share one.
+  const keep = new Set([cloud, mist, mouth, rig.eyeMat]);
+  rig.root.traverse((o) => { if (o.isMesh && !keep.has(o.material)) o.material = cloud; });
+  const own = new Map();
+  rig.fogMats = [];
+  rig.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!own.has(o.material)) {
+      const m = o.material.clone();
+      m.transparent = true;
+      m.depthWrite = false;
+      own.set(o.material, m);
+      rig.fogMats.push({ mat: m, full: o.material.transparent ? o.material.opacity : 1 });
+    }
+    o.material = own.get(o.material);
+    o.castShadow = false;
+  });
+  rig.eyeMat = own.get(rig.eyeMat);
   return rig;
 }
 
@@ -420,11 +494,14 @@ function buildJunk() {
   return rig;
 }
 
-const BUILDERS = { gus: buildGus, gerald: buildGerald, chomper: buildChomper, cranker: buildCranker, flipper: buildFlipper, junk: buildJunk };
+const BUILDERS = {
+  gus: () => buildGus(), gerald: buildGerald, chomper: buildChomper, cranker: buildCranker, flipper: buildFlipper,
+  junk: buildJunk, moony: () => buildGus(MOONY_LOOK), sunny: buildSunny,
+};
 
 // How far each face sticks out in front of its head (a platypus bill is long), so the
 // jumpscare stops just short of it instead of putting the camera inside the bill.
-const SNOUT = { gus: 0.85, flipper: 0.7, cranker: 0.5, gerald: 0.5, chomper: 0.45, junk: 1.1 };
+const SNOUT = { gus: 0.85, flipper: 0.7, cranker: 0.5, gerald: 0.5, chomper: 0.45, junk: 1.1, moony: 0.85, sunny: 0.45 };
 
 // The old originals, retired to Parts & Service years ago: same shapes, faded and dusty,
 // one eye gone dark.
@@ -629,6 +706,11 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
       armLx = -1.5; armRx = -1.5; armLz = -0.35; armRz = 0.35;
       torsoX = 0.15; headX = 0.1;
       break;
+    case 'give':      // holding something out in the right hand
+      armRx = -1.35;
+      torsoX = 0.06; headX = 0.12;
+      bob = Math.sin(t * 1.4) * 0.01;
+      break;
     case 'wave': {
       bob = Math.sin(t * 1.4) * 0.012;
       armRx = -2.7; armRz = -0.5 + Math.sin(t * 6) * 0.35;
@@ -677,7 +759,7 @@ export function buildPerson(o) {
 
 function buildPersonSimple({
   height: h, shirt, pants, skin, hair = null, cap = null, tie = null, badge = false, glasses = false,
-  headScale = 0.075, shoulders = 0.2, shadows = false,
+  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null,
 }) {
   const sm = mat(shirt), sk = mat(skin, { rough: 0.6 }), pm = mat(pants, { rough: 0.7 });
   const root = new THREE.Group();
@@ -699,13 +781,10 @@ function buildPersonSimple({
   rig.head = group(rig.neck, [0, 0.02, 0]);
   const hr = h * headScale;
   part(G.sphereLo, sk, rig.head, { p: [0, hr, 0], s: [hr, hr * 1.08, hr] });
-  if (cap !== null) {
-    part(G.sphereLo, mat(cap), rig.head, { p: [0, hr * 1.5, -0.01], s: [hr * 1.04, hr * 0.5, hr * 1.04] });
-    part(G.cyl, mat(cap), rig.head, { p: [0, hr * 1.42, hr * 0.75], s: [hr * 0.8, 0.015, hr * 0.6] });
-  } else if (hair !== null) {
-    part(G.sphereLo, mat(hair, { rough: 0.8 }), rig.head, { p: [0, hr * 1.25, -0.02], s: [hr * 1.05, hr * 0.8, hr * 1.05] });
-  }
+  addHair(rig.head, hr, 1.0, hair !== null ? mat(hair, { rough: 0.8 }) : null, cap !== null ? mat(cap) : null, G.sphereLo, bowl);
   for (const sx of [-1, 1]) part(G.sphereLo, mat(0x111111), rig.head, { p: [sx * hr * 0.35, hr * 1.05, hr * 0.9], s: [0.015, 0.02, 0.01] });
+  addMouth(rig, mat(0x4a1414), hr, hr * 0.7, hr * 0.92);
+  if (beard !== null) addBeard(rig.head, hr, mat(beard, { rough: 0.8 }), G.sphereLo, 0.7);
   if (glasses) for (const sx of [-1, 1]) part(G.torus, mat(0x111111), rig.head, { p: [sx * hr * 0.38, hr * 1.05, hr * 0.95], s: [hr * 0.28, hr * 0.28, hr * 0.28] });
   rig.armL = group(rig.torso, [-(shoulders + 0.03), th * 0.9, 0]);
   rig.armR = group(rig.torso, [shoulders + 0.03, th * 0.9, 0]);
@@ -734,7 +813,7 @@ const IRIS = [0x4a2e1a, 0x2f5a8a, 0x3a5a2a, 0x2a1a10];
 
 function buildPersonReal({
   height: h, shirt, pants, skin, hair = null, cap = null, tie = null, badge = false, glasses = false,
-  headScale = 0.075, shoulders = 0.2, shadows = false,
+  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null,
 }) {
   const kid = headScale > 0.09;
   const sm = cloth(shirt), pm = cloth(pants), sk = skinMat(skin);
@@ -762,7 +841,8 @@ function buildPersonReal({
   const hd = rig.head;
   part(G.sphere, sk, hd, { p: [0, hr, 0], s: [hr * 0.92, hr * 1.08, hr * 0.98] });
   part(G.sphereLo, sk, hd, { p: [0, hr * 0.95, hr * 0.96], s: [hr * 0.12, hr * 0.16, hr * 0.13] });           // nose
-  part(G.box, mat(0x8a3a3a, { rough: 0.5, worn: false }), hd, { p: [0, hr * 0.62, hr * 0.88], s: [hr * 0.32, hr * 0.05, hr * 0.05] });   // mouth
+  addMouth(rig, mat(0x4a1414, { rough: 0.5, worn: false }), hr, hr * 0.62, hr * 0.89);
+  if (beard !== null) addBeard(hd, hr, fur(beard, { pile: 0.6 }), G.sphere, 0.62);
   const iris = mat(IRIS[Math.floor(Math.random() * IRIS.length)], { rough: 0.2, worn: false });
   for (const sx of [-1, 1]) {
     part(G.sphereLo, sk, hd, { p: [sx * hr * 0.92, hr * 1.0, 0], s: [hr * 0.12, hr * 0.24, hr * 0.14] });    // ears
@@ -770,12 +850,7 @@ function buildPersonReal({
     part(G.sphereLo, iris, hd, { p: [sx * hr * 0.33, hr * 1.12, hr * 0.88], s: [hr * 0.085, hr * 0.085, hr * 0.04] });
     part(G.box, hm || mat(0x3a2a1a, { worn: false }), hd, { p: [sx * hr * 0.34, hr * 1.33, hr * 0.84], s: [hr * 0.3, hr * 0.06, hr * 0.06], r: [0, 0, -sx * 0.12] });
   }
-  if (cap !== null) {
-    part(G.sphere, cloth(cap), hd, { p: [0, hr * 1.42, -0.01], s: [hr * 1.0, hr * 0.55, hr * 1.04] });
-    part(G.cyl, cloth(cap), hd, { p: [0, hr * 1.42, hr * 0.78], s: [hr * 0.8, 0.015, hr * 0.62] });
-  } else if (hm) {
-    part(G.sphere, hm, hd, { p: [0, hr * 1.2, -hr * 0.08], s: [hr * 1.0, hr * 0.85, hr * 1.04] });
-  }
+  addHair(hd, hr, 0.92, hm, cap !== null ? cloth(cap) : null, G.sphere, bowl);
   if (glasses) for (const sx of [-1, 1]) part(G.torus, mat(0x111111, { worn: false }), hd, { p: [sx * hr * 0.34, hr * 1.12, hr * 0.92], s: [hr * 0.26, hr * 0.26, hr * 0.26] });
   rig.armL = group(rig.torso, [-(shoulders + 0.03), th * 0.9, 0]);
   rig.armR = group(rig.torso, [shoulders + 0.03, th * 0.9, 0]);
@@ -790,26 +865,69 @@ function buildPersonReal({
   return rig;
 }
 
+// Hair and caps. The head reaches 2.08 head-radii up, and both have to clear that or the
+// scalp shows through on top. Hair is a shell over the top and back that stays behind the
+// face, plus a fringe in front that stops above the eyebrows (realistic hair is fur, about a
+// centimetre deep, so both keep clear of the eyes). A cap sits over the crown, with short
+// hair showing under it at the back. A bowl cut swaps the fringe for a dome cut dead
+// straight all the way round, just above the eyebrows. `w` is the head's half-width, in
+// head radii.
+function addHair(head, hr, w, hairMat, capMat, geo, bowl = false) {
+  if (hairMat) part(geo, hairMat, head, { p: [0, hr * 1.12, -hr * 0.12], s: [hr * (w + 0.05), hr * (capMat ? 0.98 : 1.04), hr] });
+  if (capMat) {
+    part(geo, capMat, head, { p: [0, hr * 1.6, -hr * 0.02], s: [hr * (w + 0.1), hr * 0.56, hr * 1.06] });
+    part(G.cyl, capMat, head, { p: [0, hr * 1.42, hr * 0.8], s: [hr * 0.8, 0.015, hr * 0.62] });
+  } else if (hairMat && bowl) {
+    part(G.lid, hairMat, head, { p: [0, hr * 1.4, -hr * 0.04], s: [hr * (w + 0.12), hr * 0.8, hr * 1.08] });
+  } else if (hairMat) {
+    part(geo, hairMat, head, { p: [0, hr * 1.62, hr * 0.28], s: [hr * (w - 0.08), hr * 0.4, hr * 0.68] });
+  }
+}
+
+// A big beard under the mouth and a moustache over it, leaving the mouth free to open.
+// `mouthY` is where the mouth sits, in head radii.
+function addBeard(head, hr, material, geo, mouthY) {
+  part(geo, material, head, { p: [0, hr * (mouthY - 0.34), hr * 0.6], s: [hr * 0.58, hr * 0.32, hr * 0.46] });
+  for (const sx of [-1, 1]) {
+    part(geo, material, head, { p: [sx * hr * 0.15, hr * (mouthY + 0.11), hr * 0.9], s: [hr * 0.2, hr * 0.07, hr * 0.08], r: [0, 0, sx * 0.25] });
+  }
+}
+
+// A dark mouth on the front of the face. Shut it's a thin line; talking, it opens (setMouth).
+function addMouth(rig, material, hr, y, z) {
+  rig.mouth = part(G.sphereLo, material, rig.head, { p: [0, y, z], s: [hr * 0.17, hr * 0.03, hr * 0.06] });
+  rig.mouthShut = hr * 0.03;
+  rig.mouthOpen = hr * 0.13;
+}
+
+// How far open someone's mouth is while they talk, 0–1. People open their mouth; the
+// animatronics drop their jaw.
+export function setMouth(rig, open) {
+  if (rig.mouth) rig.mouth.scale.y = rig.mouthShut + (rig.mouthOpen - rig.mouthShut) * open;
+  else if (rig.jaw) rig.jaw.rotation.x = open * 0.7 * (rig.jawMax ?? 1);
+}
+
 export function buildKid(rand = Math.random) {
   const pick = (a) => a[Math.floor(rand() * a.length)];
   const capped = rand() < 0.35;
   return buildPerson({
     height: 1.05 + rand() * 0.4, headScale: 0.11, shoulders: 0.15,
     shirt: pick(SHIRTS), skin: pick(SKIN), pants: pick([0x2a3a5a, 0x3a3a3a, 0x5a3a2a, 0x1f6f5a]),
-    cap: capped ? pick(SHIRTS) : null, hair: capped ? null : pick(HAIR),
+    cap: capped ? pick(SHIRTS) : null, hair: pick(HAIR),
   });
 }
 
 // Jonathan, as other people see him: fifteen, in his security uniform and cap.
 export const buildJonathan = () => buildPerson({
-  height: 1.72, shirt: 0x2b4a7a, pants: 0x1f2533, skin: 0xd9a07a, cap: 0x1f3360, badge: true, shadows: true,
+  height: 1.72, shirt: 0x2b4a7a, pants: 0x1f2533, skin: 0xd9a07a, cap: 0x1f3360, hair: 0x3a2414, badge: true,
+  shadows: true,
 });
 
 // Timmy, the kid who got left behind on Night 2, and his gramma.
 export const buildTimmy = () => buildPerson({
-  // a white shirt, so he stands out against the ball pit
+  // a white shirt, so he stands out against the ball pit, and a bowl cut
   height: 1.15, headScale: 0.11, shoulders: 0.15, shirt: 0xf4f1ea, pants: 0x2a4a8a,
-  skin: 0xf1c7a5, hair: 0x6b3e1f, shadows: true,
+  skin: 0xf1c7a5, hair: 0x6b3e1f, bowl: true, shadows: true,
 });
 
 export const buildGramma = () => buildPerson({
@@ -821,6 +939,25 @@ export const buildManager = () => buildPerson({
   height: 1.82, shirt: 0xf4f1ea, pants: 0x2a2a2a, skin: 0xf1c7a5, hair: 0x8a8a8a, tie: 0xc0262d,
   glasses: true, shoulders: 0.23, shadows: true,
 });
+
+// Old John, the old night guard: thirty years on the night shift, a grey beard, his faded
+// old uniform and cap, and a cane. His gold badge is in his right hand, out of sight until
+// he gives it to Jonathan (`rig.badge`).
+export function buildOldJohn() {
+  const h = 1.7;
+  const rig = buildPerson({
+    height: h, shirt: 0x5a6472, pants: 0x34363e, skin: 0xe8c4a8, cap: 0x3e4756, hair: 0xd0d0d0, beard: 0xdedede,
+    shadows: true,
+  });
+  const hand = -h * 0.3 * 0.98;
+  const wood = mat(0x5a3a22, { rough: 0.6 });
+  part(G.cyl, wood, rig.armL, { p: [0, hand - 0.37, 0.06], s: [0.02, 0.78, 0.02] });
+  part(G.sphereLo, wood, rig.armL, { p: [0, hand + 0.02, 0.06], s: [0.04, 0.03, 0.07] });
+  rig.badge = part(G.box, mat(0xf2c230, { metal: 0.8, rough: 0.25, emissive: 0x4a3400 }), rig.armR,
+    { p: [0, hand - 0.03, 0.09], s: [0.09, 0.11, 0.015] });
+  rig.badge.visible = false;
+  return rig;
+}
 
 // ── Jonathan's hands ────────────────────────────────────────────────────
 //

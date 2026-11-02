@@ -8,6 +8,8 @@ import { buildKid, poseRig } from './models.js';
 import { playMusic, sfx } from './audio.js';
 
 const KID_ROOMS = ['D', 'D', 'D', 'A', 'A', 'B', 'B', 'T', 'T', 'P', 'R', 'H', 'E'];
+const WING_KID_ROOMS = [...KID_ROOMS, 'C', 'C', 'W', 'M', 'G', 'L'];
+const kidRooms = (place) => (place.wingOpen ? WING_KID_ROOMS : KID_ROOMS);
 const MAX_KIDS = 34;
 
 export class Daytime {
@@ -34,7 +36,8 @@ export class Daytime {
     const count = Math.round(12 + (happiness / 100) * (MAX_KIDS - 12));
     this.kids.forEach((k, i) => {
       k.rig.root.visible = i < count;
-      const room = KID_ROOMS[i % KID_ROOMS.length];
+      const rooms = kidRooms(g.place);
+      const room = rooms[i % rooms.length];
       k.pos.copy(g.place.randomPointIn(room));
       k.path = [];
       k.wait = Math.random() * 3;
@@ -57,7 +60,8 @@ export class Daytime {
       if (k.wait > 0) {
         k.wait -= dt;
       } else if (!k.path.length) {
-        const room = KID_ROOMS[Math.floor(Math.random() * KID_ROOMS.length)];
+        const rooms = kidRooms(place);
+        const room = rooms[Math.floor(Math.random() * rooms.length)];
         k.path = place.findPath(k.pos, place.randomPointIn(room));
         if (!k.path.length) k.wait = 2;
       } else {

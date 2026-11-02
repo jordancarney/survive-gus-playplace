@@ -10,6 +10,8 @@ import { sfx } from './audio.js';
 const RESULT_TEXT = {
   fizzle: 'Bounced right off Gus! Only the Magnum works on him.',
   freeze: 'Gus is frozen! RUN!',
+  moonyFizzle: 'It went right through Moony! Only the Magnum stops him.',
+  moonyFreeze: 'Moony is frozen! RUN!',
 };
 
 export class Weapons {
@@ -56,6 +58,7 @@ export class Weapons {
   use() {
     const p = this.game.player;
     if (p.carrying) return;
+    if (p.crouching) { this.game.hud.toast('Stand up (C) to use your weapon!'); return; }
     const w = p.weapon;
     if (!w) return;
     if (w.id === 'taser') this.taser();
@@ -70,7 +73,7 @@ export class Weapons {
     else if (result === 'asleep') hud.toast(`${a.name} is still asleep — the zap doesn't work yet!`);
     else if (result === 'down' && a.id !== 'gus' && a.id !== 'junk') hud.toast(`${a.name} powered down! Press E to drag them to Parts & Service`);
     else if (result === 'stagger' && (a.def.hits || 1) > 1 && a.hitsTaken > 0) hud.toast(`${a.name} is still up — zap again!`);
-    if (result !== 'fizzle' && result !== 'asleep') hud.hitmark();
+    if (!['fizzle', 'moonyFizzle', 'asleep'].includes(result)) hud.hitmark();
   }
 
   tipPos() {

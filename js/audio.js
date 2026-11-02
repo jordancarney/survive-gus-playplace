@@ -1,4 +1,5 @@
-// Every sound in the game, synthesized at runtime. No audio files, nothing to download.
+// Every sound in the game, synthesized at runtime. No audio files, nothing to download —
+// apart from the recorded voices (voices.js), and Timmy's crying if it's been recorded.
 //
 // Browsers refuse to start an AudioContext until the player has interacted with the page,
 // so `resume()` is called from the first click/keypress and everything before that is a
@@ -102,6 +103,167 @@ function spatial(pos, range = 30) {
 }
 
 // ── Primitives ──────────────────────────────────────────────────────────
+
+// Lub-dub: a heartbeat at time `t`.
+function heartbeat(t, gain, dest) {
+  tone({ freq: 72, to: 44, type: 'sine', dur: 0.14, gain, at: t, dest, attack: 0.01 });
+  tone({ freq: 64, to: 40, type: 'sine', dur: 0.16, gain: gain * 0.7, at: t + 0.19, dest, attack: 0.01 });
+}
+
+// A whisper: breath with no voice in it, shaped by a vowel's formants into syllables, with
+// hissed "s" and "sh" sounds between — murmured from off to one side, with an echo, so it
+// sounds like someone right behind you. Returns how long it lasts.
+const VOWELS = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870], [660, 1720]];
+const HISSES = [[6800, 'highpass', 0.09], [3200, 'bandpass', 0.11], [1700, 'bandpass', 0.08]];
+function whisper(t, dest, { gain = 0.7, pan = Math.random() * 1.6 - 0.8, echo = 0.5 } = {}) {
+  loadWhispers();
+  const out = ctx.createGain();
+  out.gain.value = gain;
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    out.connect(p).connect(dest);
+  } else out.connect(dest);
+  if (echo && echoIn) {
+    const e = ctx.createGain();
+    e.gain.value = echo;
+    out.connect(e).connect(echoIn);
+  }
+  let at = t;
+  const syllables = 3 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < syllables; i++) {
+    if (Math.random() < 0.55) {
+      const [f, type, g] = HISSES[Math.floor(Math.random() * HISSES.length)];
+      const dur = 0.05 + Math.random() * 0.08;
+      noise({ at, dur, gain: g, filter: type, freq: f, q: 1.4, dest: out, attack: 0.02 });
+      at += dur * 0.8;
+    }
+    const [f1, f2] = VOWELS[Math.floor(Math.random() * VOWELS.length)];
+    const dur = 0.11 + Math.random() * 0.18;
+    for (const [f, g] of [[f1, 1.3], [f2, 0.9], [2700, 0.4]]) {
+      noise({ at, dur, gain: g, filter: 'bandpass', freq: f * (0.95 + Math.random() * 0.1), to: f * 0.88, q: 7, dest: out, attack: 0.035 });
+    }
+    at += dur + 0.02 + Math.random() * 0.07;
+  }
+  return at - t;
+}
+
+// Whispered words. Real recordings first: once any of these phrases has been recorded with
+// dev/record.html (voice ids whisper-1 to whisper-7, in this order), the whispers are those
+// recordings, slowed a touch, from one side, with an echo. Until then it's the browser's
+// whispering voice where there is one (Macs, iPhones and iPads have one called Whisper),
+// and elsewhere just the murmuring above.
+export const WHISPERS = ["Don't take the job.", "He's behind you.", 'Stay with us.', "They're watching.",
+  'Nobody makes it out alive.', 'Come and play.', 'We see you.'];
+const whisperBufs = [];
+let whispersLoading = false;
+function loadWhispers() {
+  if (whispersLoading) return;
+  whispersLoading = true;
+  import('./recorded.js').then(({ RECORDED }) => {
+    WHISPERS.forEach((_, i) => {
+      const id = `whisper-${i + 1}`;
+      if (!(id in RECORDED)) return;
+      fetch(new URL(`../audio/voices/${id}.m4a`, import.meta.url)).then((r) => r.arrayBuffer())
+        .then((b) => ctx.decodeAudioData(b)).then((buf) => whisperBufs.push(buf)).catch(() => {});
+    });
+  }).catch(() => {});
+}
+
+function whisperWords(dest = sfxGain) {
+  loadWhispers();
+  if (whisperBufs.length) {
+    const src = ctx.createBufferSource();
+    src.buffer = whisperBufs[Math.floor(Math.random() * whisperBufs.length)];
+    src.playbackRate.value = 0.9;
+    const out = ctx.createGain();
+    out.gain.value = 0.9;
+    src.connect(out);
+    if (ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = Math.random() < 0.5 ? -0.7 : 0.7;
+      out.connect(p).connect(dest);
+    } else out.connect(dest);
+    if (echoIn) {
+      const e = ctx.createGain();
+      e.gain.value = 0.45;
+      out.connect(e).connect(echoIn);
+    }
+    src.start();
+    return;
+  }
+  const synth = typeof speechSynthesis !== 'undefined' ? speechSynthesis : null;
+  const voice = synth && synth.getVoices().find((v) => v.name.startsWith('Whisper'));
+  if (!voice || synth.speaking) return;
+  const u = new SpeechSynthesisUtterance(WHISPERS[Math.floor(Math.random() * WHISPERS.length)]);
+  u.voice = voice;
+  u.rate = 0.75;
+  u.pitch = 0.7;
+  u.volume = 0.55;
+  synth.speak(u);
+}
+
+// A recorded sound (a decoded AudioBuffer) played once into `dest`.
+function playBuffer(buf, dest) {
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(dest);
+  src.start();
+}
+
+// A child's crying "waaah": a buzzy voice that cracks up and then falls away, trembling,
+// shaped into an "aa" by three formant bands (a child's, so they sit high), with breath.
+function wail(t, dur, f0, dest) {
+  const voice = ctx.createOscillator();
+  voice.type = 'sawtooth';
+  voice.frequency.setValueAtTime(f0 * 0.9, t);
+  voice.frequency.linearRampToValueAtTime(f0 * 1.1, t + dur * 0.18);
+  voice.frequency.exponentialRampToValueAtTime(f0 * 0.68, t + dur);
+  const wobble = ctx.createOscillator();
+  wobble.frequency.value = 5.5 + Math.random() * 2.5;
+  const wobbleDepth = ctx.createGain();
+  wobbleDepth.gain.value = f0 * 0.04;
+  wobble.connect(wobbleDepth).connect(voice.frequency);
+  const vowel = ctx.createGain();
+  for (const [f, q, g] of [[1050, 5, 1.6], [1750, 7, 1.0], [3100, 9, 0.45]]) {
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = f;
+    band.Q.value = q;
+    const level = ctx.createGain();
+    level.gain.value = g;
+    voice.connect(band).connect(level).connect(vowel);
+  }
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.exponentialRampToValueAtTime(0.5, t + 0.07);
+  env.gain.setValueAtTime(0.5, t + dur * 0.55);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  // the shake in a sob
+  const shake = ctx.createOscillator();
+  shake.frequency.value = 8 + Math.random() * 4;
+  const shakeDepth = ctx.createGain();
+  shakeDepth.gain.value = 0.16;
+  shake.connect(shakeDepth).connect(env.gain);
+  vowel.connect(env).connect(dest);
+  noise({ at: t, dur, gain: 0.035, filter: 'bandpass', freq: 1500, q: 0.7, dest, attack: 0.05 });
+  for (const o of [voice, wobble, shake]) { o.start(t); o.stop(t + dur + 0.05); }
+}
+
+// A real recording of Timmy crying, if one's been made with dev/record.html (voice id
+// 'cry-1'); until then he cries with `wail`. Loaded once, the first time he cries.
+let cryBuf = null;
+let cryLoading = false;
+function loadCry() {
+  if (cryLoading) return;
+  cryLoading = true;
+  import('./recorded.js').then(({ RECORDED }) => {
+    if (!('cry-1' in RECORDED)) return null;
+    return fetch(new URL('../audio/voices/cry-1.m4a', import.meta.url)).then((r) => r.arrayBuffer())
+      .then((b) => ctx.decodeAudioData(b))
+      .then((buf) => { cryBuf = buf; });
+  }).catch(() => {});
+}
 
 function tone({ freq = 440, to = null, type = 'sine', dur = 0.15, gain = 0.3, delay = 0,
                 at = null, dest = null, attack = 0.005, curve = null }) {
@@ -302,6 +464,19 @@ export const sfx = {
     tone({ freq: 400, to: 160, type: 'square', dur: 0.3, gain: 0.12, dest: d });
   },
   // Three notes of Gus's music box, close by. The cutscenes' way of saying "he's watching".
+  // Your own heart, in Nightmare, racing when something's close. `k` is how close, 0–1.
+  heartbeat(k) {
+    if (!ok()) return;
+    heartbeat(now(), 0.25 + k * 0.45, sfxGain);
+  },
+
+  // Someone whispering just behind you (Nightmare), sometimes in actual words.
+  whisper(words = false) {
+    if (!ok()) return;
+    whisper(now(), sfxGain, { gain: 0.8 });
+    if (words) whisperWords();
+  },
+
   musicBoxSting() {
     if (!ok()) return;
     [988, 880, 740].forEach((f, i) => {
@@ -322,14 +497,29 @@ export const sfx = {
     noise({ dur: 2.2, gain: 0.12, filter: 'bandpass', freq: 220, to: 340, q: 2, attack: 0.2 });
     for (let i = 0; i < 10; i++) tone({ freq: 90, type: 'square', dur: 0.04, gain: 0.04, delay: i * 0.2 });
   },
-  // A kid crying, from wherever he is.
+  // A kid crying, from wherever he is: two or three sobbing wails with a hitching breath
+  // in between, then a sniff — different every time. Returns how long it lasts, so the next
+  // one starts when this one's done.
   cry(pos) {
-    if (!ok()) return;
+    if (!ok()) return 2.6;
+    loadCry();
     const d = spatial(pos, 34);
-    if (!d) return;
-    [0, 0.32, 0.7].forEach((t, i) => {
-      tone({ freq: 520 - i * 30, to: 360 - i * 20, type: 'triangle', dur: 0.28 + i * 0.1, gain: 0.12, delay: t, dest: d });
-    });
+    if (cryBuf) { if (d) playBuffer(cryBuf, d); return cryBuf.duration + 0.4; }
+    let at = now();
+    const start = at;
+    const sobs = 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let i = 0; i < sobs; i++) {
+      const dur = 0.5 + Math.random() * 0.4;
+      if (d) wail(at, dur, 460 + Math.random() * 90 - i * 30, d);
+      at += dur + 0.1;
+      // "hh-hh-hh": the shaky breath in
+      for (let k = 0; k < 3; k++) {
+        if (d) noise({ at: at + k * 0.085, dur: 0.06, gain: 0.05, filter: 'bandpass', freq: 1900, q: 1.4, dest: d, attack: 0.015 });
+      }
+      at += 0.3 + Math.random() * 0.15;
+    }
+    if (d) noise({ at, dur: 0.22, gain: 0.06, filter: 'highpass', freq: 2600, to: 5200, dest: d, attack: 0.08 });
+    return at - start + 0.9;
   },
   // Phone keypad: the real two-tone beeps.
   dtmf(k) {
@@ -685,6 +875,29 @@ const TRACKS = {
         for (const n of chord[1].slice(0, 3)) {
           tone({ freq: semi(chord[0] * 8, n), type: 'triangle', dur: 0.3, gain: 0.03, at: t, dest: musicGain });
         }
+      }
+    },
+  },
+
+  // Title in Nightmare: the same music box, slower, out of tune and falling apart — notes go
+  // flat or don't come at all — over a low, sour drone and somebody whispering.
+  nightmare: {
+    stepDur: 0.62,
+    length: 32,
+    play(s, t) {
+      const f = [659, 0, 784, 0, 740, 659, 0, 494, 523, 0, 587, 0, 494, 0, 0, 0,
+                 659, 0, 784, 0, 988, 880, 0, 784, 740, 0, 659, 0, 622, 0, 0, 0][s % 32];
+      if (f && Math.random() > 0.15) {
+        const sour = f * (Math.random() < 0.3 ? 0.94 : 0.985);
+        tone({ freq: sour, to: sour * 0.97, type: 'sine', dur: 1.3, gain: 0.07, at: t, dest: echoIn });
+        tone({ freq: sour, type: 'sine', dur: 0.8, gain: 0.045, at: t, dest: musicGain });
+      }
+      // whispering, from one side and then the other, and now and then actual words
+      if (s % 8 === 2 && Math.random() < 0.8) whisper(t, musicGain);
+      if (s % 32 === 20) whisperWords(musicGain);
+      if (s % 16 === 0) {
+        tone({ freq: E1, type: 'sawtooth', dur: 9, gain: 0.035, at: t, dest: echoIn });
+        tone({ freq: E1 * 1.06, type: 'triangle', dur: 9, gain: 0.05, at: t, dest: musicGain });
       }
     },
   },

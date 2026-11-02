@@ -68,7 +68,7 @@ export class Timmy {
       pose = 'cry';
       sink = 0.1;
       this.cryTimer -= dt;
-      if (this.cryTimer <= 0) { this.cryTimer = 2.6; sfx.cry(this.pos); }
+      if (this.cryTimer <= 0) this.cryTimer = sfx.cry(this.pos);
     } else {
       const p = this.game.player;
       const f = p.forward2();

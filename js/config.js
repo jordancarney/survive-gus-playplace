@@ -30,6 +30,8 @@ export const PLAYER = {
   walkSpeed: 4.0,
   sprintSpeed: 6.6,
   carrySpeed: 2.9,          // dragging a powered-down animatronic is hard work
+  crouchSpeed: 2.0,         // crouching: only Gus can see you, but no weapons and no dragging
+  crouchHeight: 1.0,
   ballPitSpeed: 0.6,        // multiplier while wading through the balls
   accel: 38,
   friction: 12,
@@ -88,6 +90,51 @@ export const moodOf = (h) => {
   return m;
 };
 
+// ── Difficulty ──────────────────────────────────────────────────────────
+//
+// Picked in Settings on the title screen and kept beside the save, like the graphics, so a
+// new game doesn't reset it. The designer named them Spooky, Horror and Nightmare (the ids
+// are still easy, medium and hard, so saved settings carry over). Horror is the game as
+// designed. `level` is added to every
+// animatronic's aggression level (like the kids' mood), `speed` scales how fast they move,
+// `gear` scales how fast the flashlight drains and how long the taser takes to recharge,
+// `unlimited` means the flashlight, the taser and sprinting never run out, `blackoutsFrom` is
+// the first night the power can go out (boss nights aside), and `secondChance` lets you get
+// away the first time you're caught each night. Every night beaten on Nightmare gets a star
+// on the night select. `scare` is how much scarier it all looks and sounds: Horror's nights
+// a little (darker, stuttering lights, whispers, reddish eyes), Nightmare everything, the
+// title screen too (`nightmare`; see Game.applyNightmare).
+
+export const DIFFICULTY_KEY = 'survive_gus_difficulty';
+
+export const DIFFICULTIES = {
+  easy: {
+    name: 'Spooky', face: '👻', scare: 0, level: -3, speed: 0.85, gear: 1, unlimited: true, blackoutsFrom: 10,
+    secondChance: true,
+    desc: 'They\'re slower and leave the stage less. Unlimited flashlight, taser zaps and running, ' +
+      'and the power doesn\'t go out until Night 10. The first time you get caught each night, ' +
+      'you get away!',
+  },
+  medium: {
+    name: 'Horror', face: '😱', scare: 1, level: 0, speed: 1, gear: 1, unlimited: false, blackoutsFrom: 0,
+    secondChance: false,
+    desc: 'The game the way it was made. Get caught and you start the night over.',
+  },
+  hard: {
+    name: 'Nightmare', face: '💀', scare: 2, level: 3, speed: 1.12, gear: 1.35, unlimited: false, blackoutsFrom: 0,
+    secondChance: false, nightmare: true,
+    desc: 'EVERYTHING is way scarier, even this screen. They\'re faster and come out a lot more, ' +
+      'your flashlight runs out sooner and your taser takes longer to recharge. No second ' +
+      'chances — but every night you beat gets a ⭐.',
+  },
+};
+
+// How long nothing can catch you after a second chance, so you can run.
+export const SECOND_CHANCE_GRACE = 3;
+
+// How many times the power goes out on a night, at a difficulty.
+export const blackoutCount = (def, diff) => (def.night < diff.blackoutsFrom ? 0 : def.blackouts);
+
 // ── The animatronics ────────────────────────────────────────────────────
 //
 // Each one has a single readable trait a kid can work out from watching it on camera.
@@ -98,7 +145,7 @@ export const ANIMATRONICS = {
   cranker: {
     name: 'Cranker', species: 'Penguin', hits: 1,
     walk: 2.3, chase: 3.4, sight: 15,
-    likes: ['H', 'D', 'T', 'E'],
+    likes: ['H', 'D', 'T', 'E', 'G'],
     squeaky: true, stubborn: true,
     trait: 'His feet squeak, so you can hear him coming from far away. Slow, but once he is ' +
       'after you he does not give up.',
@@ -106,21 +153,21 @@ export const ANIMATRONICS = {
   chomper: {
     name: 'Chomper', species: 'Beaver', hits: 1,
     walk: 3.0, chase: 4.4, sight: 13,
-    likes: ['A', 'R', 'K', 'P'],
+    likes: ['A', 'R', 'K', 'P', 'C'],
     chews: true,
     trait: 'Chews wires. Broken games and fuzzy cameras mean Chomper is close.',
   },
   gerald: {
     name: 'Gerald', species: 'Gorilla', hits: 2,
     walk: 2.2, chase: 3.7, sight: 14,
-    likes: ['P', 'D', 'K', 'A'],
+    likes: ['P', 'D', 'K', 'A', 'L'],
     pounds: true,
     trait: 'Big, slow and strong. Takes two zaps, and smashes games when nobody is looking.',
   },
   flipper: {
     name: 'Flipper', species: 'Dolphin', hits: 1,
     walk: 3.2, chase: 4.8, sight: 13, hearing: 15,
-    likes: ['B', 'T', 'H'],
+    likes: ['B', 'T', 'H', 'M'],
     trait: 'Hides in the ball pit. Can hear you running, so walk when you are near.',
   },
   gus: {
@@ -130,10 +177,33 @@ export const ANIMATRONICS = {
     trait: 'The leader. Only comes out when the power goes out, and senses you through ' +
       'walls. Nothing stops him except the Magnum.',
   },
+
+  // ── The new wing's two (Night 11 on). Each lives in one room and never leaves it. ──
+  moony: {
+    name: 'Moony', species: 'Possessed Gus', room: 'L', unstoppable: true, steps: 'gus',
+    walk: 3.0, chase: 4.1, sight: 14, blink: [9, 16],
+    likes: ['L'],
+    trait: 'Gus, possessed. Lives in Laser Tag and never leaves it. He vanishes and pops up ' +
+      'somewhere else, crouching doesn\'t hide you from him, and only the Magnum stops him.',
+  },
+  sunny: {
+    name: 'Sunny', species: 'Made of fog', room: 'M', hits: 1, silent: true,
+    walk: 2.0, chase: 2.9, sight: 9,
+    likes: ['M'],
+    trait: 'Made of fog. Lives in the Play Maze, drifts straight through its walls, and you ' +
+      'can only see her when your flashlight is on her.',
+  },
 };
 
 export const ANIMATRONIC_ORDER = ['gus', 'gerald', 'chomper', 'cranker', 'flipper'];
+export const WING_BOTS = ['moony', 'sunny'];
 export const ROAMERS = ['cranker', 'chomper', 'gerald', 'flipper'];
+
+// Moony's and Sunny's aggression: nothing before the new wing opens or on Night 21 (when
+// everyone's inside the Junk Monster), climbing night by night like everyone else's —
+// right through the Gus fight on Night 20.
+export const wingLevel = (id, night) =>
+  (night < 11 || night >= 21 ? 0 : (id === 'moony' ? 5 : 4) + (night - 11));
 
 export const AI = {
   checkEvery: 5,            // seconds between "do I leave the stage?" rolls
@@ -215,9 +285,9 @@ const n = (night, cranker, chomper, gerald, flipper, blackouts, gus, extra = {})
 
 export const NIGHTS = [
   n(1,  4,  0,  0,  0,  0, 0,  { title: 'First Shift', wake: { cranker: 1 } }),
-  n(2,  5,  3,  0,  0,  0, 0,  { title: 'Chewed Wires', wake: { chomper: 1 } }),
-  n(3,  6,  4,  3,  0,  0, 0,  { title: 'Heavy Footsteps', wake: { gerald: 2 } }),
-  n(4,  6,  5,  4,  3,  0, 0,  { title: 'Something in the Balls', wake: { flipper: 1 } }),
+  n(2,  5,  3,  0,  0,  1, 2,  { title: 'Chewed Wires', wake: { chomper: 1 } }),
+  n(3,  6,  4,  3,  0,  1, 3,  { title: 'Heavy Footsteps', wake: { gerald: 2 } }),
+  n(4,  6,  5,  4,  3,  1, 3,  { title: 'Something in the Balls', wake: { flipper: 1 } }),
   n(5,  7,  6,  5,  4,  1, 4,  { title: 'Lights Out' }),
   n(6,  8,  7,  6,  5,  1, 5,  { title: 'Running Late' }),
   n(7,  9,  8,  7,  6,  1, 6,  { title: 'Sharp Thinking' }),
@@ -292,48 +362,75 @@ export const BOSS = {
   },
 };
 
-// ── The manager's notes ─────────────────────────────────────────────────
+// ── The night notes ─────────────────────────────────────────────────────
 //
 // One per night, shown on the night card. This is the game's tutorial — each one teaches
-// exactly the thing that's new tonight.
+// exactly the thing that's new tonight. Nobody knows the animatronics move at night, so
+// Night 1's is from the manager and says nothing about them. Jonathan finds out on his own
+// (see the old guard's note in index.html); every night after that is a page from the
+// old night guard's notebook. He knew.
 
-export const MANAGER_NOTES = {
+export const NIGHT_NOTES = {
   1: 'Welcome aboard! Your desk has the camera monitors — press E to use them. If a game ' +
-     'breaks, go fix it: happy kids make happy animatronics. And if Cranker wanders off ' +
-     'the stage, zap him with your taser and drag him to Parts & Service.',
+     'breaks, go fix it: happy kids make happy animatronics. Don\'t worry, nothing ever ' +
+     'happens here at night. Have a quiet shift!',
   2: 'Chomper chews wires. If a camera goes fuzzy or a game suddenly breaks, Chomper is ' +
-     'probably close by. P.S. A family left in a hurry tonight. If you find anyone small ' +
-     'in here, keep them safe — the animatronics will go after them too.',
-  3: 'Gerald takes TWO zaps. Here is a baseball — throw it to freeze him from far away. ' +
-     'Don\'t forget to pick it back up.',
-  4: 'Flipper likes to hide in the ball pit and can hear you running. Walk when you are close.',
-  5: 'The power has been flickering. If it goes out, find the fuse box that tripped and fix ' +
-     'it FAST. And whatever you do... don\'t let Gus find you. Nothing you have can stop him.',
-  6: 'Got you some running shoes. You can sprint for twice as long now.',
-  7: 'Here is a knife. It cuts their power cables — quick, and no recharge, but you have to ' +
-     'get really close.',
-  8: 'Gerald has been smashing games. Keep the kids happy and everybody stays calmer.',
-  9: 'Taser Mk II! It zaps from farther away and recharges twice as fast.',
-  10: 'Halfway there. The power might go out twice tonight. Remember: when Gus is out, the ' +
+     'close by. And if you ever find a kid left behind in here, keep them safe — they go ' +
+     'after kids too.',
+  3: 'Gerald takes TWO zaps. I left my old baseball in the desk — throw it to freeze him ' +
+     'from far away. Don\'t forget to pick it back up.',
+  4: 'Flipper hides in the ball pit and can hear you running. Walk when you are close.',
+  5: 'When the lights go out, Gus can sense you through walls. Hiding won\'t work. Run ' +
+     'straight for the fuse box — and don\'t stop.',
+  6: 'I left you my running shoes. You can sprint for twice as long in them.',
+  7: 'There\'s a knife in the desk drawer. It cuts their power cables — quick, and no ' +
+     'recharge, but you have to get really close.',
+  8: 'Gerald smashes games when nobody is looking. Keep the kids happy and everybody stays ' +
+     'calmer.',
+  9: 'My Taser Mk II is in the locker. It zaps from farther away and recharges twice as fast.',
+  10: 'Halfway. The power can go out twice in one night. Remember: when Gus is out, the ' +
       'others move faster, and he wakes up everyone in the junk room.',
-  11: 'Big Flashlight: brighter, wider, and the battery lasts twice as long.',
+  11: 'My Big Flashlight is under the desk: brighter, wider, and the battery lasts twice as ' +
+      'long.',
   12: 'Hear a music box in the dark? That is Gus. Get to the fuse box before he gets to you.',
-  13: 'They are getting faster every night. Fix games when you can — grumpy kids make ' +
-      'grumpy animatronics.',
-  14: 'Almost there. Keep the cameras moving. Watch the halls outside your office.',
-  15: 'This is the Magnum. It is the ONLY thing that can stop Gus — one shot freezes him. ' +
-      'Six shots a night, so make them count. It is LOUD, and everyone will hear it.',
-  16: 'Three blackouts tonight. Know where all three fuse boxes are: the Kitchen, the Ball ' +
-      'Pit and the Prize Counter.',
-  17: 'Five nights to go. You can do this.',
-  18: 'Full house tonight. Everyone is awake from midnight.',
-  19: 'Something is wrong with Gus. Tomorrow night... be ready.',
-  20: 'Gus has gone completely haywire and the fuse boxes are fried — the power is not ' +
-      'coming back. The Magnum is the only thing that can hurt him. There are ammo boxes ' +
-      'around the PlayPlace. End this.',
-  21: 'Something climbed out of the junk pile. It is made of every broken part you ever threw ' +
-      'in there. This time you are not alone — your friends are with you.',
+  13: 'They get faster every night. Fix games when you can — grumpy kids make grumpy ' +
+      'animatronics.',
+  14: 'Keep the cameras moving. Watch the halls outside your office.',
+  15: 'My Magnum is in the office safe. It is the ONLY thing that can stop Gus — one shot ' +
+      'freezes him. Six shots a night, so make them count. It is LOUD, and everyone will ' +
+      'hear it.',
+  16: 'Some nights the power goes out three times. Know where all three fuse boxes are: the ' +
+      'Kitchen, the Ball Pit and the Prize Counter.',
+  17: 'This is as far as I got before I quit. You can do better.',
+  18: 'Some nights they are ALL awake from midnight.',
+  19: 'Something is wrong with Gus. He keeps glitching. If he ever breaks for real... be ready.',
+  20: 'If Gus ever goes haywire, the fuse boxes fry and the power is not coming back. The ' +
+      'Magnum is the only thing that can hurt him. I hid ammo boxes all around the ' +
+      'PlayPlace. End this.',
+  21: 'You beat Gus. But the junk pile pulls things in. If something climbs out of it, the ' +
+      'old animatronics under the dust sheets will help you. They were my friends.',
 };
+
+// ── The gallery ─────────────────────────────────────────────────────────
+//
+// Pictures taken while the game was being made, in gallery/, shown from the 📷 tab on the
+// title screen.
+
+export const GALLERY = [
+  { file: 'old-john.jpg', caption: 'Old John, the old night guard, gives Jonathan his badge' },
+  { file: 'moony.jpg', caption: 'Moony, the possessed Gus, at his base in Laser Tag' },
+  { file: 'sunny.jpg', caption: 'Sunny is made of fog — only your flashlight shows her' },
+  { file: 'laser-tag.jpg', caption: 'The Laser Tag maze' },
+  { file: 'play-maze.jpg', caption: 'The giant, foggy Play Maze' },
+  { file: 'mega-arcade.jpg', caption: 'The Mega Arcade' },
+  { file: 'go-karts.jpg', caption: 'The Go-Kart Track' },
+  { file: 'coming-soon.jpg', caption: 'Before Day 11: the new wing, boarded up' },
+  { file: 'guard-note.jpg', caption: 'The old night guard knew all along' },
+  { file: 'crouch.jpg', caption: 'Crouching — Cranker can\'t see you' },
+  { file: 'timmy.jpg', caption: 'Timmy and his bowl cut' },
+  { file: 'hard-star.jpg', caption: 'Beat a night on Nightmare, get a star' },
+  { file: 'night-one.jpg', caption: 'Night 1: "nothing ever happens here"' },
+];
 
 // ── Input ───────────────────────────────────────────────────────────────
 //
@@ -345,6 +442,8 @@ export const KEYMAP = {
   left:       { keys: ['KeyA'],                  label: 'Step left',     show: 'A' },
   right:      { keys: ['KeyD'],                  label: 'Step right',    show: 'D' },
   sprint:     { keys: ['ShiftLeft', 'ShiftRight'], label: 'Sprint',      show: 'SHIFT' },
+  // Not Ctrl: Ctrl+W (crouch while walking) would close the tab.
+  crouch:     { keys: ['KeyC'],                  label: 'Crouch / stand (only Gus sees you)', show: 'C' },
   interact:   { keys: ['KeyE'],                  label: 'Use / fix / grab', show: 'E' },
   flashlight: { keys: ['KeyF'],                  label: 'Flashlight',    show: 'F' },
   swap:       { keys: ['KeyQ'],                  label: 'Next weapon',   show: 'Q' },

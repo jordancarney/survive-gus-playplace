@@ -2,7 +2,7 @@
 //
 // The save only ever changes at 6 AM. That is what makes "lose and you start the night over"
 // work for free: a caught Jonathan reloads the profile as it was when the night began.
-import { HAPPINESS, NIGHTS, GFX_KEY } from './config.js';
+import { HAPPINESS, NIGHTS, GFX_KEY, DIFFICULTY_KEY, DIFFICULTIES } from './config.js';
 
 const KEY = 'survive_gus_save_v1';
 
@@ -16,6 +16,8 @@ export const freshProfile = () => ({
   timmyHome: false,         // Timmy's gramma has picked him up
   seen: {},                 // cutscenes that only play once
   best: 1,                  // furthest night reached, for the night select
+  stars: {},                // nights beaten on Hard (night number, or 'home')
+  badge: false,             // Old John's badge, for finishing the whole game
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },
 });
 
@@ -27,7 +29,12 @@ export function loadProfile() {
     // missing a field that newer code reads.
     const saved = JSON.parse(raw);
     const base = freshProfile();
-    const p = { ...base, ...saved, stats: { ...base.stats, ...(saved.stats || {}) }, seen: { ...(saved.seen || {}) } };
+    const p = {
+      ...base, ...saved,
+      stats: { ...base.stats, ...(saved.stats || {}) },
+      seen: { ...(saved.seen || {}) },
+      stars: { ...(saved.stars || {}) },
+    };
     p.night = Math.max(1, Math.min(NIGHTS.length, p.night | 0));
     p.best = Math.max(p.best | 0, p.night);
     p.happiness = Math.max(0, Math.min(100, Number(p.happiness) || HAPPINESS.start));
@@ -43,9 +50,43 @@ export function clearProfile() {
   try { localStorage.removeItem(KEY); } catch {}
 }
 
-// The graphics setting lives beside the save, not in it. Switching rebuilds every material,
-// so it reloads the page.
+// The settings live beside the save, not in it, so a new game keeps them.
+
+// Switching graphics rebuilds every material, so it reloads the page — and reopens Settings
+// afterwards, so you see what you picked.
+const REOPEN_KEY = 'survive_gus_reopen_settings';
+
 export function saveGraphics(mode) {
   try { localStorage.setItem(GFX_KEY, mode); } catch {}
+  try { sessionStorage.setItem(REOPEN_KEY, '1'); } catch {}
   location.reload();
+}
+
+export function takeReopenSettings() {
+  try {
+    const yes = sessionStorage.getItem(REOPEN_KEY) === '1';
+    sessionStorage.removeItem(REOPEN_KEY);
+    return yes;
+  } catch { return false; }
+}
+
+export function loadDifficulty() {
+  try {
+    const d = localStorage.getItem(DIFFICULTY_KEY);
+    return DIFFICULTIES[d] ? d : 'medium';
+  } catch { return 'medium'; }
+}
+
+export function saveDifficulty(d) {
+  try { localStorage.setItem(DIFFICULTY_KEY, d); } catch {}
+}
+
+const DEBUG_KEY = 'survive_gus_debug';
+
+export function loadDebug() {
+  try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; }
+}
+
+export function saveDebug(on) {
+  try { if (on) localStorage.setItem(DEBUG_KEY, '1'); else localStorage.removeItem(DEBUG_KEY); } catch {}
 }

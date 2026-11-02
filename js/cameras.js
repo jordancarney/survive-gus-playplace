@@ -1,18 +1,21 @@
 // The security camera monitor at Jonathan's desk.
 //
-// Twelve cameras, each a real viewpoint in the building, rendered live: an animatronic on
+// Twelve cameras (sixteen once the new wing opens), each a real viewpoint in the building,
+// rendered live: an animatronic on
 // a camera is exactly where it is. The picture is brightened (night vision) and tinted,
 // slowly pans back and forth, and fills with static when Chomper has chewed the cable,
 // when something big walks right under it, or when the power is out.
 import * as THREE from 'three';
-import { ROOMS, GRID_W, GRID_H, planOf } from './map.js';
+import { ROOMS, GRID_W, GRID_H, OLD_W, OLD_H, planOf } from './map.js';
 import { sfx } from './audio.js';
 import { exitPointerLock, requestPointerLock } from './input.js';
 
 export class CameraSystem {
   constructor(game) {
     this.game = game;
-    this.cams = game.decor.cams;
+    this.all = game.decor.cams;
+    this.cams = this.all;     // the ones you can switch to: the new wing's only once it's open
+    this.wing = true;
     this.cam = new THREE.PerspectiveCamera(64, 16 / 9, 0.1, 90);
     this.index = 0;
     this.active = false;
@@ -38,16 +41,29 @@ export class CameraSystem {
     this.monitorTargets = [0, 1, 2].map(() => new THREE.WebGLRenderTarget(192, 108));
   }
 
+  setWing(open) {
+    this.wing = open;
+    this.cams = this.all.filter((c) => open || !c.wing);
+    this.index = Math.min(this.index, this.cams.length - 1);
+    this.buildMap();
+  }
+
+  // The map grows to take in the new wing once it's open.
   buildMap() {
     const map = document.getElementById('camMap');
+    map.innerHTML = '';
+    const W = this.wing ? GRID_W : OLD_W, H = this.wing ? GRID_H : OLD_H;
+    map.style.aspectRatio = `${W} / ${H}`;
+    map.style.width = this.wing ? 'min(440px, 54vw)' : '';
     this.roomEls = {};
     for (const [id, r] of Object.entries(ROOMS)) {
+      if (r.wing && !this.wing) continue;
       const el = document.createElement('div');
       el.className = 'room';
-      el.style.left = (r.x0 / GRID_W) * 100 + '%';
-      el.style.top = (r.z0 / GRID_H) * 100 + '%';
-      el.style.width = ((r.x1 - r.x0 + 1) / GRID_W) * 100 + '%';
-      el.style.height = ((r.z1 - r.z0 + 1) / GRID_H) * 100 + '%';
+      el.style.left = (r.x0 / W) * 100 + '%';
+      el.style.top = (r.z0 / H) * 100 + '%';
+      el.style.width = ((r.x1 - r.x0 + 1) / W) * 100 + '%';
+      el.style.height = ((r.z1 - r.z0 + 1) / H) * 100 + '%';
       const warn = document.createElement('span');
       warn.className = 'warn';
       el.appendChild(warn);
@@ -59,8 +75,8 @@ export class CameraSystem {
       b.className = 'cam-btn';
       b.textContent = String(c.id).padStart(2, '0');
       const { px, pz } = planOf(c.pos.x, c.pos.z);
-      b.style.left = (Math.min(GRID_W - 2, Math.max(2, px)) / GRID_W) * 100 + '%';
-      b.style.top = (Math.min(GRID_H - 1.5, Math.max(1.5, pz)) / GRID_H) * 100 + '%';
+      b.style.left = (Math.min(W - 2, Math.max(2, px)) / W) * 100 + '%';
+      b.style.top = (Math.min(H - 1.5, Math.max(1.5, pz)) / H) * 100 + '%';
       b.addEventListener('click', (e) => { e.stopPropagation(); this.switchTo(i); });
       map.appendChild(b);
       return b;

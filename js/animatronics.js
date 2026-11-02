@@ -10,6 +10,7 @@
 // you are, and only the Magnum stops him.
 import * as THREE from 'three';
 import { ANIMATRONICS, AI, BOSS, moodOf } from './config.js';
+import { WING_HOMES } from './map.js';
 import { buildAnimatronic, poseRig, setEyes } from './models.js';
 import { resolveCircle } from './physics.js';
 import { sfx, startMusicBox, stopMusicBox } from './audio.js';
@@ -93,7 +94,7 @@ export class Animatronic {
 
   speedMult() {
     const l = this.level();
-    return (0.85 + l * 0.015) * (this.game.night.bossed && this.id !== 'gus' ? AI.bossedSpeed : 1);
+    return (0.85 + l * 0.015) * (this.game.night.bossed && this.id !== 'gus' ? AI.bossedSpeed : 1) * this.game.diff.speed;
   }
 
   // ── Movement ──────────────────────────────────────────────────────────
@@ -203,9 +204,13 @@ export class Animatronic {
 
   preyPos() { return this.preyIsTimmy ? this.game.timmy.pos : this.game.player.pos; }
 
+  // Crouching hides Jonathan from everyone except Gus (and the Junk Monster, which has his
+  // head and doesn't look for you anyway — it always knows).
+  playerHidden() { return this.game.player.crouching && this.id !== 'gus'; }
+
   sensesPlayer() {
     const player = this.game.player;
-    if (!this.game.hunting) return false;
+    if (!this.game.hunting || this.playerHidden()) return false;
     const dx = player.pos.x - this.pos.x, dz = player.pos.z - this.pos.z;
     const d = Math.hypot(dx, dz);
     const sight = this.def.sight * (0.8 + this.level() * 0.02);
@@ -407,14 +412,14 @@ export class Animatronic {
     this.sink += (wantSink - this.sink) * Math.min(1, dt * 2);
 
     // Footsteps
-    if (this.speed > 0.2) {
+    if (this.speed > 0.2 && !this.def.silent) {
       this.stepAcc += this.speed * dt;
-      if (this.stepAcc > 0.85) { this.stepAcc = 0; sfx.step(this.id, this.pos); }
+      if (this.stepAcc > 0.85) { this.stepAcc = 0; sfx.step(this.def.steps || this.id, this.pos); }
     }
 
     if (night && this.game.hunting && this.dangerous && this.state !== 'return' && this.state !== 'stage') {
       const reach = AI.catchRadius + this.rig.radius * 0.5;
-      if (this.distToPlayer() < reach && Math.abs(this.game.player.pos.y - this.pos.y) < 1.2) this.game.caught(this);
+      if (this.distToPlayer() < reach && Math.abs(this.game.player.pos.y - this.pos.y) < 1.2 && !this.playerHidden()) this.game.caught(this);
       const t = this.game.timmy;
       if (this.game.mode === 'night' && t.vulnerable && Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) < reach) this.game.timmyCaught(this);
     }
@@ -477,7 +482,7 @@ export class Animatronic {
   }
 
   updateChase(dt) {
-    const sees = this.senses() || this.distToPlayer() < 3;
+    const sees = this.senses() || (this.distToPlayer() < 3 && !this.playerHidden());
     const prey = this.preyPos();
     if (sees) {
       this.lastSeen.copy(prey);
@@ -539,7 +544,7 @@ export class Animatronic {
     }
     let speed = this.def.chase * (0.9 + this.game.night.levelOf('gus') * 0.012);
     if (this.game.night.boss === 'gus') speed = BOSS.gus.speed[this.game.night.bossPhase()];
-    this.follow(dt, speed);
+    this.follow(dt, speed * this.game.diff.speed);
   }
 
   // ── Night 21: friends ─────────────────────────────────────────────────
@@ -650,6 +655,185 @@ export class Animatronic {
     r.rotation.x += (tipX - r.rotation.x) * Math.min(1, dt * 10);
     const phase = pose === 'walk' || pose === 'chase' ? this.animT * (4 + this.speed * 1.6) : this.animT;
     poseRig(this.rig, pose, phase, amt, dt);
+  }
+}
+
+// ── Moony and Sunny ─────────────────────────────────────────────────────
+//
+// The new wing's two, from Night 11. Each lives in one room and never leaves it: always
+// awake, it wanders and hunts only in its room from the first second of the night, and
+// gives up the moment you get out. Moony is Gus, possessed: he vanishes and pops up
+// somewhere else in Laser Tag, crouching doesn't hide you from him, and only the Magnum
+// stops him. Sunny is made of fog: she drifts straight through the Play Maze's walls, and
+// she's almost invisible unless your flashlight is on her.
+
+export class WingBot extends Animatronic {
+  constructor(game, id) {
+    super(game, id);
+    this.room = this.def.room;
+    this.blink = 10;          // Moony: seconds to his next vanish
+    this.vis = 1;             // Sunny: how solid she looks
+    this.hide();
+  }
+
+  get home() {
+    const [x, z] = WING_HOMES[this.id];
+    return this.game.playplace.P(x, z);
+  }
+
+  hide() { this.state = 'hidden'; this.root.visible = false; }
+
+  // Only there while the new wing is open and you're at the PlayPlace.
+  resetToStage() {
+    if (!this.game.wingOpen || !this.game.area.isPlayPlace) { this.hide(); return; }
+    super.resetToStage();
+    this.blink = this.nextBlink();
+    this.reveal(1);
+  }
+
+  playerHere() {
+    const p = this.game.player.pos;
+    return this.game.area.isPlayPlace && this.game.place.roomAt(p.x, p.z) === this.room;
+  }
+
+  playerHidden() { return this.id === 'moony' ? false : super.playerHidden(); }
+
+  // Always awake: they're up and about from the first second of the night.
+  updateStage() {
+    if (this.game.mode === 'night' && this.level() > 0) {
+      this.state = 'roam';
+      this.pickDestination();
+    }
+  }
+
+  pickDestination() {
+    this.mischief = null;
+    this.goTo(this.game.place.randomPointIn(this.room));
+  }
+
+  sensesPlayer() {
+    if (!this.game.hunting || !this.playerHere() || this.playerHidden()) return false;
+    if (this.id !== 'sunny') return super.sensesPlayer();
+    // fog doesn't need to see you: close enough, and she knows, walls or no walls
+    return this.distToPlayer() < this.def.sight * (0.8 + this.level() * 0.02);
+  }
+
+  updateChase(dt) {
+    if (!this.playerHere()) { this.giveUp(); return; }
+    if (this.id === 'sunny') {
+      this.path = [this.game.player.pos.clone()];
+      this.follow(dt, this.def.chase * this.speedMult());
+      return;
+    }
+    super.updateChase(dt);
+  }
+
+  giveUp() {
+    if (this.id === 'moony') this.teleport();
+    this.state = 'linger';
+    this.timer = 2 + Math.random() * 3;
+  }
+
+  // Sunny drifts in a straight line, through anything.
+  goTo(point) {
+    if (this.id !== 'sunny') return super.goTo(point);
+    this.dest = point.clone();
+    this.path = [point.clone()];
+  }
+
+  follow(dt, speed) {
+    if (this.id !== 'sunny') return super.follow(dt, speed);
+    if (!this.path.length) return true;
+    const wp = this.path[0];
+    const dx = wp.x - this.pos.x, dz = wp.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.3) { this.path.shift(); return this.path.length === 0; }
+    const step = Math.min(d, speed * dt);
+    this.pos.x += (dx / d) * step;
+    this.pos.z += (dz / d) * step;
+    this.turnToward(dx, dz, dt, 6);
+    this.speed = step / dt;
+    return false;
+  }
+
+  // ── Moony ──
+
+  nextBlink() { const [a, b] = this.def.blink || [10, 10]; return a + Math.random() * (b - a); }
+
+  // Vanish in a puff of sparks and pop up somewhere else in Laser Tag — never right on top of you.
+  teleport() {
+    const fx = this.game.effects;
+    fx.burst(new THREE.Vector3(this.pos.x, 1.2, this.pos.z), 20, 4, 2);
+    sfx.spark(this.pos);
+    let p = this.home;
+    for (let k = 0; k < 16; k++) {
+      p = this.game.place.randomPointIn(this.room);
+      if (p.distanceTo(this.game.player.pos) > 8) break;
+    }
+    this.pos.copy(p);
+    this.path = [];
+    this.blink = this.nextBlink();
+    fx.burst(new THREE.Vector3(this.pos.x, 1.2, this.pos.z), 20, 4, 2);
+    sfx.spark(this.pos);
+  }
+
+  hit(kind) {
+    if (this.id !== 'moony') return super.hit(kind);
+    const fx = this.game.effects;
+    const at = new THREE.Vector3(this.pos.x, this.pos.y + this.chestY, this.pos.z);
+    if (this.state === 'stage') { sfx.zapFizzle(); fx.burst(at, 6, 2, 2); return 'asleep'; }
+    if (kind !== 'magnum') { sfx.zapFizzle(); fx.burst(at, 6, 2, 2); return 'moonyFizzle'; }
+    fx.burst(at, 24, 5);
+    this.freezeTimer = AI.gusFreeze;
+    sfx.stagger(this.pos);
+    return 'moonyFreeze';
+  }
+
+  // ── Sunny ──
+
+  // How solid she looks: almost nothing in the fog, unless your flashlight is on her.
+  fade(dt) {
+    let want = 0.08;
+    if (['down', 'carried', 'junked', 'stagger'].includes(this.state)) want = 1;
+    else if (this.game.mode === 'day') want = 0.7;
+    else if (this.inBeam()) want = 0.95;
+    this.reveal(this.vis + (want - this.vis) * Math.min(1, dt * 4));
+  }
+
+  reveal(v) {
+    this.vis = v;
+    if (this.rig.fogMats) for (const f of this.rig.fogMats) f.mat.opacity = f.full * v;
+  }
+
+  inBeam() {
+    const p = this.game.player;
+    if (!p.lightOn || !p.lightVisible) return false;
+    const aim = p.aimDir();
+    const dx = this.pos.x - p.pos.x, dz = this.pos.z - p.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1.5) return true;
+    if (d > p.flashlight.distance) return false;
+    const cos = (aim.x * dx + aim.z * dz) / (d * (Math.hypot(aim.x, aim.z) || 1));
+    return cos > Math.cos(p.flashlight.angle) && this.game.place.sightClear(p.pos, this.pos);
+  }
+
+  update(dt) {
+    if (this.state === 'hidden') return;
+    if (this.id === 'moony' && this.freezeTimer > 0) {
+      // frozen by the Magnum: can't move or catch you, then he's gone
+      this.freezeTimer -= dt;
+      if (Math.random() < dt * 6) setEyes(this.rig, Math.random() < 0.5 ? 'dim' : 'on');
+      if (this.freezeTimer <= 0) { setEyes(this.rig, 'on'); this.giveUp(); }
+      this.render(dt);
+      return;
+    }
+    if (this.id === 'moony' && (this.state === 'roam' || this.state === 'linger')) {
+      this.blink -= dt;
+      if (this.blink <= 0) this.teleport();
+    }
+    super.update(dt);
+    if (this.id === 'moony' && this.state === 'search') this.giveUp();
+    if (this.id === 'sunny') this.fade(dt);
   }
 }
 
@@ -788,7 +972,7 @@ export class JunkMonster extends Animatronic {
     this.repath -= dt;
     if (this.game.place.walkClear(this.pos, player.pos, 0.6)) this.path = [player.pos.clone()];
     else if (this.repath <= 0 || !this.path.length) { this.repath = 0.5; this.path = this.game.place.findPath(this.pos, player.pos); }
-    this.follow(dt, BOSS.junk.speed[this.phase()]);
+    this.follow(dt, BOSS.junk.speed[this.phase()] * this.game.diff.speed);
     if (this.speed > 0.2) {
       this.stepAcc += this.speed * dt;
       if (this.stepAcc > 1.2) { this.stepAcc = 0; sfx.step('junk', this.pos); }

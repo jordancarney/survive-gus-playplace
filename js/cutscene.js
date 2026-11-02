@@ -5,10 +5,12 @@
 // dialogue typed out letterbox-style. Scripts live in story.js; this module only plays them.
 //
 // Space / Enter / a click finishes the line or moves to the next shot; Escape or the Skip
-// button ends the whole thing.
+// button ends the whole thing. Jonathan's and Timmy's lines are also said out loud, from
+// recordings (voices.js), and a shot waits for them to finish talking.
 import { input } from './input.js';
-import { poseRig } from './models.js';
+import { poseRig, setMouth } from './models.js';
 import { playMusic, stopMusic } from './audio.js';
+import { speak, stopSpeaking, speaking, talkLevel, hasVoice } from './voices.js';
 
 const $ = (id) => document.getElementById(id);
 export const smooth = (k) => k * k * (3 - 2 * k);
@@ -16,7 +18,7 @@ export const smooth = (k) => k * k * (3 - 2 * k);
 const SPEAKER_COLORS = {
   Jonathan: '#2de2e6', Manager: '#ffd23f', Gus: '#ff9a1f', Gerald: '#ff6b6b',
   Chomper: '#9cff6b', Cranker: '#6fe3ff', Flipper: '#ff7ad1',
-  Timmy: '#7cff6b', Gramma: '#ff9ad5', 'Old Gus': '#d9b48a', '???': '#d9b48a',
+  Timmy: '#7cff6b', Gramma: '#ff9ad5', 'Old John': '#cfd6e0', 'Old Gus': '#d9b48a', '???': '#d9b48a',
 };
 
 export class Cutscene {
@@ -30,6 +32,7 @@ export class Cutscene {
     this.cardEl = $('cutCard');
     this.fadeEl = $('fade');
     this.poses = new Map();
+    this.mouths = new Map();   // rig → how open its mouth is, while it talks or closes after
     this.shake = 0;
     $('cutSkip').addEventListener('click', (e) => { e.stopPropagation(); this.finish(); });
     this.ui.addEventListener('click', () => this.advance());
@@ -73,6 +76,7 @@ export class Cutscene {
     this.subEl.classList.toggle('narrator', !s.who);
     this.cardEl.classList.toggle('hidden', !s.card);
     if (s.card) this.cardEl.textContent = s.card;
+    speak(s.voice);
     this.fadeEl.style.transition = 'none';
     this.fadeEl.style.opacity = s.fade === 'in' ? '1' : '0';
     if (s.start) s.start(this.game, this);
@@ -88,6 +92,9 @@ export class Cutscene {
   finish() {
     if (!this.active) return;
     this.active = false;
+    stopSpeaking();
+    for (const rig of this.mouths.keys()) setMouth(rig, 0);
+    this.mouths.clear();
     this.ui.classList.add('hidden');
     this.fadeEl.style.opacity = '0';
     this.fadeEl.style.transition = '';
@@ -175,6 +182,7 @@ export class Cutscene {
       poseRig(a.rig, st.pose, st.phase, st.amt, dt);
     }
     if (s.update) s.update(g, this, k, dt);
+    this.moveMouths(dt);
 
     if (s.fade === 'out') this.fadeEl.style.opacity = String(Math.max(0, (k - 0.6) / 0.4));
     if (s.fade === 'in') this.fadeEl.style.opacity = String(Math.max(0, 1 - k / 0.4));
@@ -182,7 +190,43 @@ export class Cutscene {
     const line = s.line || '';
     if (this.typed < line.length) this.typed = Math.min(line.length, this.typed + dt * 45);
     this.textEl.textContent = line.slice(0, Math.floor(this.typed));
-    if (this.t >= this.dur && this.typed >= line.length) this.next();
+    // Let them finish what they're saying — but never wait on a voice for long.
+    const talking = speaking() && this.t < this.dur + 6;
+    if (this.t >= this.dur && this.typed >= line.length && !talking) this.next();
+  }
+
+  // Whoever is talking moves their mouth: with the recording when there is one, and otherwise
+  // for about as long as it would take to say the line.
+  moveMouths(dt) {
+    const s = this.shot;
+    const talker = s.who ? this.actor(s.who) : null;
+    let open = 0;
+    if (talker) {
+      const line = s.line || '';
+      if (hasVoice(s.voice)) open = talkLevel();
+      else if (this.t < Math.min(this.dur, 0.4 + line.length / 15)) open = Math.abs(Math.sin(this.t * 13)) * 0.8;
+      if (!this.mouths.has(talker.rig)) this.mouths.set(talker.rig, 0);
+    }
+    for (const [rig, cur] of this.mouths) {
+      const want = talker && rig === talker.rig ? open : 0;
+      const next = cur + (want - cur) * Math.min(1, dt * 25);
+      if (want === 0 && next < 0.01) { setMouth(rig, 0); this.mouths.delete(rig); continue; }
+      setMouth(rig, next);
+      this.mouths.set(rig, next);
+    }
+  }
+
+  actor(who) {
+    const g = this.game;
+    switch (who) {
+      case 'Jonathan': return g.people.jonathan;
+      case 'Manager': return g.people.manager;
+      case 'Gramma': return g.people.gramma;
+      case 'Old John': return g.people.oldJohn;
+      case 'Timmy': return g.timmy;
+      case 'Old Gus': case '???': return g.oldBots.find((a) => a.id === 'gus');
+      default: return g.bot(who.toLowerCase()) || null;
+    }
   }
 }
 

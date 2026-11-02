@@ -4,16 +4,26 @@
 // Everything is laid out on a 1 m grid in "plan" coordinates — metres from the building's
 // north-west corner, x to the east, z to the south. Rooms are rectangles of cells with a
 // one-cell wall between neighbours; a door is a few wall cells carved open. World space is
-// the plan shifted so the building is centred on the origin.
+// the plan shifted so the original building is centred on the origin.
+//
+// The east and south (x 60 on) is the new wing that opens on Day 11: the Mega Arcade, the
+// Wing Hall, the Go-Kart Track, Laser Tag and the giant Play Maze. It's always built, but
+// until then its two doorways are boarded up (setWingOpen), which closes them to walking,
+// seeing and pathfinding. Laser Tag and the Play Maze are real mazes, generated from a fixed
+// seed so they're the same every time — Moony lives in one and Sunny in the other.
 import * as THREE from 'three';
 import * as T from './textures.js';
 import { surface } from './materials.js';
 
-export const GRID_W = 60;
-export const GRID_H = 44;
+export const GRID_W = 111;
+export const GRID_H = 79;
 export const WALL_H = 4.6;
-const OX = GRID_W / 2;
-const OZ = GRID_H / 2;
+// The size before the new wing, and where the origin stays: the wing grew the building east
+// and south without moving anything that was already there.
+export const OLD_W = 60;
+export const OLD_H = 44;
+const OX = OLD_W / 2;
+const OZ = OLD_H / 2;
 
 // Plan metres → world. `y` is passed through so call sites read naturally.
 export const P = (px, pz, y = 0) => new THREE.Vector3(px - OX, y, pz - OZ);
@@ -43,6 +53,18 @@ export const ROOMS = {
        floor: () => T.carpet('#120e33'), wall: ['#120e33', '#2de2e6', '#ff3fa4', 'stars'] },
   R: { name: 'Prize Counter',   x0: 46, z0: 29, x1: 58, z1: 42,
        floor: () => T.carpet('#14304a'), wall: ['#ffd23f', '#ff3fa4', '#2a4fa0', 'stripes'] },
+  // ── The new wing (Day 11 on) ──
+  C: { name: 'Mega Arcade',     x0: 60, z0: 1,  x1: 72,  z1: 17, wing: true,
+       floor: () => T.carpet('#1a0e3a'), wall: ['#1a0e3a', '#ff3fa4', '#2de2e6', 'stars'] },
+  W: { name: 'Wing Hall',       x0: 60, z0: 19, x1: 67,  z1: 50, wing: true,
+       floor: () => T.checker('#ece8f5', '#2a4fa0'), wall: ['#2a4fa0', '#ffd23f', '#1d1c24', 'stripes'] },
+  G: { name: 'Go-Kart Track',   x0: 74, z0: 1,  x1: 95,  z1: 23, wing: true,
+       floor: () => T.concrete(), wall: ['#2b2d33', '#ff3b30', '#f4f1ea', 'stripes'] },
+  // Both mazes are sized to a whole number of 3 m maze cells (2 m corridor + 1 m wall).
+  L: { name: 'Laser Tag',       x0: 69, z0: 25, x1: 109, z1: 50, wing: true,
+       floor: () => T.carpet('#07051a'), wall: ['#07051a', '#3cff6b', '#a970ff', 'stars'] },
+  M: { name: 'Play Maze',       x0: 60, z0: 52, x1: 109, z1: 77, wing: true,
+       floor: () => T.playmat(), wall: ['#2a4fa0', '#7cff6b', '#ff9a1f', 'bubbles'] },
 };
 
 // Inclusive wall cells to carve open, and the two rooms each door joins.
@@ -63,7 +85,102 @@ export const DOORS = [
   { a: 'O', b: 'H', x0: 33, z0: 31, x1: 35, z1: 31 },
   { a: 'E', b: 'H', x0: 41, z0: 31, x1: 43, z1: 31 },
   { a: 'O', b: 'E', x0: 39, z0: 38, x1: 39, z1: 40 },
+  // The new wing: two ways in (boarded up until Day 11), then the hall joins everything. The
+  // doors into the mazes line up with their corridors.
+  { a: 'A', b: 'C', x0: 59, z0: 14, x1: 59, z1: 16, wing: true },
+  { a: 'R', b: 'W', x0: 59, z0: 30, x1: 59, z1: 32, wing: true },
+  { a: 'C', b: 'W', x0: 61, z0: 18, x1: 64, z1: 18 },
+  { a: 'C', b: 'G', x0: 73, z0: 7,  x1: 73, z1: 9 },
+  { a: 'W', b: 'L', x0: 68, z0: 34, x1: 68, z1: 35 },
+  { a: 'G', b: 'L', x0: 84, z0: 24, x1: 85, z1: 24 },
+  { a: 'W', b: 'M', x0: 63, z0: 51, x1: 64, z1: 51 },
+  { a: 'L', b: 'M', x0: 99, z0: 51, x1: 100, z1: 51 },
 ];
+
+// ── The mazes ───────────────────────────────────────────────────────────
+//
+// A maze fills a room with 3 m cells: a 2 m corridor and a 1 m wall. It's carved by a
+// depth-first walk from a fixed seed (so it's the same maze every time), then `braid` of its
+// dead ends are knocked through so there are loops to run round, and each `open` block of
+// cells [i0, j0, i1, j1] is cleared out — the clearing where its animatronic lives. Returns
+// the wall cells, merged into rectangles, inclusive.
+
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function maze(r, { seed, braid = 0, open = [] }) {
+  const rand = seeded(seed);
+  const W = r.x1 - r.x0 + 1, H = r.z1 - r.z0 + 1;
+  const cw = (W + 1) / 3, ch = (H + 1) / 3;
+  const wall = [];
+  for (let z = 0; z < H; z++) wall.push(Array.from({ length: W }, (_, x) => x % 3 === 2 || z % 3 === 2));
+  const seen = Array.from({ length: ch }, () => new Array(cw).fill(false));
+  const knock = (i, j, di, dj) => {
+    if (di) for (let k = 0; k < 2; k++) wall[j * 3 + k][i * 3 + (di > 0 ? 2 : -1)] = false;
+    else for (let k = 0; k < 2; k++) wall[j * 3 + (dj > 0 ? 2 : -1)][i * 3 + k] = false;
+  };
+  const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const inside = (i, j) => i >= 0 && j >= 0 && i < cw && j < ch;
+  const stack = [[0, 0]];
+  seen[0][0] = true;
+  while (stack.length) {
+    const [i, j] = stack[stack.length - 1];
+    const next = DIRS4.filter(([di, dj]) => inside(i + di, j + dj) && !seen[j + dj][i + di]);
+    if (!next.length) { stack.pop(); continue; }
+    const [di, dj] = next[Math.floor(rand() * next.length)];
+    knock(i, j, di, dj);
+    seen[j + dj][i + di] = true;
+    stack.push([i + di, j + dj]);
+  }
+  // knock through some dead ends
+  const closedSide = (i, j, di, dj) => {
+    if (di) return wall[j * 3][i * 3 + (di > 0 ? 2 : -1)];
+    return wall[j * 3 + (dj > 0 ? 2 : -1)][i * 3];
+  };
+  for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+    const shut = DIRS4.filter(([di, dj]) => inside(i + di, j + dj) && closedSide(i, j, di, dj));
+    const exits = DIRS4.filter(([di, dj]) => inside(i + di, j + dj)).length - shut.length;
+    if (exits === 1 && rand() < braid) {
+      const [di, dj] = shut[Math.floor(rand() * shut.length)];
+      knock(i, j, di, dj);
+    }
+  }
+  for (const [i0, j0, i1, j1] of open) {
+    for (let z = j0 * 3; z <= j1 * 3 + 1; z++) for (let x = i0 * 3; x <= i1 * 3 + 1; x++) wall[z][x] = false;
+  }
+  // merge into rectangles
+  const used = wall.map((row) => row.map(() => false));
+  const rects = [];
+  for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
+    if (!wall[z][x] || used[z][x]) continue;
+    let x1 = x;
+    while (x1 + 1 < W && wall[z][x1 + 1] && !used[z][x1 + 1]) x1++;
+    let z1 = z;
+    grow: while (z1 + 1 < H) {
+      for (let k = x; k <= x1; k++) if (!wall[z1 + 1][k] || used[z1 + 1][k]) break grow;
+      z1++;
+    }
+    for (let zz = z; zz <= z1; zz++) for (let k = x; k <= x1; k++) used[zz][k] = true;
+    rects.push({ x0: r.x0 + x, z0: r.z0 + z, x1: r.x0 + x1, z1: r.z0 + z1 });
+  }
+  return rects;
+}
+
+// The cell blocks cleared for each animatronic's home, and where in it they stand.
+export const MAZES = {
+  L: maze(ROOMS.L, { seed: 7, braid: 0.6, open: [[6, 3, 7, 5]] }),
+  M: maze(ROOMS.M, { seed: 11, braid: 0.12, open: [[7, 3, 9, 5]] }),
+};
+export const WING_HOMES = { moony: [89, 37.5], sunny: [84.5, 64.5] };
+export const INNER_WALLS = [...MAZES.L, ...MAZES.M];
 
 const WALL = '#';
 
@@ -125,6 +242,9 @@ export class Building {
     for (let z = 0; z < this.h; z++) this.grid.push(new Array(this.w).fill(WALL));
     for (const [id, r] of Object.entries(this.rooms)) {
       for (let z = r.z0; z <= r.z1; z++) for (let x = r.x0; x <= r.x1; x++) this.grid[z][x] = id;
+    }
+    for (const w of layout.walls || []) {
+      for (let z = w.z0; z <= w.z1; z++) for (let x = w.x0; x <= w.x1; x++) this.grid[z][x] = WALL;
     }
     // Door cells belong to their first room, so "which room am I in" always has an answer.
     for (const d of this.doors) {
@@ -290,6 +410,26 @@ export class Building {
     return this.P((r.x0 + r.x1) / 2 + 0.5, (r.z0 + r.z1) / 2 + 0.5);
   }
 
+  // Board the new wing's doorways up, or take the boards down. Closed, their cells are wall
+  // as far as walking, sight and pathfinding go, and a collider stands in each.
+  setWingOpen(open) {
+    if (!this.gates) {
+      this.gates = this.doors.filter((d) => d.wing).map((d) => ({
+        door: d, collider: this.addBlock(d.x0, d.z0, d.x1 + 1, d.z1 + 1, this.wallH, { nav: false }),
+      }));
+    }
+    this.wingOpen = open;
+    for (const { door: d, collider } of this.gates) {
+      for (let z = d.z0; z <= d.z1; z++) for (let x = d.x0; x <= d.x1; x++) {
+        this.grid[z][x] = open ? d.a : WALL;
+        this.walkable[z * this.w + x] = open ? 1 : 0;
+      }
+      const i = this.colliders.indexOf(collider);
+      if (open && i >= 0) this.colliders.splice(i, 1);
+      if (!open && i < 0) this.colliders.push(collider);
+    }
+  }
+
   roomCenter(roomId) {
     const r = this.rooms[roomId];
     return this.P((r.x0 + r.x1 + 1) / 2, (r.z0 + r.z1 + 1) / 2);
@@ -438,24 +578,29 @@ export class Building {
 
     // Light panels, a grid of them per room. Lit by day, dead by night.
     if (this.layout.panels === false) return;
+    // One instanced mesh per room, so the big new rooms don't cost a draw call per panel.
     const panelGeo = new THREE.BoxGeometry(1.6, 0.06, 0.8);
+    const m4 = new THREE.Matrix4();
     for (const [id, r] of Object.entries(this.rooms)) {
       const mat = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });
       const w = r.x1 - r.x0 + 1, d = r.z1 - r.z0 + 1;
       const nx = Math.max(1, Math.round(w / 6)), nz = Math.max(1, Math.round(d / 6));
+      const panels = new THREE.InstancedMesh(panelGeo, mat, nx * nz);
       for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) {
-        const p = new THREE.Mesh(panelGeo, mat);
-        p.position.copy(this.P(r.x0 + (i + 0.5) * w / nx, r.z0 + (k + 0.5) * d / nz, this.wallH - 0.03));
-        p.matrixAutoUpdate = false;
-        p.updateMatrix();
-        this.group.add(p);
+        const p = this.P(r.x0 + (i + 0.5) * w / nx, r.z0 + (k + 0.5) * d / nz, this.wallH - 0.03);
+        panels.setMatrixAt(i * nz + k, m4.makeTranslation(p.x, p.y, p.z));
       }
+      this.group.add(panels);
       this.ceilingLights.push({ room: id, mat });
     }
   }
 }
 
-export const PLAYPLACE = { w: GRID_W, h: GRID_H, wallH: WALL_H, rooms: ROOMS, doors: DOORS };
+export const PLAYPLACE = {
+  w: GRID_W, h: GRID_H, wallH: WALL_H, rooms: ROOMS, doors: DOORS, walls: INNER_WALLS,
+  offsetX: GRID_W / 2 - OX, offsetZ: GRID_H / 2 - OZ,
+};
+export const WING_ROOMS = Object.keys(ROOMS).filter((id) => ROOMS[id].wing);
 
 export class PlayPlace extends Building {
   constructor() { super(PLAYPLACE); }

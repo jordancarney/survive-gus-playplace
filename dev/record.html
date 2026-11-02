@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Survive Gus's PlayPlace — Voice Recorder</title>
+  <style>
+    :root {
+      --bg: #0b0716; --ink: #f3eefe; --dim: #a99cc4; --pink: #ff3fa4; --cyan: #2de2e6;
+      --yellow: #ffd23f; --green: #3cff6b; --red: #ff3b30; --panel: rgba(16, 10, 32, 0.88);
+      --edge: rgba(255, 63, 164, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      padding: 24px 16px 60px;
+    }
+    main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    h1 { margin: 0; font-size: 30px; letter-spacing: 0.06em; }
+    h2 { margin: 18px 0 0; font-size: 15px; letter-spacing: 0.3em; color: var(--yellow); font-family: Menlo, monospace; }
+    .how { color: var(--dim); line-height: 1.6; margin: 0; }
+    .how b { color: var(--ink); }
+    .progress { font-weight: 700; color: var(--green); }
+    #lines { display: flex; flex-direction: column; gap: 12px; }
+    .line {
+      background: var(--panel); border: 2px solid var(--edge); border-radius: 14px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .line.saved { border-color: rgba(60, 255, 107, 0.45); }
+    .line.recording { border-color: var(--red); }
+    .before { color: var(--dim); font-size: 13px; font-style: italic; }
+    .who { font-weight: 800; font-size: 13px; letter-spacing: 0.08em; }
+    .who.Jonathan { color: var(--cyan); }
+    .who.Timmy { color: #7cff6b; }
+    .text { font-size: 19px; line-height: 1.45; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button {
+      font: inherit; font-weight: 700; font-size: 15px; border-radius: 10px; padding: 9px 16px; cursor: pointer;
+      border: 2px solid var(--edge); background: rgba(255, 255, 255, 0.04); color: var(--ink);
+    }
+    button.rec { background: var(--pink); border-color: var(--pink); color: #fff; }
+    button.stop { background: var(--red); border-color: var(--red); color: #fff; }
+    button.save { background: var(--yellow); border-color: var(--yellow); color: #1a0a24; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .meter { flex: 1; min-width: 80px; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+    .meter div { height: 100%; width: 0; background: var(--green); transition: width 0.05s; }
+    .status { font-size: 13px; color: var(--dim); }
+    .status.ok { color: var(--green); }
+    .error { color: var(--red); font-weight: 700; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main>
+    <h1>🎙️ Record the voices</h1>
+    <p class="how">
+      Press <b>● Record</b>, say the line like the character would, then press <b>■ Stop</b>.
+      Press <b>▶ Listen</b> to hear it. Happy with it? Press <b>💾 Save</b>. Not happy? Just record
+      it again. Quiet bits at the start and end get cut off for you, so don't rush.
+    </p>
+    <p class="how">
+      Saved lines go to your <b>Downloads</b> folder. When you're done, tell Claude to add the
+      voices to the game (or run <code>python3 dev/add_voices.py</code>).
+    </p>
+    <p class="progress" id="progress"></p>
+    <p class="error" id="error" hidden></p>
+    <div id="lines"></div>
+  </main>
+  <script type="module" src="record.js"></script>
+</body>
+</html>
