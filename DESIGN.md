@@ -524,6 +524,139 @@ north-east corner of Parts & Service. At
 two-thirds health it speeds up; at one-third it rips out the power and the friends' blue
 eyes are the only lights left.
 
+## When Jonathan Was Five
+
+A second story, on its own title-screen button (🧸 When Jonathan Was Five), set ten years
+before the PlayPlace ([js/escape/](js/escape/)). It plays in the same engine with the same
+look, but it's a different game: Jonathan is five, he has no weapons, and every level is an
+escape. Its progress is saved beside the main game's (`profile.escape`) and a New game of the
+main story leaves it alone.
+
+### The designer's decisions
+
+He drew the first three levels' maps (Pjork's Daycare, the Library, the School) and answered:
+
+- **It's Jonathan's story from when he was five**: at the overnight daycare he and his friend
+  see a Night Bot go after somebody, and Jonathan escapes — to a library, then a school, then
+  more places, then a giant pizza place. **One friend, named Jack.**
+- **3D, through your own eyes**, like the PlayPlace. **Find things, then escape.**
+- **Pjork the pig is nice by day, scary at night**, and **moves when you aren't looking** — and
+  then: **"make Pjork stay on the stage."**
+- **The Night Bots walk around and catch you.** The librarian and the custodian walk around:
+  **don't get caught.**
+- **Four more levels** after the school: **the hospital, the shopping mall, the museum and the
+  movie theater** (from the options he was offered, he picked all four).
+- **The giant pizza place: survive until 6 AM, and it takes one real hour.** Baby Gus's walk
+  around and you try not to get caught. **Save points like the one on his School map** (a box
+  with a big smiling face that says *save*), **lots of them at the pizza place.** **A lot of
+  quests on your Gus Watch.**
+- **Show the fuses on the map** in the Daycare.
+- **A box you can hide in, but only for 30 seconds** — then: **you can move in the box,
+  like in Rainbow Friends.**
+- **A Night Bot tracker on your Gus Watch** — then: **an entity tracker that tracks the bots
+  and other stuff.**
+- **Make the pictures like Gus's PlayPlace** (same graphics).
+- **Normal vision in the hiding spots.**
+- **A secret ending if you get all the quests done.**
+
+### The levels
+
+Each level is its own Building on the same grid system, parked 150 m apart far east of the
+PlayPlace and built the first time you reach it (`EscapeMode.build`); one file each in
+[js/escape/levels/](js/escape/levels/) holds its floor plan, furniture, enemies and quests.
+
+| # | Level | Find / do | Watch out for |
+|---|-------|-----------|---------------|
+| 1 | Pjork's Daycare | 3 fuses (on the Gus Watch map) → the generator → the front door | 3 Night Bots (the third wakes when the generator starts, and then they all come for you); Pjork |
+| 2 | The Library | 4 glowing books, each with one number of a 4-digit code → the emergency exit's keypad | The librarian (hears running from 12 m); 4 sweeping security cameras that call her over. Bonus: the power switch turns the cameras off; her fuzzy slippers under the monitor desk mean nothing can hear you run |
+| 3 | Maple Street School | The custodian's 3 keys → the front doors | The custodian; a Night Bot that followed you, waiting by the front doors until you pick up the first key |
+| 4 | City Hospital | 3 batteries → the elevator | 2 Nurse Bots (squeaky) |
+| 5 | Sunnyvale Mall | A gate key in each of 4 stores → the Main Gate | 2 Mall Cop Bots. Bonus: the Security Office cameras make your watch beep when one is close |
+| 6 | The City Museum | 3 gems (Dinosaurs, Egypt, Space) → the golden lock | 3 statues, one waking with each gem; the Guard Bot |
+| 7 | Starlight Cinema | 3 film reels → the projector: the Ticket Bots go and watch the movie, the doors open | 2 Ticket Bots. Bonus: make popcorn for Jack |
+| 8 | Gus's Giant Pizza Palace | Survive until 6 AM (60 real minutes), then walk out | Baby Gus's: 4 at midnight, another every hour (8 by 4 AM), each hour 5% faster |
+
+Every level ends with a story card, and Level 1 opens with a cutscene (`daycareIntro`, in
+[js/escape/story.js](js/escape/story.js)): Jack wakes Jonathan, a Night Bot chases Miss Penny
+the night teacher into Storage, and they decide to run. The pizza place ends with `finale`:
+6 AM, their moms, nobody believing them — and ten years later, the NOW HIRING sign at Gus's
+PlayPlace.
+
+### How it plays
+
+- **Little Jonathan** is 1 m tall at the eye and a bit slower (walk 3.6, run 6.0 — `KID` in
+  [js/config.js](js/config.js)), with a toy flashlight and the Gus Watch on his wrist. Jack
+  follows a step behind, points out things you're looking for, gets scared, and hides with
+  you. Nothing goes after Jack.
+- **Things to find** glow and float; walk into one to pick it up. Quest targets (a generator, a
+  keypad, a projector) and exits are E.
+- **Save boxes** — the smiling box from the School map — save where you are (E): the level,
+  what you've found and done, the clock. Caught, you're back at the last one you touched
+  (or the start of the level). Leaving a level by escaping clears the save.
+- **Hiding spots** (lockers, toy boxes, tubes, curtains, under beds, under counters): E to get
+  in and look out. The view from inside is clear — the spot's own door, curtain or tube end
+  isn't drawn while you're in it. Anything that was chasing you and **saw you get in** walks over and pulls
+  you out ("…saw you hide!"); anything that didn't loses you and goes back to its rounds.
+- **Your box** (B, or 📦 on touch): hide anywhere, for **30 seconds**, and **walk around in
+  it** — slowly (2.25 m/s, no running), low down, with the box going along with you, and you
+  still pick things up. Anything that didn't see you get in can't see you in it; anything
+  that did follows the box and gets you. When time's up you pop out, and it takes a minute
+  to fill back up (the 📦 bar on the HUD).
+- **Stalkers** (Night Bots, the grown-ups, the robots, the baby Gus's,
+  [js/escape/enemies.js](js/escape/enemies.js)) walk their rounds, notice you in their view
+  cone, from 2.4 m away in any direction, when your flashlight is on them, or when they hear
+  you run; crouching halves how far they see and they can't hear you. Out of sight for ~4 s
+  and they search where they last saw you.
+- **Watchers** (Pjork, the statues) only move when you aren't looking at them — and then
+  fast. Pjork stays on his stage: he comes as close to you as the edge allows, so walk past
+  with your eyes on him.
+- **Difficulty** carries over: speeds scale with it, Spooky's unlimited flashlight and running
+  and its one second chance per level apply, and a level beaten on Nightmare gets a ⭐.
+
+### The Gus Watch
+
+G (or ⌚ on touch) holds it up; the game keeps running; 1, 2, 3 (or ← →) pick the page.
+**Quests** lists what to do (main quests in order, bonus ones alongside, secrets marked).
+**Map** shows the level from above: you, Jack, every monster (its picture in a ring — red when
+it's after you, blue when it's about, grey when it's asleep or still), the things you still
+need to find (yellow ◆), the save boxes, the exit and a ★ on every quest target. **Tracker** is
+the Entity Tracker: every monster with the room it's in, how far away and what it's doing
+(asleep, walking, looking for you, CHASING YOU, or — for Pjork and the statues — keep
+watching / MOVING), then Jack, the things to find (nearest first), the nearest save box and
+the exit. The little face in the corner always shows the time, what's next, and the closest
+monster that's awake.
+
+**At the pizza place it's full of quests** — 17 bonus ones that open up as you go, some of
+which upgrade the watch: 8 Gus tokens (**sneaky socks**: nothing hears you run), the claw
+machine (**running shoes**: twice the stamina), 5 golden pizza slices (**super flashlight**),
+the Security Office cameras (**danger beeper**), the wishing well (**lucky Gus coin**: get away
+once). The rest: touch a save box, hide, bake a pizza, turn on the Arcade, the jukebox (the baby
+Gus's hear it), the stage lights, 4 party stars, the birthday cake, 6 balloons, the Play Maze,
+Jack's lost sock, and the golden Gus plushie.
+
+### The secret ending
+
+Do **every quest in every level** — the main ones, the bonus ones, the golden plushies, all 17
+at the pizza place: 49 in all — and the secret ending (`secretEnding` in
+[js/escape/story.js](js/escape/story.js)) plays after the escape that finishes the last one
+(straight after the normal ending, if that was at the pizza place). Every quest ever done is
+remembered level by level (`profile.escape.quests`), so they don't all have to be done on the
+same run; the level list shows how many are done, and each "You escaped" screen shows that
+level's count.
+
+At 6:01 AM a young man in a night guard's uniform walks into Gus's Giant Pizza Palace: **John**,
+starting as the night guard there that night. The kids tell him everything; he gives Jonathan
+his spare flashlight; the golden Gus in the lobby blinks, its eyes a friendly blue. Ten years
+later, the note under the desk at Gus's PlayPlace is from the old night guard — and the old
+night guard is John (the main story's Old John), who'd been waiting for those two kids to come
+back. Afterwards a ⭐ badge shows on the title screen and the level list can play it again.
+
+### Debug handles
+
+With `?debug=1`, `__game.escape` is the story mode: `__game.escape.start(n)` jumps to a level,
+`__game.escape.skip()` finishes every quest but the last, and `__game.escape.clock.t = 3590`
+puts the pizza place ten seconds from 6 AM. Debug mode (Settings) opens every level.
+
 ## Settings and difficulty
 
 The **⚙️ Settings** tab hangs off the bottom middle of the title screen, beside the **📷
@@ -671,6 +804,14 @@ js/touch.js       Phone and tablet controls
 js/physics.js     Circle-vs-box sliding collision
 js/audio.js       Synthesized sound, ambience, Gus's music box, and the music
 js/save.js        localStorage profile, and the graphics and difficulty settings
+js/escape/mode.js When Jonathan Was Five: levels, quests, save boxes, hiding, the box, caught, escaped
+js/escape/levels/ Its eight levels, one file each (index.js lists them in order)
+js/escape/decor.js  Its furniture: save boxes, hiding spots, things to find, exits, bookcases...
+js/escape/cast.js   Little Jonathan, Jack, the Night Bots, Pjork, the grown-ups, the robots, the baby Gus's
+js/escape/enemies.js  Stalkers (walk their rounds, chase) and Watchers (move when you don't look)
+js/escape/jack.js   Jack, following you
+js/escape/watch.js  The Gus Watch: quests, the map, the Entity Tracker
+js/escape/story.js  Its cutscenes
 js/updates.js     Detects new deploys and refreshes stale sessions
 js/version.js     Build version — bump on every deploy
 dev/preview.html  Art preview: framed day/night shots of rooms and characters

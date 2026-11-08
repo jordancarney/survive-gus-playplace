@@ -43,6 +43,18 @@ export const PLAYER = {
   reach: 2.0,               // how close you must be to press E on something
 };
 
+// Jonathan at five, in When Jonathan Was Five: shorter, a bit slower, and small enough to
+// hide in a cubby.
+export const KID = {
+  ...PLAYER,
+  eyeHeight: 1.02,
+  radius: 0.28,
+  walkSpeed: 3.6,
+  sprintSpeed: 6.0,
+  crouchSpeed: 1.8,
+  crouchHeight: 0.62,
+};
+
 export const FLASHLIGHT = {
   battery: 100,
   drain: 1.35,              // % per second while on: about 75 seconds from full
@@ -417,6 +429,12 @@ export const NIGHT_NOTES = {
 // title screen.
 
 export const GALLERY = [
+  { file: 'pjork.jpg', caption: 'When Jonathan Was Five: Pjork the pig, on his stage at the daycare' },
+  { file: 'librarian.jpg', caption: 'The librarian, in the Stacks' },
+  { file: 'custodian.jpg', caption: 'The custodian and his mop, at Maple Street School' },
+  { file: 't-rex.jpg', caption: "The museum's T. rex, and the Guard Bot" },
+  { file: 'gus-show.jpg', caption: 'The Ticket Bots watching The Gus Show' },
+  { file: 'baby-gus.jpg', caption: "The baby Gus's at Gus's Giant Pizza Palace" },
   { file: 'old-john.jpg', caption: 'Old John, the old night guard, gives Jonathan his badge' },
   { file: 'moony.jpg', caption: 'Moony, the possessed Gus, at his base in Laser Tag' },
   { file: 'sunny.jpg', caption: 'Sunny is made of fog — only your flashlight shows her' },
@@ -447,6 +465,8 @@ export const KEYMAP = {
   interact:   { keys: ['KeyE'],                  label: 'Use / fix / grab', show: 'E' },
   flashlight: { keys: ['KeyF'],                  label: 'Flashlight',    show: 'F' },
   swap:       { keys: ['KeyQ'],                  label: 'Next weapon',   show: 'Q' },
+  watch:      { keys: ['KeyG', 'Tab'],           label: 'Gus Watch (When Jonathan Was Five)', show: 'G' },
+  box:        { keys: ['KeyB'],                  label: 'Hide in your box, 30 s (When Jonathan Was Five)', show: 'B' },
   pause:      { keys: ['Escape', 'KeyP'],        label: 'Pause',         show: 'ESC' },
 };
 

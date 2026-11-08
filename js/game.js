@@ -40,6 +40,7 @@ import {
 } from './save.js';
 import { setEyes, buildJonathan, buildManager, buildGramma, buildOldJohn } from './models.js';
 import { signTex } from './textures.js';
+import { EscapeMode, STORY } from './escape/mode.js';
 import { VERSION } from './version.js';
 
 const $ = (id) => document.getElementById(id);
@@ -136,6 +137,9 @@ export class Game {
     this.touch.init();
     this.cut = new Cutscene(this);
     this.phone = new Phone(this);
+    // When Jonathan Was Five: the story mode, with its own levels (js/escape/).
+    Object.assign(SCRIPTS, STORY);
+    this.escape = new EscapeMode(this);
     this.setArea('playplace');
     graphics.prepare(this.scene);
     this.lighting.apply();
@@ -240,9 +244,9 @@ export class Game {
     return all;
   }
   roomName(id) { return ROOMS[id] ? ROOMS[id].name : ''; }
-  isPlaying() { return this.mode === 'night' || this.mode === 'day' || this.mode === 'home'; }
-  // True while the animatronics are out to get you.
-  get hunting() { return this.mode === 'night' || this.mode === 'home'; }
+  isPlaying() { return this.mode === 'night' || this.mode === 'day' || this.mode === 'home' || this.mode === 'escape'; }
+  // True while the animatronics (or, in When Jonathan Was Five, the Night Bots) are out to get you.
+  get hunting() { return this.mode === 'night' || this.mode === 'home' || this.mode === 'escape'; }
 
   setArea(name) {
     this.area = this.areas[name];
@@ -301,7 +305,10 @@ export class Game {
     click('btnPlay', () => this.continueGame());
     click('btnNew', () => {
       if (!confirm('Start over from Night 1? Your progress will be erased.')) return;
+      // (When Jonathan Was Five is a story of its own: a new game keeps how far you got in it)
+      const five = this.profile.escape;   // (its secret ending too)
       this.profile = freshProfile();
+      this.profile.escape = five;
       this.save();
       this.updatePhoto();
       this.continueGame();
@@ -380,7 +387,7 @@ export class Game {
   }
 
   showDebugBadge() {
-    const playing = this.mode === 'night' || this.mode === 'day' || this.mode === 'home';
+    const playing = this.isPlaying();
     $('debugBadge').classList.toggle('hidden', !this.debugMode || playing);
   }
 
@@ -389,9 +396,10 @@ export class Game {
     const el = $(name);
     if (el && el.classList.contains('screen')) el.classList.add('show');
     this.mode = name;
-    const playing = name === 'night' || name === 'day' || name === 'home';
+    const playing = this.isPlaying();
     this.hud.show(playing);
     this.hud.el.classList.toggle('day', name === 'day');
+    this.hud.el.classList.toggle('esc', name === 'escape');
     $('dayPanel').classList.toggle('hidden', name !== 'day');
     if (!playing) { this.cams.close(); if (this.repair.active) this.repair.close(); }
     this.showDebugBadge();
@@ -399,6 +407,7 @@ export class Game {
 
   toTitle() {
     exitPointerLock();
+    this.escape.leave();
     this.setArea('playplace');
     this.hidePeople();
     this.night.stop();
@@ -414,6 +423,7 @@ export class Game {
     this.lighting.set('title');
     this.applyNightmare();
     this.hud.title(this.profile);
+    this.escape.titleBadge();
     this.showScreen('title');
     playMusic(this.nightmare ? 'nightmare' : 'title');
     if (takeReopenSettings()) this.openSettings();
@@ -781,7 +791,7 @@ export class Game {
 
   onLockChange(locked) {
     $('clickToPlay').classList.toggle('hidden', locked || !this.isPlaying() || this.cams.active || this.touch.active);
-    if (locked || !this.isPlaying() || this.cams.active || this.repair.active) return;
+    if (locked || !this.isPlaying() || this.cams.active || this.repair.active || this.phone.active) return;
     // Escape released the mouse mid-night: pause rather than leave Jonathan standing there.
     if (this.hunting) this.togglePause();
   }
@@ -902,7 +912,10 @@ export class Game {
         if (this.cut.active && this.cut.script.kids) this.day.update(dt);
         break;
       case 'jumpscare': this.updateJumpscare(dt); break;
+      case 'escape': this.escape.update(dt); break;
+      case 'escScare': this.escape.updateScare(dt); break;
       case 'title': case 'card': case 'howto': case 'select': case 'settings': case 'gallery':
+      case 'escMenu': case 'escCard': case 'escWin':
         this.updateBackdrop(dt);
         break;
       default:

@@ -28,8 +28,13 @@ export class Phone {
     $('phoneHang').addEventListener('pointerdown', (e) => { e.preventDefault(); this.close(); });
   }
 
-  open(number, label, onConnect) {
+  // When Jonathan Was Five uses it as the library's door keypad: `opts` changes what it says
+  // and whether it rings.
+  open(number, label, onConnect, { prompt = 'Type the number on your keyboard', success = 'Ringing...', ring = true } = {}) {
     this.number = number.replace(/\D/g, '');
+    this.promptText = prompt;
+    this.successText = success;
+    this.rings = ring;
     this.onConnect = onConnect;
     this.typed = '';
     this.ringing = 0;
@@ -37,7 +42,7 @@ export class Phone {
     this.lock = 0.2;          // ignore the E that opened it
     this.active = true;
     $('phoneNote').innerHTML = `📝 ${label}<br><b>${number}</b>`;
-    this.status.textContent = 'Type the number on your keyboard';
+    this.status.textContent = this.promptText;
     this.ui.classList.remove('hidden');
     exitPointerLock();
     this.draw();
@@ -64,12 +69,12 @@ export class Phone {
     this.draw();
     if (this.typed.length < this.number.length) return;
     if (this.typed === this.number) {
-      this.ringing = 3.2;
-      this.status.textContent = 'Ringing...';
-      sfx.ring();
+      this.ringing = this.rings ? 3.2 : 1.2;
+      this.status.textContent = this.successText;
+      if (this.rings) sfx.ring(); else sfx.escUnlock();
     } else {
       this.wrongTimer = 1.6;
-      this.status.textContent = 'Hmm, wrong number! Check the note and try again.';
+      this.status.textContent = this.rings ? 'Hmm, wrong number! Check the note and try again.' : 'BZZT! Wrong code. Check the note and try again.';
       sfx.repairBad();
     }
   }
@@ -86,12 +91,12 @@ export class Phone {
     this.taps = [];
     if (this.wrongTimer > 0) {
       this.wrongTimer -= dt;
-      if (this.wrongTimer <= 0) { this.typed = ''; this.draw(); this.status.textContent = 'Type the number on your keyboard'; }
+      if (this.wrongTimer <= 0) { this.typed = ''; this.draw(); this.status.textContent = this.promptText; }
     }
     if (this.ringing > 0) {
       const before = this.ringing;
       this.ringing -= dt;
-      if (before > 1.6 && this.ringing <= 1.6) sfx.ring();
+      if (this.rings && before > 1.6 && this.ringing <= 1.6) sfx.ring();
       if (this.ringing <= 0) {
         this.close();
         if (this.onConnect) this.onConnect();

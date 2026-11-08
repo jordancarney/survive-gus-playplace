@@ -3,7 +3,7 @@
 // What he does with the weapon in his hand lives in weapons.js; what he can press E on is
 // worked out by the game, which knows about every machine and animatronic.
 import * as THREE from 'three';
-import { PLAYER, FLASHLIGHT, SHADOWS, GLOW, weaponById, hasGear } from './config.js';
+import { PLAYER, KID, FLASHLIGHT, SHADOWS, GLOW, weaponById, hasGear } from './config.js';
 import { input } from './input.js';
 import { buildViewmodel } from './models.js';
 import { resolveCircle } from './physics.js';
@@ -64,7 +64,17 @@ export class Player {
       this.flashlight.shadow.bias = -0.0008;
     }
     this.lightVisible = true;   // false while on the cameras, or in daylight
+    // When Jonathan Was Five: he's a little kid (KID sizes and speeds), and his hands are
+    // built by the story mode instead of buildViewmodel.
+    this.kid = false;
+    this.vmBuild = null;
+    // In When Jonathan Was Five's box (the designer wanted to walk around in it, like Rainbow
+    // Friends): slow, low, and no running.
+    this.inBox = false;
   }
+
+  // Sizes and speeds: a teenager, or Jonathan at five.
+  get S() { return this.kid ? KID : PLAYER; }
 
   get weapon() { return weaponById(this.weapons[this.slot]); }
 
@@ -78,7 +88,8 @@ export class Player {
     this.stamina = this.maxStamina;
     this.winded = false;
     this.crouching = false;
-    this.height = PLAYER.eyeHeight;
+    this.inBox = false;
+    this.height = this.S.eyeHeight;
     this.battery = FLASHLIGHT.battery;
     this.lightOn = true;
     this.bigLight = hasGear(night, 'bigLight');
@@ -116,7 +127,7 @@ export class Player {
 
   rebuildViewmodel() {
     if (this.vm) this.vmGroup.remove(this.vm.root);
-    this.vm = buildViewmodel(this.carrying ? 'none' : this.weapons[this.slot]);
+    this.vm = this.vmBuild ? this.vmBuild() : buildViewmodel(this.carrying ? 'none' : this.weapons[this.slot]);
     this.vmGroup.add(this.vm.root);
   }
 
@@ -176,7 +187,7 @@ export class Player {
     if (len > 0) { fx /= len; fz /= len; }
 
     // Sprinting drains stamina; run it dry and you're winded until it's half back.
-    const wantSprint = canMove && input.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching;
+    const wantSprint = canMove && input.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching && !this.inBox;
     this.sprinting = wantSprint && this.stamina > 0;
     if (this.sprinting) {
       if (!this.game.diff.unlimited) this.stamina = Math.max(0, this.stamina - dt);
@@ -187,9 +198,10 @@ export class Player {
     }
 
     const place = this.game.place;
-    let speed = this.carrying ? PLAYER.carrySpeed : this.crouching ? PLAYER.crouchSpeed
-      : this.sprinting ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
-    const wantHeight = this.crouching ? PLAYER.crouchHeight : PLAYER.eyeHeight;
+    const S = this.S;
+    let speed = this.inBox ? S.crouchSpeed * 1.25 : this.carrying ? S.carrySpeed : this.crouching ? S.crouchSpeed
+      : this.sprinting ? S.sprintSpeed : S.walkSpeed;
+    const wantHeight = this.inBox ? 0.72 : this.crouching ? S.crouchHeight : S.eyeHeight;
     this.height += (wantHeight - this.height) * Math.min(1, dt * 10);
     if (place.inSlowZone(this.pos.x, this.pos.z)) speed *= PLAYER.ballPitSpeed;
     if (this.dazed > 0) speed *= 0.45;
@@ -209,7 +221,7 @@ export class Player {
 
     const nx = this.pos.x + this.vel.x * dt;
     const nz = this.pos.z + this.vel.z * dt;
-    const solved = resolveCircle(place.colliders, nx, nz, PLAYER.radius, this.pos.y + 0.36, this.pos.y + this.height);
+    const solved = resolveCircle(place.colliders, nx, nz, this.inBox ? 0.5 : S.radius, this.pos.y + 0.36, this.pos.y + Math.max(this.height, 0.95));
     if (Math.abs(solved.x - nx) > 1e-4) this.vel.x *= 0.2;
     if (Math.abs(solved.z - nz) > 1e-4) this.vel.z *= 0.2;
     this.pos.x = solved.x;
@@ -217,7 +229,7 @@ export class Player {
     // the stage and the karaoke riser are low enough to just step onto
     this.pos.y += (place.floorAt(this.pos.x, this.pos.z) - this.pos.y) * Math.min(1, dt * 14);
 
-    this.moving = Math.hypot(this.vel.x, this.vel.z) / PLAYER.walkSpeed;
+    this.moving = Math.hypot(this.vel.x, this.vel.z) / S.walkSpeed;
     this.bobPhase += dt * (7 + this.moving * 4);
     this.bob += (Math.min(1.4, this.moving) - this.bob) * Math.min(1, dt * 8);
   }

@@ -543,6 +543,51 @@ export const sfx = {
     noise({ dur: 2.2, gain: 0.3, filter: 'bandpass', freq: 200, to: 2400, q: 1.5, dest: d, attack: 0.4 });
     tone({ freq: 60, to: 400, type: 'sawtooth', dur: 2.2, gain: 0.2, dest: d, curve: distortion() });
   },
+  // ── When Jonathan Was Five
+  escSave() {
+    if (!ok()) return;
+    [660, 880, 1320].forEach((f, i) => tone({ freq: f, type: 'triangle', dur: 0.35, gain: 0.16, delay: i * 0.11 }));
+  },
+  escCollect() {
+    if (!ok()) return;
+    tone({ freq: 1046, to: 1568, type: 'triangle', dur: 0.18, gain: 0.16 });
+    tone({ freq: 2093, type: 'sine', dur: 0.3, gain: 0.08, delay: 0.1 });
+  },
+  escWatch() {
+    if (!ok()) return;
+    tone({ freq: 1760, type: 'sine', dur: 0.05, gain: 0.08 });
+    tone({ freq: 2349, type: 'sine', dur: 0.05, gain: 0.06, delay: 0.07 });
+  },
+  escHide() { if (ok()) noise({ dur: 0.35, gain: 0.12, filter: 'bandpass', freq: 900, q: 0.8, attack: 0.05 }); },
+  escAlarm() {
+    if (!ok()) return;
+    for (let i = 0; i < 4; i++) tone({ freq: i % 2 ? 660 : 880, type: 'square', dur: 0.22, gain: 0.07, delay: i * 0.24 });
+  },
+  escUnlock() {
+    if (!ok()) return;
+    noise({ dur: 0.12, gain: 0.25, freq: 1400, to: 300 });
+    tone({ freq: 300, to: 600, type: 'triangle', dur: 0.25, gain: 0.15, delay: 0.08 });
+  },
+  // the scrape of something heavy moving when you aren't looking
+  escCreak(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 26);
+    if (!d) return;
+    noise({ dur: 0.4, gain: 0.25, filter: 'lowpass', freq: 500, to: 250, dest: d, attack: 0.05 });
+    tone({ freq: 70, to: 52, type: 'sawtooth', dur: 0.35, gain: 0.08, dest: d });
+  },
+  escShh(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 22) || sfxGain;
+    noise({ dur: 1.0, gain: 0.22, filter: 'highpass', freq: 3200, dest: d, attack: 0.12 });
+  },
+  // a baby Gus giggling somewhere nearby
+  escGiggle(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 20);
+    if (!d) return;
+    [1180, 1050, 1250, 980].forEach((f, i) => tone({ freq: f, to: f * 0.85, type: 'triangle', dur: 0.09, gain: 0.07, dest: d, delay: i * 0.1 }));
+  },
   clang() {
     if (!ok()) return;
     tone({ freq: 210, type: 'triangle', dur: 0.8, gain: 0.3 });

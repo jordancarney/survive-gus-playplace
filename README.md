@@ -49,6 +49,20 @@ means starting the night over.
   it: **Moony**, a possessed Gus who teleports around Laser Tag and only the Magnum stops,
   and **Sunny**, made of fog, who drifts through the maze walls and only shows up in your
   flashlight
+- **🧸 When Jonathan Was Five**, a whole second story on the title screen: ten years before
+  the PlayPlace, five-year-old Jonathan and his best friend **Jack** sneak out of an overnight
+  daycare where the Night Bots walk the halls — and keep running. Eight levels, the first
+  three drawn by the designer: **Pjork's Daycare** (Pjork the pig never leaves his stage, but
+  he moves when you aren't looking), **the Library** (the librarian, security cameras and a
+  secret code), **Maple Street School** (the custodian, and a Night Bot that followed you), **City
+  Hospital**, **Sunnyvale Mall**, **the City Museum** (statues that move when you look away),
+  **Starlight Cinema**, and **Gus's Giant Pizza Palace**, where you have to survive one real
+  hour until 6 AM while the baby Gus's toddle about. No weapons: find things, hide, and run.
+  A **Gus Watch** on your wrist holds your quests, a map, and an Entity Tracker that
+  follows every monster; a box you carry hides you anywhere for 30 seconds (and you can walk
+  in it); smiling **save boxes** remember how far you got;
+  and every level has a secret golden Gus plushie. Do every single quest in every level for
+  a secret ending
 - A Gallery on the title screen with pictures from making the game
 - A boss fight with Gus on Night 20, and a secret Night 21 where all five get pulled into the
   junk pile and come out as one Junk Monster — and the old original animatronics, retired
@@ -122,4 +136,5 @@ title screen.
 ## Project layout
 
 See [DESIGN.md](DESIGN.md) for the full design document — the PlayPlace, the animatronics,
-the twenty-one nights, balance tables, and the file map.
+the twenty-one nights, When Jonathan Was Five and its eight levels, balance tables, and the
+file map.

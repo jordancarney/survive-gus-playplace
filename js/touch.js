@@ -71,7 +71,7 @@ export class Touch {
     for (const d of defs) {
       const el = document.createElement('div');
       el.className = 'tbtn';
-      el.textContent = d.label;
+      el.textContent = (this.labels && this.labels[d.id]) || d.label;
       const size = d.size || BTN;
       el.style.width = el.style.height = size + 'px';
       if (d.right !== undefined) el.style.right = `calc(${d.right}px + env(safe-area-inset-right))`;
@@ -95,10 +95,13 @@ export class Touch {
   press(b, down) {
     b.el.classList.toggle('pressed', down);
     switch (b.id) {
-      case 'use': if (down) { input.firePressed = true; } input.fire = down; break;
+      // in When Jonathan Was Five there's nothing to fire: the big button holds up the Gus Watch
+      case 'use':
+        if (this.game.mode === 'escape') { if (down) input.tapAction('watch'); break; }
+        if (down) { input.firePressed = true; } input.fire = down; break;
       case 'interact': if (down) input.tapAction('interact'); break;
       case 'light': if (down) input.tapAction('flashlight'); break;
-      case 'swap': if (down) input.tapAction('swap'); break;
+      case 'swap': if (down) input.tapAction(this.game.mode === 'escape' ? 'box' : 'swap'); break;
       case 'crouch': if (down) input.tapAction('crouch'); break;
       case 'sprint': if (down) this.setRunning(!this.running); break;
       case 'pause': if (down) this.game.togglePause(); break;
@@ -160,6 +163,13 @@ export class Touch {
     this.stickBase.style.top = (by - 58) + 'px';
     this.stickNub.style.left = (nx - 25) + 'px';
     this.stickNub.style.top = (ny - 25) + 'px';
+  }
+
+  // Change what a button shows (the ⚡ button is ⌚ in When Jonathan Was Five).
+  relabel(id, label) {
+    const b = this.buttons.find((x) => x.id === id);
+    if (b) b.el.textContent = label;
+    this.labels = { ...(this.labels || {}), [id]: label };
   }
 
   hideStick() {

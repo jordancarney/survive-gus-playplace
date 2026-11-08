@@ -19,6 +19,19 @@ export const freshProfile = () => ({
   stars: {},                // nights beaten on Hard (night number, or 'home')
   badge: false,             // Old John's badge, for finishing the whole game
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },
+  // When Jonathan Was Five, the story of when he was little (js/escape/).
+  escape: freshEscape(),
+});
+
+export const freshEscape = () => ({
+  level: 1,                 // the furthest level reached (1-8)
+  done: false,              // made it to 6 AM at the pizza place
+  seen: {},                 // its cutscenes
+  plushies: {},             // the secret golden Gus plushie found in each level
+  stars: {},                // levels beaten on Nightmare
+  quests: {},               // every quest ever done, per level: { 1: ['fuses', 'power', ...] }
+  secret: false,            // every quest in every level done: the secret ending
+  save: null,               // the last save point touched: { level, point, found, quests, time, ... }
 });
 
 export function loadProfile() {
@@ -34,7 +47,12 @@ export function loadProfile() {
       stats: { ...base.stats, ...(saved.stats || {}) },
       seen: { ...(saved.seen || {}) },
       stars: { ...(saved.stars || {}) },
+      escape: { ...freshEscape(), ...(saved.escape || {}) },
     };
+    p.escape.seen = { ...(p.escape.seen || {}) };
+    p.escape.plushies = { ...(p.escape.plushies || {}) };
+    p.escape.stars = { ...(p.escape.stars || {}) };
+    p.escape.quests = { ...(p.escape.quests || {}) };
     p.night = Math.max(1, Math.min(NIGHTS.length, p.night | 0));
     p.best = Math.max(p.best | 0, p.night);
     p.happiness = Math.max(0, Math.min(100, Number(p.happiness) || HAPPINESS.start));

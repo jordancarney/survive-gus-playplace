@@ -18,6 +18,8 @@ const MODES = {
   night:    { amb: 0.03, hemi: 0.035, panels: 0x1b1b22, fog: 0.055, bg: 0x020104, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, env: 'night', envI: 0.5 },
   blackout: { amb: 0.012, hemi: 0.01, panels: 0x0c0c10, fog: 0.075, bg: 0x010102, decor: 'off',  exit: 0.25, monitors: 0x050505, env: 'night', envI: 0.12 },
   home:     { amb: 0.42, hemi: 0.45, panels: 0x1b1b22, fog: 0.012, bg: 0x2a2a35, decor: 'off', exit: 0.25, monitors: 0x050505, env: 'day', envI: 0.25 },
+  // When Jonathan Was Five: each level sets its own mood (setEscape) over these.
+  escape:   { amb: 0.08, hemi: 0.08, panels: 0x1b1b22, fog: 0.04, bg: 0x030206, decor: 'off', exit: 0.25, monitors: 0x050505, env: 'night', envI: 0.4 },
   title:    { amb: 0.08, hemi: 0.08, panels: 0x1b1b22, fog: 0.035, bg: 0x030206, decor: 'night', exit: 1.0, monitors: 0x2a7a4a, stage: 26, env: 'night', envI: 0.6 },
 };
 
@@ -62,7 +64,17 @@ export class Lighting {
     this.cut = 0;
     this.baseFog = 0.05;
     this.baseFogColor = new THREE.Color();
+    // When Jonathan Was Five: the level you're in, and how it's lit.
+    this.level = null;
+    this.levelMood = null;
     this.set('night');
+  }
+
+  // Into a story-mode level: its decor's lights come on, at its own ambient light and fog.
+  setEscape(decor, mood = {}) {
+    this.level = decor;
+    this.levelMood = mood;
+    this.set('escape');
   }
 
   set(mode) {
@@ -78,7 +90,7 @@ export class Lighting {
   }
 
   apply() {
-    const m = MODES[this.mode];
+    const m = this.mode === 'escape' ? { ...MODES.escape, ...this.levelMood } : MODES[this.mode];
     const camBoost = this.cams && this.mode !== 'day';
     const sc = this.scared();
     this.ambient.intensity = camBoost ? 0.75 : m.amb * sc.amb;
@@ -110,6 +122,14 @@ export class Lighting {
     }
     // Jonathan's house has its own lights, on only while you're there.
     if (this.house) for (const l of this.house.lights) l.light.intensity = this.mode === 'home' ? l.day : 0;
+    // So does every story-mode level.
+    if (this.level) {
+      const on = this.mode === 'escape';
+      for (const l of this.level.lights) {
+        l.base = on ? l.night * (l.room === '*' ? 1 : sc.lights) * (l.off ? 0 : 1) : 0;
+        l.light.intensity = l.base;
+      }
+    }
     for (const s of this.decor.exitSigns) s.color.setScalar(m.exit * GLOW);
     for (const g of this.decor.glows) g.mat.color.copy(g.base).multiplyScalar(this.mode === 'blackout' ? 0.08 : 1);
     // Monitors showing a camera feed keep it bright; blank ones take the room's mood.
@@ -140,7 +160,8 @@ export class Lighting {
     this.cut = Math.max(0, this.cut - dt);
     const sc = this.scared();
     const stutter = Math.sin(this.flickerT * 7.3) + Math.sin(this.flickerT * 19.1) > sc.stutter;
-    for (const l of this.decor.lights) {
+    const lights = this.mode === 'escape' && this.level ? this.level.lights : this.decor.lights;
+    for (const l of lights) {
       if (!l.base) continue;
       let k = 1;
       if (l.flicker) {

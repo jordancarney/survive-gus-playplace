@@ -72,6 +72,55 @@
       <div id="carryTag" class="carry-tag hidden"></div>
       <div id="clickToPlay" class="click-to-play hidden">Click to look around</div>
 
+      <!-- When Jonathan Was Five (js/escape/): its own corner pieces and the Gus Watch -->
+      <div id="escHud">
+        <div class="esc-top">
+          <div id="escLevel" class="esc-level-tag">LEVEL 1</div>
+          <div id="escClock" class="clock esc-clock hidden">12:00 AM</div>
+        </div>
+        <div id="escAlert" class="alert-tag esc-alert hidden"></div>
+        <div class="esc-bars">
+          <div class="meter-label">FLASHLIGHT</div>
+          <div class="bar battery"><div id="escBattery" class="fill"></div></div>
+          <div class="meter-label">RUNNING</div>
+          <div class="bar stamina"><div id="escStamina" class="fill"></div></div>
+          <div class="meter-label">📦 BOX</div>
+          <div class="bar box-bar"><div id="escBox" class="fill"></div></div>
+          <div id="escCrouch" class="crouch-tag hidden">⤓ CROUCHING — harder to see</div>
+        </div>
+        <div id="watchMini" class="watch-mini">
+          <div class="wm-band"></div>
+          <div class="wm-face">
+            <div id="wmTime" class="wm-time">LEVEL 1</div>
+            <div id="wmQuest" class="wm-quest"></div>
+            <div id="wmTracker" class="wm-tracker hidden"></div>
+          </div>
+          <div class="wm-hint"><span class="key">G</span> Gus Watch</div>
+        </div>
+        <div id="escSay" class="esc-say hidden"></div>
+        <div id="escHide" class="esc-hide hidden">
+          <div id="escHideText" class="esc-hide-text">Hiding — press E to come out.</div>
+        </div>
+        <div id="gusWatch" class="gus-watch hidden">
+          <div class="gw-strap"></div>
+          <div class="gw-body">
+            <div class="gw-face">
+              <div class="gw-head"><span class="gw-logo">GUS WATCH</span><span id="gwTime" class="gw-time"></span></div>
+              <div class="gw-tabs">
+                <button id="gwTabQuests" class="gw-tab on">1 · Quests</button>
+                <button id="gwTabMap" class="gw-tab">2 · Map</button>
+                <button id="gwTabTracker" class="gw-tab">3 · Tracker</button>
+              </div>
+              <div id="gwQuests" class="gw-quests"></div>
+              <canvas id="gwMap" class="gw-map hidden" width="340" height="250"></canvas>
+              <div id="gwTracker" class="gw-quests hidden"></div>
+              <button id="gwClose" class="gw-close">G · close</button>
+            </div>
+          </div>
+          <div class="gw-strap"></div>
+        </div>
+      </div>
+
       <!-- Touch controls: created on demand by js/touch.js, parented here -->
       <div id="touchLayer"></div>
     </div>
@@ -179,11 +228,13 @@
         </svg>
         <p id="tagline" class="tagline">Twenty nights. Seven animatronics. One fifteen-year-old with a taser.</p>
         <div id="badgeTag" class="badge-tag hidden">🏅 Old John's badge</div>
+        <div id="secretTag" class="badge-tag hidden">⭐ When Jonathan Was Five: secret ending found</div>
       </div>
       <div class="menu-actions">
         <button id="btnPlay" class="btn btn-big">▶&nbsp; Start Night 1</button>
         <button id="btnNew" class="btn btn-ghost hidden">New game</button>
         <button id="btnSelect" class="btn btn-ghost hidden">Pick a night</button>
+        <button id="btnFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
       </div>
       <div class="title-tabs">
         <button id="btnGallery" class="settings-tab">📷&nbsp; Gallery</button>
@@ -247,6 +298,10 @@
           <p><b>Crouch</b> (C) to hide: nobody can see you except <b>Gus</b> — but you can't zap or
             drag anything while you're down there.</p>
           <p>Get caught and you start the night over.</p>
+          <p><b>🧸 When Jonathan Was Five:</b> sneak, hide and escape — there's nothing to zap.
+            Your <b>Gus Watch</b> (G) has your quests and a map; your <b>box</b> (B) hides you
+            anywhere for 30 seconds; and the smiling <b>save boxes</b> (E) are where you come back
+            to if you get caught.</p>
         </div>
         <div id="howtoList" class="controls-list"></div>
       </div>
@@ -333,6 +388,45 @@
     </div>
 
     <!-- ── Cutscenes ─────────────────────────────────────────────────── -->
+    <!-- ── When Jonathan Was Five ──────────────────────────────────────── -->
+    <div id="escMenu" class="screen screen-five">
+      <div class="eyebrow">TEN YEARS BEFORE GUS'S PLAYPLACE</div>
+      <h2 class="screen-title five-title">WHEN JONATHAN<span>WAS FIVE</span></h2>
+      <p class="brief-body">Jonathan and his best friend Jack escape the overnight daycare... and keep running. Find what you need on your <b>Gus Watch</b> (<b>G</b>), hide in your <b>box</b> (<b>B</b>, 30 seconds!), and touch every <b>save box</b>.</p>
+      <div id="escLevels" class="esc-levels"></div>
+      <div id="escPlushies" class="esc-plushies"></div>
+      <div id="escQuests" class="esc-plushies"></div>
+      <div class="menu-actions">
+        <button id="btnEscContinue" class="btn btn-big">▶ Start</button>
+        <button id="btnEscSecret" class="btn btn-ghost hidden">⭐ Watch the secret ending</button>
+        <button id="btnEscBack" class="btn btn-ghost">Back</button>
+      </div>
+    </div>
+
+    <div id="escCard" class="screen screen-five">
+      <div class="eyebrow" id="escCardEyebrow">LEVEL 1</div>
+      <h2 class="screen-title night-number five-level" id="escCardTitle">Pjork's Daycare</h2>
+      <div class="note five-note">
+        <p id="escCardStory"></p>
+        <p id="escCardGoal" class="five-goal"></p>
+        <p id="escCardWho" class="five-who"></p>
+      </div>
+      <div class="menu-actions">
+        <button id="btnEscGo" class="btn btn-big">▶ Escape!</button>
+        <button id="btnEscCardBack" class="btn btn-ghost">Back</button>
+      </div>
+    </div>
+
+    <div id="escWin" class="screen screen-sun">
+      <h2 class="screen-title" id="escWinTitle">YOU ESCAPED!</h2>
+      <p class="brief-body" id="escWinBody"></p>
+      <div id="escWinPlush" class="morning-star"></div>
+      <div class="menu-actions">
+        <button id="btnEscWinGo" class="btn btn-big">On to the next level</button>
+        <button id="btnEscWinMenu" class="btn btn-ghost">Quit to title</button>
+      </div>
+    </div>
+
     <div id="cutscene" class="hidden">
       <div class="letterbox lb-top"></div>
       <div class="letterbox lb-bottom"></div>

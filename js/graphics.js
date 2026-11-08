@@ -415,6 +415,13 @@ export class Graphics {
     scene.traverse((o) => { if (o.userData.floor || o.userData.noReflect) this.hidden.push(o); });
   }
 
+  // Something built after prepare() (When Jonathan Was Five builds each level the first time
+  // you reach it): leave its floors out of the floor's reflection like everything else's.
+  track(obj) {
+    if (!this.realistic || !this.hidden) return;
+    obj.traverse((o) => { if (o.userData.floor || o.userData.noReflect) this.hidden.push(o); });
+  }
+
   setSize(w, h) {
     if (!this.realistic) return;
     const pr = this.renderer.getPixelRatio();

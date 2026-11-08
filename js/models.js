@@ -215,7 +215,9 @@ function buildGus(look = GUS_LOOK) {
   }
   rig.jawMax = 0.45;
   eyes(h, rig, { color: look.eye, x: 0.15, y: 0.44, z: 0.27 });
-  // top hat, a little crooked, and a gold bow tie — he is the star of the show
+  // top hat, a little crooked, and a gold bow tie — he is the star of the show (the baby
+  // Gus's of When Jonathan Was Five have neither, nor a microphone: js/escape/cast.js)
+  if (look.baby) return rig;
   const hat = group(h, [0.04, 0.64, -0.02]);
   hat.rotation.z = -0.14;
   part(G.cyl, cloth(look.hat), hat, { p: [0, 0.02, 0], s: [0.32, 0.04, 0.32] });
@@ -1041,3 +1043,6 @@ export function buildViewmodel(weapon) {
   root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 10; } });
   return vm;
 }
+
+// The building blocks, for the characters of When Jonathan Was Five (js/escape/cast.js).
+export { biped, part, group, eyes, limb, addFur, G as MODEL_G, buildGus, GUS_LOOK, METAL, DARK_METAL, eyeballMat, skinMat, vmMat };
