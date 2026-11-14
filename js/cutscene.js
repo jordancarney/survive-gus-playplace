@@ -20,6 +20,7 @@ const SPEAKER_COLORS = {
   Chomper: '#9cff6b', Cranker: '#6fe3ff', Flipper: '#ff7ad1',
   Timmy: '#7cff6b', Gramma: '#ff9ad5', 'Old John': '#cfd6e0', 'Old Gus': '#d9b48a', '???': '#d9b48a',
   Jack: '#ff6b6b', 'Miss Penny': '#9fffb0', Mom: '#ffb3d9', 'Baby Gus': '#ffb02a', John: '#cfd6e0',
+  Max: '#c98aff', Thomas: '#ffe08a', Jackson: '#ffd23f', 'P.A.L.': '#2de2e6', 'DJ Rocco': '#ff3fa4',
 };
 
 export class Cutscene {
@@ -220,7 +221,7 @@ export class Cutscene {
   actor(who) {
     const g = this.game;
     // When Jonathan Was Five has its own cast (little Jonathan, Jack, Miss Penny...)
-    const kid = g.escape && g.escape.actor(who);
+    const kid = g.story && g.story.actor(who);
     if (kid) return kid;
     switch (who) {
       case 'Jonathan': return g.people.jonathan;

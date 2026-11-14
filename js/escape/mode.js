@@ -25,6 +25,7 @@ import { GusWatch, ENTITY } from './watch.js';
 import { buildKidViewmodel, buildLittleJonathan, buildTeacher, buildMom, buildYoungJohn } from './cast.js';
 import { LEVELS } from './levels/index.js';
 import { STORY } from './story.js';
+import { LUNGE, STATIC, holdFor, placeScare, finishScare, showStatic, drawStatic, hideStatic } from '../jumpscare.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,9 +39,31 @@ const REWARDS = {
   items: 'Finder: the things you need show on your map',
 };
 
+// When Jonathan Was Five, as a story this engine plays. Lost in the Pizzaplex (js/plex/) is
+// another: same engine, its own chapters, save, cast and menu words.
+export const FIVE = {
+  key: 'escape', levels: LEVELS, area: 'esc', offsetZ: 0, unit: 'Level', buddy: 'Jack', box: true,
+  eyebrow: 'WHEN JONATHAN WAS FIVE',
+  menu: {
+    eyebrow: 'TEN YEARS BEFORE GUS\'S PLAYPLACE',
+    title: 'WHEN JONATHAN<span>WAS FIVE</span>',
+    brief: 'Jonathan and his best friend Jack escape the overnight daycare... and keep running. Find what you need on your <b>Gus Watch</b> (<b>G</b>), hide in your <b>box</b> (<b>B</b>, 30 seconds!), and touch every <b>save box</b>.',
+  },
+  resumeLine: 'We\'re back at the save box. Let\'s keep going!',
+  finale: 'finale', secret: 'secretEnding',
+};
+
+// A story's quiet companion, for when nobody tags along.
+const NO_BUDDY = {
+  root: { visible: false }, pointed: new Set(), pos: new THREE.Vector3(),
+  place() {}, hide() {}, come() {}, update() {},
+};
+
 export class EscapeMode {
-  constructor(game) {
+  constructor(game, story = FIVE) {
     this.game = game;
+    this.story = story;
+    this.levels = story.levels;
     this.built = new Map();     // level n → { def, place, decor, enemies, area }
     this.level = null;
     this.hiding = null;
@@ -50,11 +73,8 @@ export class EscapeMode {
     this.used = new Set();
     this.upgrades = new Set();
     this.flags = {};
-    this.jack = new Jack(this);
-    this.kid = makePerson(game.scene, buildLittleJonathan);
-    this.teacher = makePerson(game.scene, buildTeacher);
-    this.moms = [makePerson(game.scene, () => buildMom(false)), makePerson(game.scene, () => buildMom(true))];
-    this.john = makePerson(game.scene, buildYoungJohn);
+    this.jack = story.buddy ? new Jack(this) : NO_BUDDY;
+    this.cast = this.makeCast();
     this.watch = new GusWatch(this);
     // The box you carry (the designer's idea): hide in it anywhere, but only for 30 seconds,
     // and then it has to fill back up before you can use it again.
@@ -70,52 +90,97 @@ export class EscapeMode {
   get decor() { return this.level.decor; }
   get enemies() { return this.level ? this.level.enemies : []; }
   get def() { return this.level.def; }
-  get save() { return this.game.profile.escape; }
+  get save() { return this.game.profile[this.story.key]; }
+  get total() { return this.story.total || this.levels.length; }
+  areaName(n) { return `${this.story.area}${n}`; }
+
+  // Everyone who's only in the cutscenes.
+  makeCast() {
+    const sc = this.game.scene;
+    this.kid = makePerson(sc, buildLittleJonathan);
+    this.teacher = makePerson(sc, buildTeacher);
+    this.moms = [makePerson(sc, () => buildMom(false)), makePerson(sc, () => buildMom(true))];
+    this.john = makePerson(sc, buildYoungJohn);
+    return [this.kid, this.teacher, ...this.moms, this.john];
+  }
+
+  // Who you are in this level: little Jonathan, in When Jonathan Was Five.
+  setupHero(p) {
+    p.kid = true;
+    p.vmBuild = buildKidViewmodel;
+  }
 
   // ── Menus ─────────────────────────────────────────────────────────────
 
+  // The menus are shared by every story, so their buttons act on whichever one is open.
   wireUI() {
-    const click = (id, fn) => $(id).addEventListener('click', () => { sfx.ui(); fn(); });
-    click('btnFive', () => this.showMenu());
-    click('btnEscBack', () => this.game.toTitle());
-    click('btnEscGo', () => this.begin(this.cardLevel));
-    click('btnEscCardBack', () => this.showMenu());
-    click('btnEscWinGo', () => this.afterWin());
-    click('btnEscWinMenu', () => this.game.toTitle());
-    click('btnEscSecret', () => this.playSecret(() => this.showMenu()));
+    if (EscapeMode.wired) return;
+    EscapeMode.wired = true;
+    const g = this.game;
+    const click = (id, fn) => $(id).addEventListener('click', () => { sfx.ui(); fn(g.story); });
+    click('btnFive', () => g.escape.showMenu());
+    click('btnPlex', () => g.plex.showMenu());
+    click('btnEscBack', () => g.toTitle());
+    click('btnEscGo', (m) => m.begin(m.cardLevel));
+    click('btnEscCardBack', (m) => m.showMenu());
+    click('btnEscWinGo', (m) => m.afterWin());
+    click('btnEscWinMenu', () => g.toTitle());
+    click('btnEscSecret', (m) => m.playSecret(() => m.showMenu()));
   }
 
   // The level list: everything you've reached (everything, in debug mode), and Continue.
   showMenu() {
     const g = this.game;
+    g.story = this;
     this.leave();
     g.setArea('playplace');
     g.lighting.set('title');
+    const st = this.story, unit = st.unit;
+    const L = this.levels;
+    $('escMenu').classList.toggle('screen-plex', !!st.plex);
+    $('escCard').classList.toggle('screen-plex', !!st.plex);
+    $('escMenuEyebrow').textContent = st.menu.eyebrow;
+    $('escMenuTitle').innerHTML = st.menu.title;
+    $('escMenuBrief').innerHTML = st.menu.brief;
     const e = this.save;
-    const open = g.debugMode ? LEVELS.length : Math.min(LEVELS.length, e.level);
+    const open = g.debugMode ? L.length : Math.min(L.length, e.level);
+    // (a chapter that isn't built yet can't be played: Continue goes to the furthest one that is)
     const grid = $('escLevels');
     grid.innerHTML = '';
-    LEVELS.forEach((def, i) => {
-      const n = i + 1;
+    grid.classList.toggle('many', this.total > 12);
+    for (let n = 1; n <= this.total; n++) {
+      const def = L[n - 1];
       const b = document.createElement('button');
+      // (chapters that aren't built yet are on the list too, coming soon)
+      if (!def) {
+        b.className = 'btn esc-level locked soon';
+        b.disabled = true;
+        b.innerHTML = `<span class="esc-n">${n}</span><span class="esc-name">${st.soon ? st.soon(n) : 'Coming soon'}</span>`;
+        grid.appendChild(b);
+        continue;
+      }
       b.className = 'btn esc-level' + (n <= open ? '' : ' locked') + (e.stars[n] ? ' star' : '');
       b.disabled = n > open;
-      b.innerHTML = `<span class="esc-n">${n}</span><span class="esc-name">${n <= open ? def.name : '???'}</span>` +
+      const who = def.hero && st.heroes ? `<span class="esc-who">${st.heroes[def.hero].icon} ${st.heroes[def.hero].name}</span>` : '';
+      b.innerHTML = `<span class="esc-n">${n}</span>${who}<span class="esc-name">${n <= open ? def.name : '???'}</span>` +
         (e.plushies[n] ? '<span class="esc-plush" title="Golden Gus plushie found">🧸</span>' : '');
       b.addEventListener('click', () => { sfx.ui(); this.showCard(n); });
       grid.appendChild(b);
-    });
-    const cont = e.save && e.save.level <= open ? e.save.level : Math.min(open, LEVELS.length);
+    }
+    let cont = e.save && e.save.level <= open ? e.save.level : Math.min(open, L.length);
+    while (cont > 1 && !L[cont - 1]) cont--;
     const go = $('btnEscContinue');
-    go.textContent = e.done && !e.save ? '▶ Play the pizza place again' : e.save ? `▶ Continue Level ${cont} (from your save)` : `▶ ${e.level > 1 ? 'Continue' : 'Start'}: Level ${cont}`;
+    const again = st.againText || '▶ Play the pizza place again';
+    go.textContent = e.done && !e.save ? again : e.save ? `▶ Continue ${unit} ${cont} (from your save)` : `▶ ${e.level > 1 ? 'Continue' : 'Start'}: ${unit} ${cont}`;
     go.onclick = () => { sfx.ui(); this.showCard(cont); };
     const plush = Object.keys(e.plushies).length;
-    $('escPlushies').textContent = plush ? `🧸 Golden Gus plushies found: ${plush} of ${LEVELS.length}` : '';
+    $('escPlushies').textContent = plush ? `🧸 Golden Gus plushies found: ${plush} of ${L.length}` : '';
     const qt = this.questTotals();
-    $('escQuests').innerHTML = e.secret
-      ? `⭐ Every quest done (${qt.total} of ${qt.total}) — you found the <b>SECRET ENDING!</b>`
-      : `⭐ Quests done: <b>${qt.done} of ${qt.total}</b> — do every quest in every level for a secret...`;
-    $('btnEscSecret').classList.toggle('hidden', !e.secret);
+    $('escQuests').innerHTML = !st.secret ? `⭐ Quests done: <b>${qt.done} of ${qt.total}</b>`
+      : e.secret
+        ? `⭐ Every quest done (${qt.total} of ${qt.total}) — you found the <b>SECRET ENDING!</b>`
+        : `⭐ Quests done: <b>${qt.done} of ${qt.total}</b> — do every quest in every ${unit.toLowerCase()} for a secret...`;
+    $('btnEscSecret').classList.toggle('hidden', !e.secret || !st.secret);
     g.showScreen('escMenu');
     playMusic(g.nightmare ? 'nightmare' : 'title');
   }
@@ -123,24 +188,26 @@ export class EscapeMode {
   // A level's story card: where they are now, and what they have to do.
   showCard(n) {
     const g = this.game;
-    const def = LEVELS[n - 1];
+    const def = this.levels[n - 1];
     this.cardLevel = n;
     g.setArea('playplace');
     g.lighting.set('title');
-    $('escCardEyebrow').textContent = `WHEN JONATHAN WAS FIVE · LEVEL ${n} OF ${LEVELS.length}`;
+    const hero = def.hero && this.story.heroes ? this.story.heroes[def.hero] : null;
+    $('escCardEyebrow').textContent = `${this.story.eyebrow} · ${this.story.unit.toUpperCase()} ${n} OF ${this.total}` +
+      (hero ? ` · ${hero.icon} ${hero.name.toUpperCase()}, ${hero.age}` : '');
     $('escCardTitle').textContent = def.name;
     $('escCardStory').innerHTML = def.card.story;
     $('escCardGoal').innerHTML = def.card.goal;
     $('escCardWho').innerHTML = def.card.watchOut;
     const s = this.save.save;
-    $('btnEscGo').textContent = s && s.level === n ? '▶ Go (from your save box)' : n === LEVELS.length ? '▶ Survive the night' : '▶ Escape!';
+    $('btnEscGo').textContent = s && s.level === n ? '▶ Go (from your save box)' : def.goText || (def.clock ? '▶ Survive the night' : '▶ Escape!');
     g.showScreen('escCard');
   }
 
   // The first time, level 1 opens with the cutscene at the daycare; the last level ends with one.
   begin(n) {
     const seen = this.save.seen;
-    const def = LEVELS[n - 1];
+    const def = this.levels[n - 1];
     if (def.intro && !seen[def.intro]) {
       seen[def.intro] = true;
       this.game.save();
@@ -174,8 +241,8 @@ export class EscapeMode {
   build(n) {
     if (this.built.has(n)) return this.built.get(n);
     const g = this.game;
-    const def = LEVELS[n - 1];
-    const place = new Building({ ...def.layout, offsetX: 300 + n * 150 });
+    const def = this.levels[n - 1];
+    const place = new Building({ ...def.layout, offsetX: 300 + n * 150, offsetZ: this.story.offsetZ });
     g.scene.add(place.build());
     const decor = new EscapeDecor(place);
     def.build(decor);
@@ -185,7 +252,7 @@ export class EscapeMode {
     const area = {
       building: place, isPlayPlace: false, groups: [place.group, decor.group], spawn: {}, roam: [], escape: n,
     };
-    g.areas[`esc${n}`] = area;
+    g.areas[this.areaName(n)] = area;
     place.group.visible = decor.group.visible = false;
     const lv = { n, def, place, decor, area, enemies: [] };
     this.built.set(n, lv);
@@ -193,6 +260,7 @@ export class EscapeMode {
     const was = this.level;
     this.level = lv;
     lv.enemies = def.enemies.map((e) => (e.kind === 'watcher' ? new Watcher(this, e) : new Stalker(this, e)));
+    if (def.controller) lv.ctrl = new def.controller(this, lv);
     for (const e of lv.enemies) e.root.visible = false;
     this.level = was;
     return lv;
@@ -206,7 +274,7 @@ export class EscapeMode {
     this.leave();
     const lv = this.build(n);
     this.level = lv;
-    g.setArea(`esc${n}`);
+    g.setArea(this.areaName(n));
     for (const l of this.built.values()) if (l !== lv) for (const e of l.enemies) e.root.visible = false;
     const def = lv.def, d = lv.decor;
     const s = resume && this.save.save && this.save.save.level === n ? this.save.save : null;
@@ -215,6 +283,7 @@ export class EscapeMode {
     this.upgrades = new Set(s ? s.upgrades || [] : []);
     this.flags = s ? { ...s.flags } : {};
     this.hiding = null;
+    this.unseen = false;
     for (const h of d.hides) if (h.group) h.group.visible = true;
     this.grace = 0;
     this.chanceUsed = false;
@@ -235,8 +304,7 @@ export class EscapeMode {
     const sp = s ? d.saves[s.point] : null;
     const at = sp ? sp.out : def.spawn.at ? lv.place.P(...def.spawn.at) : d.spots.spawn;
     const p = this.player;
-    p.kid = true;
-    p.vmBuild = buildKidViewmodel;
+    this.setupHero(p, def);
     p.reset(at, sp ? sp.yaw : def.spawn.yaw || 0, 1);
     p.setWeapons(['taser']);   // (nothing to fire: the slot only feeds the HUD the main game uses)
     if (this.upgrades.has('shoes')) p.maxStamina = p.stamina = p.maxStamina * 2;
@@ -249,26 +317,37 @@ export class EscapeMode {
     this.jack.place(lv.place.isWalkable(jackAt.x, jackAt.z) ? jackAt : at.clone(), p.yaw);
     g.lighting.setEscape(d, def.mood);
     this.room = null;
+    this.ctrl = lv.ctrl || null;
+    if (this.ctrl) this.ctrl.start(!!s);
     if (def.start) def.start(this, !!s);
     this.watch.toggle(false);
     this.watch.setTab('quests');
     $('escHide').classList.add('hidden');
-    $('escLevel').textContent = `LEVEL ${n} · ${def.name.toUpperCase()}`;
+    $('escLevel').textContent = `${this.story.unit.toUpperCase()} ${n} · ${def.name.toUpperCase()}`;
     $('escClock').classList.toggle('hidden', !this.clock);
     $('jumpFlash').classList.add('hidden');
     g.retry = () => this.start(n, { resume: true });
     stopMusic();
     startAmbience('night');
     g.showScreen('escape');
+    g.hud.el.classList.toggle('esc-nobox', !this.story.box);
+    g.hud.el.classList.toggle('esc-fixed', !!this.ctrl);
     g.touch.relabel?.('use', '⌚');
-    g.touch.relabel?.('swap', '📦');
-    this.say(s ? 'We\'re back at the save box. Let\'s keep going!' : def.firstLine || 'Come on, let\'s get out of here!', 3);
-    setTimeout(() => {
-      if (g.mode === 'escape') g.hud.toast(`📦 Your box: press ${g.touch.active ? '📦' : 'B'} to hide in it anywhere — but only for ${BOX_SECONDS} seconds!`, 4.5);
-    }, 3200);
-    if (!g.touch.active) {
+    g.touch.relabel?.('swap', this.story.box ? '📦' : '⤓');
+    this.say(s ? this.story.resumeLine : def.firstLine || 'Come on, let\'s get out of here!', 3);
+    if (this.story.box) {
+      setTimeout(() => {
+        if (g.mode === 'escape') g.hud.toast(`📦 Your box: press ${g.touch.active ? '📦' : 'B'} to hide in it anywhere — but only for ${BOX_SECONDS} seconds!`, 4.5);
+      }, 3200);
+    }
+    // (the chapters where you stay put — Max's bedroom, Jackson's office — use the mouse to
+    // click their buttons, so they don't take it)
+    if (!g.touch.active && !this.ctrl) {
       requestPointerLock();
       $('clickToPlay').classList.remove('hidden');
+    } else if (this.ctrl) {
+      exitPointerLock();
+      $('clickToPlay').classList.add('hidden');
     }
   }
 
@@ -284,10 +363,9 @@ export class EscapeMode {
   leave() {
     if (this.level) for (const e of this.level.enemies) e.root.visible = false;
     this.jack.hide();
-    this.kid.root.visible = false;
-    this.teacher.root.visible = false;
-    for (const m of this.moms) m.root.visible = false;
-    this.john.root.visible = false;
+    for (const c of this.cast) c.root.visible = false;
+    if (this.ctrl) { this.ctrl.stop(); this.ctrl = null; }
+    this.game.hud.el.classList.remove('esc-fixed', 'esc-nobox', 'cams-up');
     this.watch.toggle(false);
     if (this.hiding && this.hiding.group) this.hiding.group.visible = true;
     this.hiding = null;
@@ -295,8 +373,9 @@ export class EscapeMode {
     this.game.player.inBox = false;
     $('escHide')?.classList.add('hidden');
     const p = this.game.player;
-    if (p.kid) {
+    if (p.kid || p.sizes) {
       p.kid = false;
+      p.sizes = null;
       p.vmBuild = null;
       p.height = 1.62;
       p.rebuildViewmodel();
@@ -440,14 +519,14 @@ export class EscapeMode {
 
   questTotals() {
     let done = 0, total = 0;
-    LEVELS.forEach((def, i) => {
+    this.levels.forEach((def, i) => {
       const got = this.save.quests[i + 1] || [];
       for (const q of def.quests) { total++; if (got.includes(q.id)) done++; }
     });
     return { done, total };
   }
 
-  allQuestsDone() { const t = this.questTotals(); return t.done === t.total; }
+  allQuestsDone() { const t = this.questTotals(); return !!this.story.secret && t.done === t.total; }
 
   // A quest that just opened up might be done already: the tokens you picked up before you
   // knew you needed them, the room you're standing in.
@@ -466,18 +545,22 @@ export class EscapeMode {
       if (type === 'collect' && (q.item !== arg || this.count(q.item) < q.count)) continue;
       if (type === 'visit' && q.room !== arg) continue;
       if (type === 'use' && q.target !== arg) continue;
+      if (type === 'spot' && q.who !== arg) continue;
       this.complete(q.id);
     }
   }
 
   // ── Talking ───────────────────────────────────────────────────────────
 
-  say(text, secs = 2.6, who = 'Jack') {
+  say(text, secs = 2.6, who = this.speaker()) {
     const el = $('escSay');
-    el.innerHTML = `<b>${who}:</b> ${text}`;
+    el.innerHTML = who ? `<b>${who}:</b> ${text}` : text;
     el.classList.remove('hidden');
     this.sayT = secs;
   }
+
+  // Who's talking when nobody says who: Jack, who's always with you at five.
+  speaker() { return this.story.buddy || ''; }
 
   timeText() {
     if (!this.clock) return `LEVEL ${this.level ? this.level.n : 1}`;
@@ -519,7 +602,8 @@ export class EscapeMode {
     this.jack.hide();
     this.hideYaw = 0;
     $('escHide').classList.remove('hidden');
-    $('escHideText').textContent = spot.portable ? 'In your box!' : `${spot.kind === 'bed' ? 'Under the bed' : 'Hiding'} with Jack — shhh! Press E to come out.`;
+    const buddy = this.story.buddy ? ` with ${this.story.buddy}` : '';
+    $('escHideText').textContent = spot.portable ? 'In your box!' : `${spot.kind === 'bed' ? 'Under the bed' : 'Hiding'}${buddy} — shhh! Press E to come out.`;
     for (const e of this.enemies) if (e.onHide) e.onHide(spot);
     this.check('hide');
   }
@@ -551,7 +635,7 @@ export class EscapeMode {
     const near = (pt, r) => Math.hypot(pt.x - p.pos.x, pt.z - p.pos.z) < r;
     if (this.hiding) return { text: '<b>E</b> Come out', act: () => this.unhide() };
     const atExit = d.exit && near(d.exit.pos, 1.7);
-    if (atExit && d.exit.open) return { text: '<b>E</b> ESCAPE! 🏃', act: () => this.win() };
+    if (atExit && d.exit.open) return { text: `<b>E</b> ${this.def.exitText || 'ESCAPE! 🏃'}`, act: () => this.win() };
     // (a keypad or a switch right by a locked door comes before the door)
     for (const t of d.targets) {
       if (!near(t.point, t.reach)) continue;
@@ -581,6 +665,18 @@ export class EscapeMode {
     const hud = g.hud;
     if (hud.toastTimer > 0) { hud.toastTimer -= dt; if (hud.toastTimer <= 0) hud.toastEl.classList.remove('show'); }
 
+    // Chapters where you stay in one place (Max's bedroom, Jackson's office) run themselves.
+    if (this.ctrl) {
+      if (input.pressed('pause')) { g.togglePause(); return; }
+      g.hud.prompt(null);
+      this.ctrl.update(dt);
+      if (g.mode !== 'escape') return;
+      if (this.clock) this.tickClock(dt);
+      if (g.mode !== 'escape') return;
+      if (this.def.update) this.def.update(this, dt);
+      this.updateHud(dt);
+      return;
+    }
     if (g.phone.active) {
       g.phone.update(dt);
       p.update(dt, { canMove: false, canLook: false });
@@ -588,10 +684,11 @@ export class EscapeMode {
     } else {
       if (input.pressed('pause')) { if (this.watch.open) this.watch.toggle(false); else { g.togglePause(); return; } }
       if (input.pressed('watch')) this.watch.toggle();
-      if (input.pressed('box') || input.pressed('swap')) {
+      if (this.story.box && (input.pressed('box') || input.pressed('swap'))) {
         if (this.hiding && this.hiding.portable) this.unhide();
         else if (!this.hiding) this.enterBox();
       }
+      if (!this.story.box && input.pressed('swap') && !this.hiding) p.toggleCrouch();
       if (input.pressed('flashlight') && !this.hiding) p.toggleLight();
       if (input.pressed('crouch') && !this.hiding) p.toggleCrouch();
       if (this.hiding) this.updateHidden(dt);
@@ -611,7 +708,7 @@ export class EscapeMode {
       const room = this.place.roomAt(p.pos.x, p.pos.z);
       if (room !== this.room) { this.room = room; this.check('visit', room); }
     }
-    this.tickBox(dt);
+    if (this.story.box) this.tickBox(dt);
     if (this.clock) this.tickClock(dt);
     if (g.mode !== 'escape') return;
     if (this.def.update) this.def.update(this, dt);
@@ -772,8 +869,10 @@ export class EscapeMode {
     if (g.phone.active) g.phone.close();
     this.scarer = who;
     this.why = why;
-    this.scareLen = g.nightmare ? 2.5 : 1.7;
+    // (the FNAF way — see jumpscare.js: lunge, scream in your face, static)
+    this.scareLen = holdFor(g.nightmare) + STATIC;
     this.scareTimer = this.scareLen;
+    this.scareStatic = false;
     this.scareState = who.state;
     setEyes(who.rig, 'scare');
     this.player.vmGroup.visible = false;
@@ -781,42 +880,38 @@ export class EscapeMode {
     g.hud.show(false);
     $('clickToPlay').classList.add('hidden');
     stopAmbience();
-    sfx.scream();
-    if (g.nightmare) setTimeout(() => sfx.scream(), 650);
-    $('jumpFlash').classList.remove('hidden');
+    stopMusic();
+    sfx.fnafScream();
+    if (g.nightmare) setTimeout(() => sfx.fnafScream(), 700);
     g.profile.stats.caught++;
     g.save();
     g.mode = 'escScare';
   }
 
-  // It rushes the last two metres into your face, then holds there, shaking.
+  // It lunges into your face, screams there with its head jerking about, and then the
+  // picture cuts to static (jumpscare.js).
   updateScare(dt) {
     const g = this.game, a = this.scarer;
     this.scareTimer -= dt;
     const t = this.scareLen - this.scareTimer;
-    const near = a.rig.snout + 0.45;
-    const d = t < 0.22 ? near + 1.6 * (1 - t / 0.22) : near;
     const cam = g.camera;
-    const f = this.player.forward2();
-    const eyeH = a.rig.faceY - 0.05;
-    a.pos.set(cam.position.x + f.x * d, 0, cam.position.z + f.z * d);
-    a.yaw = Math.atan2(-f.x, -f.z);
-    a.root.visible = true;
-    a.root.position.set(a.pos.x, cam.position.y - eyeH + Math.sin(t * 50) * 0.03, a.pos.z);
-    a.root.rotation.set(0, a.yaw, 0);
-    poseRig(a.rig, 'scare', t, 1, dt);
-    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 10);
-    this.player.shake = 1.0;
+    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 20);
+    this.player.shake = t < LUNGE ? 0.4 : 0.9;
     this.player.updateCamera();
-    const under = cam.position.clone().addScaledVector(new THREE.Vector3(f.x, 0, f.z), near * 0.6);
-    under.y -= 0.8;
-    g.effects.flashAt(under, Math.sin(t * 40) > -0.3 ? 0xff3020 : 0xffffff, 5, 0.05);
+    if (this.scareTimer > STATIC) {
+      const { f, near } = placeScare(a, cam, this.player, t);
+      poseRig(a.rig, 'scare', t, 1, dt);
+      finishScare(a, cam, f, near, t, g.effects);
+      return;
+    }
+    if (!this.scareStatic) { this.scareStatic = true; showStatic(); }
+    drawStatic();
     if (this.scareTimer > 0) return;
-    $('jumpFlash').classList.add('hidden');
+    hideStatic();
     exitPointerLock();
     setEyes(a.rig, 'on');
     const s = this.save.save;
-    const back = s && s.level === this.level.n ? 'Back to your save box' : `Try Level ${this.level.n} again`;
+    const back = s && s.level === this.level.n ? 'Back to your save box' : `Try ${this.story.unit} ${this.level.n} again`;
     const tip = (this.def.tips && this.def.tips[a.id]) || 'Hide when they see you, and touch every save box you find!';
     g.hud.caught(a.name, back, tip, 'GOTCHA!', cap(this.why || `${a.name} caught you.`));
     for (const e of this.enemies) e.root.visible = false;
@@ -834,7 +929,7 @@ export class EscapeMode {
     const e = this.save;
     exitPointerLock();
     for (const q of this.def.quests) if (q.type === 'exit') this.remember(q.id);
-    e.level = Math.max(e.level, Math.min(LEVELS.length, n + 1));
+    e.level = Math.max(e.level, Math.min(this.levels.length, n + 1));
     e.save = null;
     if (g.difficulty === 'hard' && !g.debugMode) e.stars[n] = true;
     g.save();
@@ -842,15 +937,16 @@ export class EscapeMode {
     this.leave();
     g.setArea('playplace');
     g.lighting.set('title');
-    const def = LEVELS[n - 1];
-    const next = LEVELS[n];
-    $('escWinTitle').textContent = def.clock ? 'YOU MADE IT TO 6 AM!' : `YOU ESCAPED ${def.name.toUpperCase()}!`;
+    const def = this.levels[n - 1];
+    const next = this.levels[n];
+    $('escWinTitle').textContent = def.winTitle || (def.clock ? 'YOU MADE IT TO 6 AM!' : `YOU ESCAPED ${def.name.toUpperCase()}!`);
     $('escWinBody').innerHTML = def.card.after || '';
     const lq = def.quests.filter((q) => (e.quests[n] || []).includes(q.id)).length;
     $('escWinPlush').textContent = (e.plushies[n] ? '🧸 You found the golden Gus plushie!  ' : '') +
       `⭐ Quests done here: ${lq} of ${def.quests.length}`;
     this.secretNow = this.allQuestsDone() && !e.secret;
-    $('btnEscWinGo').textContent = next ? `On to Level ${n + 1}: ${next.name}` : 'The end ✨';
+    const unit = this.story.unit;
+    $('btnEscWinGo').textContent = next ? `On to ${unit} ${n + 1}: ${next.name}` : n < this.total ? `${unit} ${n + 1} is coming soon!` : 'The end ✨';
     this.wonLevel = n;
     g.showScreen('escWin');
   }
@@ -861,16 +957,18 @@ export class EscapeMode {
     // place's own ending, if that's where you finished them).
     const secret = this.secretNow;
     this.secretNow = false;
-    if (n < LEVELS.length) {
+    if (n < this.levels.length && this.levels[n]) {
       if (secret) this.playSecret(() => this.showCard(n + 1));
       else this.showCard(n + 1);
       return;
     }
+    // the story isn't finished yet: more chapters are on the way
+    if (n < this.total || !this.story.finale) { this.showMenu(); return; }
     // the very end: morning at the pizza place, and ten years later...
     const e = this.save;
     e.done = true;
     this.game.save();
-    this.playCutscene('finale', n, () => {
+    this.playCutscene(this.story.finale, n, () => {
       if (secret) this.playSecret(() => { this.leave(); this.game.toTitle(); });
       else { this.leave(); this.game.toTitle(); }
     });
@@ -880,12 +978,12 @@ export class EscapeMode {
   playSecret(done) {
     this.save.secret = true;
     this.game.save();
-    this.playCutscene('secretEnding', LEVELS.length, () => { this.leave(); done(); });
+    this.playCutscene(this.story.secret, this.levels.length, () => { this.leave(); done(); });
   }
 
   // On the title screen: a star for finding the secret ending.
   titleBadge() {
-    $('secretTag').classList.toggle('hidden', !this.save.secret);
+    if (this.story.key === 'escape') $('secretTag').classList.toggle('hidden', !this.save.secret);
   }
 
   // From the console (?debug=1): __game.escape.skip() finishes every quest but the exit.

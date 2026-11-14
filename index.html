@@ -21,6 +21,8 @@
 </head>
 <body>
   <div id="stage">
+    <!-- the old-school FNAF look: grain, scanlines and a dark vignette over the picture -->
+    <div id="fnafLook"></div>
     <canvas id="game"></canvas>
 
     <!-- ── In-game HUD ───────────────────────────────────────────────── -->
@@ -84,7 +86,7 @@
           <div class="bar battery"><div id="escBattery" class="fill"></div></div>
           <div class="meter-label">RUNNING</div>
           <div class="bar stamina"><div id="escStamina" class="fill"></div></div>
-          <div class="meter-label">📦 BOX</div>
+          <div class="meter-label box-label">📦 BOX</div>
           <div class="bar box-bar"><div id="escBox" class="fill"></div></div>
           <div id="escCrouch" class="crouch-tag hidden">⤓ CROUCHING — harder to see</div>
         </div>
@@ -229,12 +231,14 @@
         <p id="tagline" class="tagline">Twenty nights. Seven animatronics. One fifteen-year-old with a taser.</p>
         <div id="badgeTag" class="badge-tag hidden">🏅 Old John's badge</div>
         <div id="secretTag" class="badge-tag hidden">⭐ When Jonathan Was Five: secret ending found</div>
+        <div id="plexTag" class="badge-tag hidden">🍕 Lost in the Pizzaplex: everybody got out!</div>
       </div>
       <div class="menu-actions">
         <button id="btnPlay" class="btn btn-big">▶&nbsp; Start Night 1</button>
         <button id="btnNew" class="btn btn-ghost hidden">New game</button>
         <button id="btnSelect" class="btn btn-ghost hidden">Pick a night</button>
         <button id="btnFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
+        <button id="btnPlex" class="btn btn-plex">🍕&nbsp; Lost in the Pizzaplex</button>
       </div>
       <div class="title-tabs">
         <button id="btnGallery" class="settings-tab">📷&nbsp; Gallery</button>
@@ -271,6 +275,11 @@
           <p id="diffDesc" class="setting-desc"></p>
         </div>
         <div class="setting">
+          <div class="setting-head">FNAF LOOK</div>
+          <div id="lookChoice" class="choice"></div>
+          <p id="lookDesc" class="setting-desc"></p>
+        </div>
+        <div class="setting">
           <div class="setting-head">DEBUG</div>
           <div id="debugChoice" class="choice"></div>
           <p id="debugDesc" class="setting-desc"></p>
@@ -302,6 +311,8 @@
             Your <b>Gus Watch</b> (G) has your quests and a map; your <b>box</b> (B) hides you
             anywhere for 30 seconds; and the smiling <b>save boxes</b> (E) are where you come back
             to if you get caught.</p>
+          <p><b>🍕 Lost in the Pizzaplex:</b> every chapter you're somebody else, and each one plays
+            differently — the story card at the start of each chapter tells you how.</p>
         </div>
         <div id="howtoList" class="controls-list"></div>
       </div>
@@ -390,9 +401,10 @@
     <!-- ── Cutscenes ─────────────────────────────────────────────────── -->
     <!-- ── When Jonathan Was Five ──────────────────────────────────────── -->
     <div id="escMenu" class="screen screen-five">
-      <div class="eyebrow">TEN YEARS BEFORE GUS'S PLAYPLACE</div>
-      <h2 class="screen-title five-title">WHEN JONATHAN<span>WAS FIVE</span></h2>
-      <p class="brief-body">Jonathan and his best friend Jack escape the overnight daycare... and keep running. Find what you need on your <b>Gus Watch</b> (<b>G</b>), hide in your <b>box</b> (<b>B</b>, 30 seconds!), and touch every <b>save box</b>.</p>
+      <!-- (the words are the open story's: When Jonathan Was Five, or Lost in the Pizzaplex) -->
+      <div class="eyebrow" id="escMenuEyebrow">TEN YEARS BEFORE GUS'S PLAYPLACE</div>
+      <h2 class="screen-title five-title" id="escMenuTitle">WHEN JONATHAN<span>WAS FIVE</span></h2>
+      <p class="brief-body" id="escMenuBrief">Jonathan and his best friend Jack escape the overnight daycare... and keep running.</p>
       <div id="escLevels" class="esc-levels"></div>
       <div id="escPlushies" class="esc-plushies"></div>
       <div id="escQuests" class="esc-plushies"></div>

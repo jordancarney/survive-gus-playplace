@@ -781,3 +781,162 @@ body.nightmare #nmTitle { display: block; animation: nm-title-flicker 6.5s infin
   align-self: center; font-family: var(--ui-font); font-size: 12px; color: var(--dim); background: none;
   border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 4px 12px; cursor: pointer;
 }
+
+/* ── Lost in the Pizzaplex (js/plex/) ───────────────────────────────── */
+
+.btn-plex {
+  background: linear-gradient(180deg, #c040ff, #6a1fa0); color: #fff; box-shadow: 0 4px 0 #3a0a5a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.btn-plex:active { box-shadow: 0 1px 0 #3a0a5a; }
+.screen-five.screen-plex {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(192, 64, 255, 0.34), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(45, 226, 230, 0.16), transparent 50%),
+    linear-gradient(180deg, #0a0620 0%, #1a0a38 55%, #07040f 100%);
+}
+.screen-plex .five-title { text-shadow: 0 0 26px rgba(192, 64, 255, 0.7); }
+.screen-plex .five-title span { color: #2de2e6; }
+.screen-plex .five-level { color: #c98aff; text-shadow: 0 0 26px rgba(192, 64, 255, 0.6); }
+
+/* fifty chapters: a scrolling grid of small tiles */
+.esc-levels.many {
+  grid-template-columns: repeat(5, minmax(108px, 150px)); max-height: min(44vh, 420px); overflow-y: auto;
+  padding: 12px 10px 4px; touch-action: pan-y; pointer-events: auto;
+}
+.esc-levels.many .esc-level { min-height: 66px; padding: 6px 5px; gap: 1px; }
+.esc-levels.many .esc-n { font-size: 16px; line-height: 1; }
+.esc-levels.many .esc-name { font-size: 11px; line-height: 1.15; }
+.esc-level .esc-who { font-size: 10px; font-weight: 800; color: #5b2a86; letter-spacing: 0.02em; }
+.esc-level.soon .esc-who, .esc-level.soon .esc-name { color: inherit; }
+.esc-level.soon { opacity: 0.28; }
+.esc-level.soon .esc-name { font-weight: 600; font-size: 11px; }
+@media (max-width: 640px) { .esc-levels.many { grid-template-columns: repeat(3, minmax(90px, 1fr)); } }
+
+/* no box in the Pizzaplex */
+#hud.esc-nobox .box-label, #hud.esc-nobox .box-bar { display: none; }
+
+/* the chapters where you stay in one place: their own buttons instead of the watch and bars */
+#hud.esc-fixed .esc-bars, #hud.esc-fixed #watchMini, #hud.esc-fixed #touchLayer, #hud.esc-fixed #crosshair { display: none; }
+
+/* Max's bedroom */
+.room-ui { position: absolute; inset: 0; pointer-events: none; font-family: var(--ui-font); }
+.room-hint {
+  position: absolute; top: calc(70px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  font-size: clamp(13px, 2vw, 17px); font-weight: 700; color: var(--ink); text-shadow: 0 2px 4px #000;
+  background: rgba(10, 6, 24, 0.6); padding: 6px 14px; border-radius: 10px; white-space: nowrap; max-width: 92vw;
+}
+.room-pad {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 6px; pointer-events: auto;
+}
+.room-mid { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.room-btn, .room-hold, .office-btn, .office-look-btn, .office-cams-btn {
+  font-family: var(--ui-font); font-weight: 900; color: var(--ink); cursor: pointer; touch-action: none;
+  background: rgba(20, 12, 44, 0.82); border: 2px solid rgba(201, 138, 255, 0.55); border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+.room-btn { width: 74px; height: 58px; font-size: 20px; }
+.room-btn.small { height: 40px; font-size: 14px; }
+.room-btn span { font-size: 10px; letter-spacing: 0.04em; font-weight: 700; color: var(--dim); }
+.room-btn.on { border-color: var(--yellow); box-shadow: 0 0 14px rgba(255, 210, 63, 0.5); }
+.room-holds {
+  position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex; gap: 10px; pointer-events: auto;
+}
+.room-hold { width: 96px; height: 96px; font-size: 30px; border-radius: 50%; }
+.room-hold span { font-size: 11px; letter-spacing: 0.06em; }
+.room-hold small, .office-btn small, .office-cams-btn small { font-size: 9px; color: var(--dim); font-weight: 700; }
+.room-hold.on { background: rgba(255, 210, 63, 0.3); border-color: var(--yellow); }
+.room-hold.off { opacity: 0.35; }
+.room-hold.light.on { background: rgba(255, 244, 200, 0.35); border-color: #fff4c8; }
+#hud.esc-fixed .esc-say { bottom: calc(150px + env(safe-area-inset-bottom)); }
+
+/* Jackson's office */
+.office-ui { position: absolute; inset: 0; pointer-events: none; font-family: var(--hud-font); }
+.office-power {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); top: calc(14px + env(safe-area-inset-top));
+  font-size: 14px; color: #c8ffc8; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9); line-height: 1.6;
+}
+.office-power b { font-size: 18px; }
+.office-power b.low { color: #ff4a4a; animation: pulse 0.6s ease-in-out infinite; }
+.office-power span { color: #7cff6b; letter-spacing: 2px; }
+.office-power span i { color: rgba(124, 255, 107, 0.2); font-style: normal; }
+.office-side {
+  position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+}
+.office-side.left { left: calc(14px + env(safe-area-inset-left)); }
+.office-side.right { right: calc(14px + env(safe-area-inset-right)); }
+.office-btn { width: 76px; height: 76px; font-size: 26px; }
+.office-btn span { font-size: 11px; letter-spacing: 0.08em; }
+.office-btn.door.on { background: rgba(255, 42, 42, 0.45); border-color: #ff4a4a; }
+.office-btn.light.on { background: rgba(255, 244, 200, 0.4); border-color: #fff4c8; }
+.office-look {
+  position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; gap: 10px; align-items: stretch; pointer-events: auto;
+}
+.office-look-btn { width: 60px; font-size: 22px; }
+.office-cams-btn { padding: 10px 22px; font-size: 16px; letter-spacing: 0.1em; flex-direction: row; gap: 8px; }
+.office-cams-btn.on { border-color: #7cff6b; }
+.office-ui.cams .office-side, .office-ui.cams .office-look-btn, .office-ui.cams .office-look, .office-ui.cams .office-power { display: none; }
+#hud.cams-up .esc-top { display: none; }
+.office-hint {
+  position: absolute; top: calc(70px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  font-family: var(--ui-font); font-size: clamp(14px, 2.2vw, 19px); font-weight: 900; white-space: nowrap;
+  text-shadow: 0 2px 4px #000;
+}
+.office-hint.hot { color: #ff4a4a; animation: pulse 0.5s ease-in-out infinite; }
+.office-cams { position: absolute; inset: 0; color: #e8ffe8; font-family: var(--hud-font); pointer-events: none; }
+.off-noise { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.12; mix-blend-mode: screen; pointer-events: none; image-rendering: pixelated; }
+.off-map {
+  position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
+  width: min(360px, 50vw); background: rgba(0, 20, 0, 0.6); border: 2px solid rgba(160, 255, 160, 0.5);
+  border-radius: 6px; pointer-events: auto;
+}
+.off-map .room { position: absolute; border: 1px solid rgba(160, 255, 160, 0.45); background: rgba(80, 160, 80, 0.12); font-size: 8px; color: var(--yellow); display: flex; align-items: center; justify-content: center; }
+.off-map .room.you { background: rgba(255, 210, 63, 0.3); }
+.off-map .cam-btn {
+  position: absolute; transform: translate(-50%, -50%); font-family: var(--hud-font);
+  font-size: 10px; padding: 2px 4px; border-radius: 4px; cursor: pointer;
+  background: #0a2a0a; color: #c8ffc8; border: 1px solid rgba(160, 255, 160, 0.6);
+}
+.off-map .cam-btn.on { background: #c8ffc8; color: #0a2a0a; }
+.off-cam-power { position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(70px + env(safe-area-inset-bottom)); font-size: 14px; }
+.off-cams-down { position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); pointer-events: auto; }
+.off-spot {
+  position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-family: var(--ui-font);
+  font-size: clamp(16px, 2.6vw, 22px); font-weight: 900; color: var(--yellow); text-shadow: 0 0 8px #000;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+@media (max-width: 640px) {
+  .office-power { top: calc(96px + env(safe-area-inset-top)); font-size: 12px; }
+  .office-hint, .room-hint { top: calc(150px + env(safe-area-inset-top)); white-space: normal; text-align: center; }
+  .office-cams-btn { padding: 8px 14px; font-size: 14px; }
+}
+
+/* the static after a jumpscare (js/jumpscare.js) */
+.scare-static {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 35; pointer-events: none;
+  image-rendering: pixelated; filter: contrast(1.3) brightness(0.9);
+}
+
+/* ── The old-school FNAF look (Settings → FNAF look; body.fnaf) ──────── */
+body.fnaf canvas#game { filter: saturate(0.52) sepia(0.2) contrast(1.22) brightness(0.98); }
+body.fnaf canvas#game.night-vision { filter: saturate(0.25) sepia(0.45) hue-rotate(55deg) contrast(1.3) brightness(1.12); }
+#fnafLook { position: absolute; inset: 0; z-index: 5; pointer-events: none; display: none; overflow: hidden; }
+body.fnaf #fnafLook { display: block; }
+#fnafLook::before {
+  content: ''; position: absolute; inset: -50%; opacity: 0.2; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: fnaf-grain 0.45s steps(5) infinite;
+}
+#fnafLook::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.13) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, 0.42) 80%, rgba(0, 0, 0, 0.75) 100%);
+}
+@keyframes fnaf-grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-7%, 4%); } 40% { transform: translate(5%, -6%); }
+  60% { transform: translate(-3%, -8%); } 80% { transform: translate(8%, 3%); } 100% { transform: translate(0, 0); }
+}

@@ -63,6 +63,24 @@ means starting the night over.
   in it); smiling **save boxes** remember how far you got;
   and every level has a secret golden Gus plushie. Do every single quest in every level for
   a secret ending
+- **🍕 Lost in the Pizzaplex**, a third story in **50 chapters**: six years before the
+  PlayPlace, Jonathan (9, with a perm), Max (11, a girl with long red hair), Jack (10),
+  Thomas (7, in a baggy green sweatshirt) and **Jackson** (22), the new night guard, get lost
+  in Gus's brand-new, way bigger **Pizzaplex** on its first Sleepover Night — one night, from
+  midnight to 6 AM. Every chapter you play as somebody else, and each one plays like a
+  different game: Jonathan roams the whole Pizzaplex with the Gus Watch; Max holds out in the
+  Sleepover Suite (go to the doors, the closet or the bed, listen for breathing, keep the
+  music box wound); Jackson guards the security office with two doors, hall lights, eleven
+  live cameras and a power meter; Jack does whatever **P.A.L.**, the Pizzaplex Assistant
+  Line, tells him in the tunnels underneath — until he finds out what P.A.L. really is;
+  Thomas dives into the giant ball pit and comes out in another time; and from Chapter 27,
+  **Timmy**, six and from the future, crawls through the play tubes where nothing else fits.
+  New animatronics **DJ Rocco** the raccoon DJ and **Sparky** the robot dog. In Chapter 50
+  they all escape together
+- Jumpscares like the real FNAF games: a lunge into your face, a screech, the head jerking
+  about, then TV static
+- An old-school **FNAF look** (Settings): grainy, washed-out and dark, for Lost in the
+  Pizzaplex or for the whole game
 - A Gallery on the title screen with pictures from making the game
 - A boss fight with Gus on Night 20, and a secret Night 21 where all five get pulled into the
   junk pile and come out as one Junk Monster — and the old original animatronics, retired
@@ -136,5 +154,5 @@ title screen.
 ## Project layout
 
 See [DESIGN.md](DESIGN.md) for the full design document — the PlayPlace, the animatronics,
-the twenty-one nights, When Jonathan Was Five and its eight levels, balance tables, and the
-file map.
+the twenty-one nights, When Jonathan Was Five and its eight levels, Lost in the Pizzaplex and
+its chapters, balance tables, and the file map.

@@ -761,7 +761,7 @@ export function buildPerson(o) {
 
 function buildPersonSimple({
   height: h, shirt, pants, skin, hair = null, cap = null, tie = null, badge = false, glasses = false,
-  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null,
+  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null, eye = null, style = null, baggy = false,
 }) {
   const sm = mat(shirt), sk = mat(skin, { rough: 0.6 }), pm = mat(pants, { rough: 0.7 });
   const root = new THREE.Group();
@@ -784,7 +784,8 @@ function buildPersonSimple({
   const hr = h * headScale;
   part(G.sphereLo, sk, rig.head, { p: [0, hr, 0], s: [hr, hr * 1.08, hr] });
   addHair(rig.head, hr, 1.0, hair !== null ? mat(hair, { rough: 0.8 }) : null, cap !== null ? mat(cap) : null, G.sphereLo, bowl);
-  for (const sx of [-1, 1]) part(G.sphereLo, mat(0x111111), rig.head, { p: [sx * hr * 0.35, hr * 1.05, hr * 0.9], s: [0.015, 0.02, 0.01] });
+  for (const sx of [-1, 1]) part(G.sphereLo, mat(eye ?? 0x111111), rig.head, { p: [sx * hr * 0.35, hr * 1.05, hr * 0.9], s: [0.015, 0.02, 0.01] });
+  if (style && hair !== null) addStyle(rig.head, hr, mat(hair, { rough: 0.8 }), style, G.sphereLo, cap !== null);
   addMouth(rig, mat(0x4a1414), hr, hr * 0.7, hr * 0.92);
   if (beard !== null) addBeard(rig.head, hr, mat(beard, { rough: 0.8 }), G.sphereLo, 0.7);
   if (glasses) for (const sx of [-1, 1]) part(G.torus, mat(0x111111), rig.head, { p: [sx * hr * 0.38, hr * 1.05, hr * 0.95], s: [hr * 0.28, hr * 0.28, hr * 0.28] });
@@ -794,6 +795,7 @@ function buildPersonSimple({
     part(G.cyl, sm, arm, { p: [0, -th * 0.25, 0], s: [shoulders * 0.24, th * 0.5, shoulders * 0.24] });
     part(G.cyl, sk, arm, { p: [0, -th * 0.7, 0], s: [shoulders * 0.2, th * 0.45, shoulders * 0.2] });
   }
+  if (baggy) addBaggy(rig, sm, th, shoulders, G.sphereLo);
   rig.armBase = { L: [0, 0, 0.15], R: [0, 0, -0.15] };
   root.traverse((o) => { if (o.isMesh) o.castShadow = shadows && SHADOWS; });
   return rig;
@@ -815,7 +817,7 @@ const IRIS = [0x4a2e1a, 0x2f5a8a, 0x3a5a2a, 0x2a1a10];
 
 function buildPersonReal({
   height: h, shirt, pants, skin, hair = null, cap = null, tie = null, badge = false, glasses = false,
-  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null,
+  headScale = 0.075, shoulders = 0.2, shadows = false, bowl = false, beard = null, eye = null, style = null, baggy = false,
 }) {
   const kid = headScale > 0.09;
   const sm = cloth(shirt), pm = cloth(pants), sk = skinMat(skin);
@@ -845,7 +847,7 @@ function buildPersonReal({
   part(G.sphereLo, sk, hd, { p: [0, hr * 0.95, hr * 0.96], s: [hr * 0.12, hr * 0.16, hr * 0.13] });           // nose
   addMouth(rig, mat(0x4a1414, { rough: 0.5, worn: false }), hr, hr * 0.62, hr * 0.89);
   if (beard !== null) addBeard(hd, hr, fur(beard, { pile: 0.6 }), G.sphere, 0.62);
-  const iris = mat(IRIS[Math.floor(Math.random() * IRIS.length)], { rough: 0.2, worn: false });
+  const iris = mat(eye ?? IRIS[Math.floor(Math.random() * IRIS.length)], { rough: 0.2, worn: false });
   for (const sx of [-1, 1]) {
     part(G.sphereLo, sk, hd, { p: [sx * hr * 0.92, hr * 1.0, 0], s: [hr * 0.12, hr * 0.24, hr * 0.14] });    // ears
     part(G.sphereLo, eyeballMat(), hd, { p: [sx * hr * 0.33, hr * 1.12, hr * 0.8], s: [hr * 0.16, hr * 0.13, hr * 0.1] });
@@ -853,6 +855,7 @@ function buildPersonReal({
     part(G.box, hm || mat(0x3a2a1a, { worn: false }), hd, { p: [sx * hr * 0.34, hr * 1.33, hr * 0.84], s: [hr * 0.3, hr * 0.06, hr * 0.06], r: [0, 0, -sx * 0.12] });
   }
   addHair(hd, hr, 0.92, hm, cap !== null ? cloth(cap) : null, G.sphere, bowl);
+  if (style && hm) addStyle(hd, hr, hm, style, G.sphere, cap !== null);
   if (glasses) for (const sx of [-1, 1]) part(G.torus, mat(0x111111, { worn: false }), hd, { p: [sx * hr * 0.34, hr * 1.12, hr * 0.92], s: [hr * 0.26, hr * 0.26, hr * 0.26] });
   rig.armL = group(rig.torso, [-(shoulders + 0.03), th * 0.9, 0]);
   rig.armR = group(rig.torso, [shoulders + 0.03, th * 0.9, 0]);
@@ -861,6 +864,7 @@ function buildPersonReal({
     part(G.capsule, sk, arm, { p: [0, -th * 0.68, 0], s: [shoulders * 0.36, th * 0.26, shoulders * 0.36] });
     part(G.sphereLo, sk, arm, { p: [0, -th * 0.98, 0.01], s: [shoulders * 0.24, shoulders * 0.3, shoulders * 0.16] });   // hand
   }
+  if (baggy) addBaggy(rig, sm, th, shoulders, G.sphere);
   rig.armBase = { L: [0, 0, 0.15], R: [0, 0, -0.15] };
   root.traverse((o) => { if (o.isMesh) o.castShadow = shadows && SHADOWS; });
   addFur(root);
@@ -884,6 +888,56 @@ function addHair(head, hr, w, hairMat, capMat, geo, bowl = false) {
   } else if (hairMat) {
     part(geo, hairMat, head, { p: [0, hr * 1.62, hr * 0.28], s: [hr * (w - 0.08), hr * 0.4, hr * 0.68] });
   }
+}
+
+// Hairstyles on top of the plain cut, so everyone looks different (Lost in the Pizzaplex's
+// kids — the designer gave each of them their own):
+//   perm   tight curls all over the top, sides and back
+//   long   long hair down the back past the shoulders, and down the sides of the face
+//   spiky  short spikes sticking up off the top
+//   messy  a few tufts going every which way
+//   locs   short locs hanging down under a cap
+function addStyle(head, hr, m, style, geo, capped) {
+  if (style === 'perm') {
+    for (let ring = 0; ring < 4; ring++) {
+      const lat = 0.15 + ring * 0.33;
+      const n = 6 + ring * 2;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + ring * 0.4;
+        const back = Math.cos(a) > 0.35 && ring < 2;      // keep the curls off the face
+        if (back) continue;
+        const r = hr * (1.08 - lat * 0.2);
+        part(geo, m, head, { p: [Math.sin(a) * r * Math.cos(lat), hr * (1.15 + Math.sin(lat) * 0.92), Math.cos(a) * r * Math.cos(lat) * 0.97 - hr * 0.08],
+          s: [hr * 0.34, hr * 0.32, hr * 0.34] });
+      }
+    }
+    part(geo, m, head, { p: [0, hr * 2.0, -hr * 0.05], s: [hr * 0.5, hr * 0.28, hr * 0.5] });
+  } else if (style === 'long') {
+    part(geo, m, head, { p: [0, hr * 0.55, -hr * 0.55], s: [hr * 0.98, hr * 1.35, hr * 0.42] });
+    for (const sx of [-1, 1]) part(geo, m, head, { p: [sx * hr * 0.82, hr * 0.62, -hr * 0.05], s: [hr * 0.2, hr * 0.8, hr * 0.42] });
+  } else if (style === 'spiky') {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      part(G.cone, m, head, { p: [Math.sin(a) * hr * 0.42, hr * 2.0, Math.cos(a) * hr * 0.38 - hr * 0.05], s: [hr * 0.2, hr * 0.55, hr * 0.2],
+        r: [Math.cos(a) * 0.5 - 0.2, 0, -Math.sin(a) * 0.5] });
+    }
+  } else if (style === 'messy') {
+    for (const [x, z, rx, rz] of [[-0.3, 0.3, 0.6, 0.4], [0.25, 0.35, 0.5, -0.5], [0, -0.2, -0.6, 0.1], [0.4, -0.1, -0.2, -0.8], [-0.4, -0.15, -0.3, 0.8]]) {
+      part(G.cone, m, head, { p: [x * hr, hr * 2.0, z * hr], s: [hr * 0.24, hr * 0.48, hr * 0.24], r: [rx, 0, rz] });
+    }
+  } else if (style === 'locs') {
+    for (let i = 0; i < 9; i++) {
+      const a = Math.PI * 0.55 + (i / 8) * Math.PI * 0.9;
+      part(G.cyl, m, head, { p: [Math.cos(a) * hr * 0.92, hr * (capped ? 0.95 : 1.1), Math.sin(a) * hr * 0.9 - hr * 0.1], s: [hr * 0.09, hr * 0.85, hr * 0.09] });
+    }
+  }
+}
+
+// A baggy sweatshirt: a puffier body and sleeves, and a hood bunched up at the back.
+function addBaggy(rig, m, th, shoulders, geo) {
+  part(geo, m, rig.torso, { p: [0, th * 0.42, 0], s: [shoulders * 1.15, th * 0.55, shoulders * 0.85] });
+  part(geo, m, rig.torso, { p: [0, th * 0.95, -shoulders * 0.55], s: [shoulders * 0.75, th * 0.22, shoulders * 0.45] });
+  for (const arm of [rig.armL, rig.armR]) part(geo, m, arm, { p: [0, -th * 0.3, 0], s: [shoulders * 0.32, th * 0.42, shoulders * 0.32] });
 }
 
 // A big beard under the mouth and a moustache over it, leaving the mouth free to open.

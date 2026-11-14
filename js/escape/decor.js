@@ -84,8 +84,9 @@ function bookSpines() {
   return spinesTex;
 }
 
-// What each kind of thing to find looks like: a colour and a shape.
-const ITEMS = {
+// What each kind of thing to find looks like: a colour and a shape. (Other stories add their
+// own — Lost in the Pizzaplex's Party Passes — with a `build` that draws it.)
+export const ITEMS = {
   fuse:    { color: 0xffd23f, name: 'fuse' },
   book:    { color: 0x7cff6b, name: 'glowing book' },
   key:     { color: 0xffc23a, name: 'key' },
@@ -452,7 +453,9 @@ export class EscapeDecor extends Decor {
     g.position.copy(p);
     this.group.add(g);
     const glow = glowMat(info.color, 0.5);
-    if (kind === 'fuse') {
+    if (info.build) {
+      info.build(this, g, glow, id);
+    } else if (kind === 'fuse') {
       this.mesh(G.cyl, glowMat(0xfff4c8, 0.4), g, { s: [0.07, 0.26, 0.07], r: [0, 0, Math.PI / 2], still: false });
       for (const sx of [-1, 1]) this.mesh(G.cyl, mat(0xc0c0c0, { metal: 0.8 }), g, { p: [sx * 0.15, 0, 0], s: [0.08, 0.06, 0.08], r: [0, 0, Math.PI / 2], still: false });
     } else if (kind === 'book') {

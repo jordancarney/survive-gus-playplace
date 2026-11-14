@@ -36,12 +36,14 @@ import { Timmy } from './timmy.js';
 import { Phone } from './phone.js';
 import {
   loadProfile, saveProfile, freshProfile, saveGraphics, takeReopenSettings, loadDifficulty, saveDifficulty,
-  loadDebug, saveDebug,
+  loadDebug, saveDebug, loadLook, saveLook,
 } from './save.js';
 import { setEyes, buildJonathan, buildManager, buildGramma, buildOldJohn } from './models.js';
 import { signTex } from './textures.js';
 import { EscapeMode, STORY } from './escape/mode.js';
+import { PlexMode, PLEX_STORY } from './plex/mode.js';
 import { VERSION } from './version.js';
+import { LUNGE, STATIC, holdFor, placeScare, finishScare, showStatic, drawStatic, hideStatic } from './jumpscare.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -73,6 +75,7 @@ export class Game {
     this.input = input;
     this.difficulty = loadDifficulty();
     this.debugMode = loadDebug();
+    this.look = loadLook();
     this.grace = 0;           // seconds left where nothing can catch you, after a second chance
     this.dread = 12;          // Nightmare: seconds to the next scare that isn't really there
     this.beat = 0;            // Nightmare: seconds to your next heartbeat
@@ -140,6 +143,10 @@ export class Game {
     // When Jonathan Was Five: the story mode, with its own levels (js/escape/).
     Object.assign(SCRIPTS, STORY);
     this.escape = new EscapeMode(this);
+    // Lost in the Pizzaplex: the third story, in the same engine (js/plex/).
+    Object.assign(SCRIPTS, PLEX_STORY);
+    this.plex = new PlexMode(this);
+    this.story = this.escape;     // whichever story mode is open
     this.setArea('playplace');
     graphics.prepare(this.scene);
     this.lighting.apply();
@@ -307,8 +314,10 @@ export class Game {
       if (!confirm('Start over from Night 1? Your progress will be erased.')) return;
       // (When Jonathan Was Five is a story of its own: a new game keeps how far you got in it)
       const five = this.profile.escape;   // (its secret ending too)
+      const plex = this.profile.plex;     // (and so is Lost in the Pizzaplex)
       this.profile = freshProfile();
       this.profile.escape = five;
+      this.profile.plex = plex;
       this.save();
       this.updatePhoto();
       this.continueGame();
@@ -335,8 +344,10 @@ export class Game {
     click('btnGuardNoteGo', () => this.closeGuardNote());
 
     // Clicking the 3D view during play takes the mouse.
+    // (not in the story chapters where you stay put and click buttons: Max's bedroom,
+    // Jackson's office)
     this.canvas.addEventListener('click', () => {
-      if (this.isPlaying() && !this.cams.active && !this.touch.active) requestPointerLock();
+      if (this.isPlaying() && !this.cams.active && !this.touch.active && !this.fixedView()) requestPointerLock();
     });
     $('clickToPlay').addEventListener('click', () => requestPointerLock());
   }
@@ -381,9 +392,27 @@ export class Game {
       this.renderSettings();
       this.showDebugBadge();
     });
+    choices($('lookChoice'), [['plex', 'Pizzaplex 🍕'], ['all', 'Everywhere'], ['off', 'Off']], this.look, (id) => {
+      this.look = id;
+      saveLook(id);
+      this.renderSettings();
+    });
+    $('lookDesc').textContent = {
+      plex: 'Lost in the Pizzaplex looks like the old FNAF games: dark, grainy and washed out.',
+      all: 'The whole game looks like the old FNAF games: dark, grainy and washed out.',
+      off: 'No grain and no washed-out colours anywhere.',
+    }[this.look];
     $('debugDesc').textContent = this.debugMode
       ? 'DEBUG MODE IS ON. Every night is open in Pick a Night. Nothing you do is saved, and your real progress comes back when you turn it off.'
       : 'Every night open in Pick a Night, for testing. Nothing you do in debug mode is saved.';
+  }
+
+  // The old-school FNAF look: in Lost in the Pizzaplex (its menus, chapters and cutscenes), or
+  // everywhere, or nowhere — Settings → FNAF look.
+  applyLook() {
+    const plexScreens = ['escMenu', 'escCard', 'escape', 'escScare', 'escWin', 'cutscene', 'paused', 'caught'];
+    const inPlex = this.story === this.plex && plexScreens.includes(this.mode);
+    document.body.classList.toggle('fnaf', this.look === 'all' || (this.look === 'plex' && inPlex));
   }
 
   showDebugBadge() {
@@ -400,6 +429,7 @@ export class Game {
     this.hud.show(playing);
     this.hud.el.classList.toggle('day', name === 'day');
     this.hud.el.classList.toggle('esc', name === 'escape');
+    this.applyLook();
     $('dayPanel').classList.toggle('hidden', name !== 'day');
     if (!playing) { this.cams.close(); if (this.repair.active) this.repair.close(); }
     this.showDebugBadge();
@@ -408,6 +438,9 @@ export class Game {
   toTitle() {
     exitPointerLock();
     this.escape.leave();
+    this.plex.leave();
+    this.story = this.escape;
+    this.viewCam = null;
     this.setArea('playplace');
     this.hidePeople();
     this.night.stop();
@@ -424,6 +457,7 @@ export class Game {
     this.applyNightmare();
     this.hud.title(this.profile);
     this.escape.titleBadge();
+    this.plex.titleBadge();
     this.showScreen('title');
     playMusic(this.nightmare ? 'nightmare' : 'title');
     if (takeReopenSettings()) this.openSettings();
@@ -622,8 +656,10 @@ export class Game {
     if (this.player.carrying) this.dropCarried();
     this.mode = 'jumpscare';
     this.scarer = who;
-    this.scareLen = this.nightmare ? 2.5 : 1.7;
+    // the FNAF way (jumpscare.js): lunge, scream in your face, then static
+    this.scareLen = holdFor(this.nightmare) + STATIC;
     this.scareTimer = this.scareLen;
+    this.scareStatic = false;
     if (who.reveal) who.reveal(1);   // Sunny, out of the fog
     this.prevScareState = who.state;
     who.state = 'jumpscare';
@@ -636,9 +672,8 @@ export class Game {
     stopMusicBox();
     stopMusic();
     stopAmbience();
-    sfx.scream();
-    if (this.nightmare) setTimeout(() => sfx.scream(), 650);
-    $('jumpFlash').classList.remove('hidden');
+    sfx.fnafScream();
+    if (this.nightmare) setTimeout(() => sfx.fnafScream(), 700);
     this.profile.stats.caught++;
     this.save();
   }
@@ -663,25 +698,24 @@ export class Game {
     if (!a) { $('jumpFlash').classList.add('hidden'); this.toTitle(); return; }
     this.scareTimer -= dt;
     const t = this.scareLen - this.scareTimer;
-    // It rushes the last two metres into your face, then holds there, shaking.
-    const near = a.rig.snout + 0.5;
-    const d = t < 0.22 ? near + 1.6 * (1 - t / 0.22) : near;
+    // It lunges into your face, screams with its head jerking about, then: static.
     const cam = this.camera;
-    const f = this.player.forward2();
-    const eyeH = a.rig.faceY - 0.05;
-    a.pos.set(cam.position.x + f.x * d, 0, cam.position.z + f.z * d);
-    a.yaw = Math.atan2(-f.x, -f.z);
-    a.root.position.set(a.pos.x, cam.position.y - eyeH + Math.sin(t * 50) * 0.03, a.pos.z);
-    a.root.rotation.set(0, a.yaw, 0);
-    a.render(dt);
-    a.root.position.y = cam.position.y - eyeH + Math.sin(t * 50) * 0.03;
-    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 10);
-    this.player.shake = 1.0;
+    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 20);
+    this.player.shake = t < LUNGE ? 0.4 : 0.9;
     this.player.updateCamera();
-    const under = cam.position.clone().addScaledVector(new THREE.Vector3(f.x, 0, f.z), near * 0.6);
-    under.y -= 1.0;
-    this.effects.flashAt(under, Math.sin(t * 40) > -0.3 ? 0xff3020 : 0xffffff, 5, 0.05);
+    if (this.scareTimer > STATIC) {
+      const { f, near } = placeScare(a, cam, this.player, t);
+      const keep = a.root.position.clone(), rot = a.root.rotation.clone();
+      a.render(dt);
+      a.root.position.copy(keep);
+      a.root.rotation.copy(rot);
+      finishScare(a, cam, f, near, t, this.effects);
+      return;
+    }
+    if (!this.scareStatic) { this.scareStatic = true; showStatic(); }
+    drawStatic();
     if (this.scareTimer <= 0) {
+      hideStatic();
       $('jumpFlash').classList.add('hidden');
       exitPointerLock();
       const home = !this.area.isPlayPlace;
@@ -776,10 +810,13 @@ export class Game {
     this.player.lightVisible = false;
   }
 
+  // A story chapter where you don't walk about, and use the mouse on its buttons.
+  fixedView() { return this.mode === 'escape' && !!this.story?.ctrl; }
+
   togglePause() {
     if (this.mode === 'paused') {
       this.showScreen(this.pausedFrom);
-      if (!this.touch.active) requestPointerLock();
+      if (!this.touch.active && !this.fixedView()) requestPointerLock();
       return;
     }
     if (!this.isPlaying()) return;
@@ -790,7 +827,7 @@ export class Game {
   }
 
   onLockChange(locked) {
-    $('clickToPlay').classList.toggle('hidden', locked || !this.isPlaying() || this.cams.active || this.touch.active);
+    $('clickToPlay').classList.toggle('hidden', locked || !this.isPlaying() || this.cams.active || this.touch.active || this.fixedView());
     if (locked || !this.isPlaying() || this.cams.active || this.repair.active || this.phone.active) return;
     // Escape released the mouse mid-night: pause rather than leave Jonathan standing there.
     if (this.hunting) this.togglePause();
@@ -912,8 +949,8 @@ export class Game {
         if (this.cut.active && this.cut.script.kids) this.day.update(dt);
         break;
       case 'jumpscare': this.updateJumpscare(dt); break;
-      case 'escape': this.escape.update(dt); break;
-      case 'escScare': this.escape.updateScare(dt); break;
+      case 'escape': this.story.update(dt); break;
+      case 'escScare': this.story.updateScare(dt); break;
       case 'title': case 'card': case 'howto': case 'select': case 'settings': case 'gallery':
       case 'escMenu': case 'escCard': case 'escWin':
         this.updateBackdrop(dt);
@@ -1117,7 +1154,9 @@ export class Game {
 
   render(dt) {
     this.cams.renderMonitors(this.renderer, this.scene, dt);
-    this.graphics.render(this.scene, this.cams.active ? this.cams.cam : this.camera, { spot: this.player.flashlight, dt });
+    // (`viewCam`: a story chapter looking through a camera of its own — Jackson's monitor)
+    const cam = this.viewCam || (this.cams.active ? this.cams.cam : this.camera);
+    this.graphics.render(this.scene, cam, { spot: this.player.flashlight, dt });
   }
 
   resize(w, h) {
@@ -1129,5 +1168,6 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.cams.cam.aspect = w / h;
     this.cams.cam.updateProjectionMatrix();
+    this.plex?.resize(w, h);
   }
 }

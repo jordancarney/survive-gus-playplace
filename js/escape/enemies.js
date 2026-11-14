@@ -141,7 +141,8 @@ export class Stalker {
 
   senses() {
     const m = this.mode, p = m.player;
-    if (m.hiding || m.grace > 0) return false;
+    // (`unseen`: a level can hide you without a hiding spot — Timmy deep in the play tubes)
+    if (m.hiding || m.grace > 0 || m.unseen) return false;
     const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z;
     const d = Math.hypot(dx, dz);
     const crouch = p.crouching;
@@ -270,7 +271,7 @@ export class Stalker {
     }
 
     // Close enough to grab you.
-    if (this.dangerous && this.state !== 'getHidden' && !m.hiding && m.grace <= 0 && this.frozen <= 0 &&
+    if (this.dangerous && this.state !== 'getHidden' && !m.hiding && !m.unseen && m.grace <= 0 && this.frozen <= 0 &&
         this.distToPlayer() < (this.def.reach || 1.05) + this.rig.radius * 0.4 &&
         this.place.sightClear(this.eye(), m.player.pos)) {
       m.caught(this);
@@ -285,7 +286,7 @@ export class Stalker {
     sfx.servo(this.pos);
     if (this.distToPlayer() < 16) {
       sfx.spotted();
-      if (this.def.shout) this.mode.say(this.def.shout(), 2.2);
+      if (this.def.shout) this.mode.say(this.def.shout(), 2.2, this.def.shoutWho);
     }
   }
 

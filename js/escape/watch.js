@@ -15,7 +15,7 @@ export const ENTITY = {
   custodian: ['🧹', 'Custodian'], nurse: ['🏥', 'Nurse Bot'], cop: ['👮', 'Mall Cop Bot'],
   guard: ['💂', 'Guard Bot'], statue: ['🗿', 'Statue'], ticket: ['🎟️', 'Ticket Bot'], babygus: ['🍼', 'Baby Gus'],
 };
-const ITEM_ICON = {
+export const ITEM_ICON = {
   fuse: '🔌', book: '📖', key: '🔑', battery: '🔋', bag: '🗝️', gem: '💎', reel: '🎞️', token: '🪙', slice: '🍕',
   star: '⭐', balloon: '🎈', sock: '🧦', plushie: '🧸',
 };
@@ -111,7 +111,10 @@ export class GusWatch {
     const places = [];
     if (save) places.push(`<div class="gw-bot">😁 Nearest save box: <b>${m.roomOf(save.pos)}</b> · ${dist(save.pos)} m</div>`);
     if (m.decor.exit) places.push(`<div class="gw-bot">${m.decor.exit.open ? '🟢' : '🔒'} Exit (${m.decor.exit.open ? 'OPEN' : 'locked'}): <b>${m.roomOf(m.decor.exit.pos)}</b> · ${dist(m.decor.exit.pos)} m</div>`);
-    $('gwTracker').innerHTML = sec('👾 MONSTERS', monsters) + sec('🧒 FRIENDS', [`<div class="gw-bot">${jack}</div>`]) +
+    // (in the Pizzaplex nobody's with you: the friends are wherever they got lost — the story
+    // can say where)
+    const friends = m.story.buddy ? [`<div class="gw-bot">${jack}</div>`] : (m.friendLines ? m.friendLines() : []);
+    $('gwTracker').innerHTML = sec('👾 MONSTERS', monsters) + sec('🧒 FRIENDS', friends) +
       sec('⭐ THINGS TO FIND', things) + sec('📍 PLACES', places);
   }
 

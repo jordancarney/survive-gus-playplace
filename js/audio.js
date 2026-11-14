@@ -544,6 +544,133 @@ export const sfx = {
     tone({ freq: 60, to: 400, type: 'sawtooth', dur: 2.2, gain: 0.2, dest: d, curve: distortion() });
   },
   // ── When Jonathan Was Five
+  // ── Lost in the Pizzaplex (js/plex/) ────────────────────────────────
+  // Something big breathing right outside the door: a slow, wet in-and-out through a metal
+  // grille, with a growl under it. `k` is how loud (0–1).
+  plexBreath(k = 1) {
+    if (!ok()) return;
+    const t = now();
+    noise({ at: t, dur: 0.95, gain: 0.32 * k, filter: 'bandpass', freq: 520, to: 900, q: 1.6, attack: 0.35 });
+    noise({ at: t + 1.05, dur: 1.1, gain: 0.38 * k, filter: 'bandpass', freq: 760, to: 380, q: 1.4, attack: 0.08 });
+    tone({ freq: 58, to: 46, type: 'sawtooth', dur: 1.0, gain: 0.05 * k, at: t + 1.05, attack: 0.1 });
+  },
+  // a heavy door slammed shut, or something thumping against one
+  plexDoor() {
+    if (!ok()) return;
+    noise({ dur: 0.25, gain: 0.45, filter: 'lowpass', freq: 700, to: 120 });
+    tone({ freq: 90, to: 45, type: 'sine', dur: 0.35, gain: 0.4 });
+  },
+  plexDoorOpen() {
+    if (!ok()) return;
+    noise({ dur: 0.4, gain: 0.12, filter: 'bandpass', freq: 1400, to: 600, q: 2, attack: 0.05 });
+  },
+  // footsteps running away down a hall, getting quieter
+  plexScurry() {
+    if (!ok()) return;
+    for (let i = 0; i < 7; i++) noise({ dur: 0.06, gain: 0.3 * (1 - i / 8), filter: 'lowpass', freq: 600, delay: i * 0.17 });
+  },
+  // a heavy thing clunking down the hall
+  plexClunk() {
+    if (!ok()) return;
+    tone({ freq: 70, to: 40, type: 'sine', dur: 0.25, gain: 0.25 });
+    noise({ dur: 0.12, gain: 0.15, filter: 'lowpass', freq: 400 });
+  },
+  // the hall light: a click, then a buzz while it's on
+  plexLight() {
+    if (!ok()) return;
+    noise({ dur: 0.03, gain: 0.2, filter: 'highpass', freq: 2000 });
+    tone({ freq: 120, type: 'sawtooth', dur: 0.12, gain: 0.025, delay: 0.02 });
+  },
+  // diving into the ball pit: hundreds of plastic balls clattering
+  plexSplash() {
+    if (!ok()) return;
+    for (let i = 0; i < 26; i++) {
+      noise({ dur: 0.03, gain: 0.08 + Math.random() * 0.1, filter: 'bandpass', freq: 1800 + Math.random() * 2600, q: 3, delay: Math.random() * 0.7 });
+    }
+    noise({ dur: 0.6, gain: 0.15, filter: 'lowpass', freq: 900, to: 300 });
+  },
+  // through time: a long falling whoosh with a shimmer on top
+  plexTime() {
+    if (!ok()) return;
+    noise({ dur: 1.6, gain: 0.25, filter: 'bandpass', freq: 3000, to: 300, q: 1.2, attack: 0.3 });
+    [1568, 1319, 1047, 784, 659, 523].forEach((f, i) => tone({ freq: f, type: 'sine', dur: 0.5, gain: 0.07, delay: i * 0.14 }));
+  },
+  // P.A.L., the Pizzaplex Assistant Line, about to say something
+  plexPal() {
+    if (!ok()) return;
+    tone({ freq: 988, type: 'sine', dur: 0.16, gain: 0.12 });
+    tone({ freq: 1319, type: 'sine', dur: 0.3, gain: 0.12, delay: 0.14 });
+  },
+  // a controlled shock: a crackling zap
+  plexShock() {
+    if (!ok()) return;
+    for (let i = 0; i < 8; i++) noise({ dur: 0.04, gain: 0.3, filter: 'highpass', freq: 2500 + Math.random() * 3000, delay: i * 0.05 });
+    tone({ freq: 180, to: 60, type: 'sawtooth', dur: 0.5, gain: 0.18 });
+  },
+  // a tiny Gus plushie flopping onto the bed, or scattering off it
+  plexPlop() {
+    if (!ok()) return;
+    noise({ dur: 0.08, gain: 0.18, filter: 'lowpass', freq: 500 });
+    tone({ freq: 1400, to: 1100, type: 'triangle', dur: 0.08, gain: 0.05, delay: 0.03 });
+  },
+  // the closet door creaking open a little more
+  plexCreak() {
+    if (!ok()) return;
+    tone({ freq: 380, to: 520, type: 'sawtooth', dur: 0.7, gain: 0.035, attack: 0.1 });
+    tone({ freq: 760, to: 980, type: 'triangle', dur: 0.6, gain: 0.02, attack: 0.1 });
+  },
+  // thunder: a crack, then a long low rumble rolling away
+  thunder(k = 1) {
+    if (!ok()) return;
+    noise({ dur: 0.25, gain: 0.5 * k, filter: 'lowpass', freq: 2400, to: 600 });
+    noise({ dur: 2.6, gain: 0.55 * k, filter: 'lowpass', freq: 260, to: 60, attack: 0.08, delay: 0.1 });
+    tone({ freq: 48, to: 28, type: 'sine', dur: 2.2, gain: 0.35 * k, delay: 0.1 });
+  },
+  // a burst of rain against the windows (call every couple of seconds for steady rain)
+  rain(k = 1) {
+    if (!ok()) return;
+    noise({ dur: 2.4, gain: 0.07 * k, filter: 'highpass', freq: 2600, attack: 0.5 });
+    noise({ dur: 2.4, gain: 0.05 * k, filter: 'bandpass', freq: 900, q: 0.6, attack: 0.5 });
+  },
+  // winding a music box: a ratchet of little clicks
+  plexWind() {
+    if (!ok()) return;
+    for (let i = 0; i < 4; i++) noise({ dur: 0.02, gain: 0.18, filter: 'highpass', freq: 3500, delay: i * 0.07 });
+  },
+  // Sparky: two sharp electronic barks
+  plexBark(pos) {
+    if (!ok()) return;
+    const d = (pos && spatial(pos, 30)) || sfxGain;
+    for (const t of [0, 0.22]) {
+      tone({ freq: 520, to: 260, type: 'square', dur: 0.12, gain: 0.18, delay: t, dest: d });
+      noise({ dur: 0.08, gain: 0.15, filter: 'bandpass', freq: 1400, delay: t, dest: d });
+    }
+  },
+  // something big running flat out down a hall
+  plexRun(pos) {
+    if (!ok()) return;
+    const d = (pos && spatial(pos, 40)) || sfxGain;
+    for (let i = 0; i < 8; i++) {
+      tone({ freq: 90, to: 50, type: 'sine', dur: 0.1, gain: 0.3, delay: i * 0.13, dest: d });
+      noise({ dur: 0.05, gain: 0.2, filter: 'lowpass', freq: 500, delay: i * 0.13, dest: d });
+    }
+  },
+  // a knock-knock-knock on a door
+  plexKnock(pos) {
+    if (!ok()) return;
+    const d = (pos && spatial(pos, 20)) || sfxGain;
+    for (let i = 0; i < 3; i++) {
+      tone({ freq: 160, to: 90, type: 'triangle', dur: 0.1, gain: 0.35, delay: i * 0.18, dest: d });
+      noise({ dur: 0.04, gain: 0.25, filter: 'lowpass', freq: 900, delay: i * 0.18, dest: d });
+    }
+  },
+  // the walkie-talkie: a squelch of static before somebody talks
+  plexWalkie() {
+    if (!ok()) return;
+    noise({ dur: 0.25, gain: 0.18, filter: 'bandpass', freq: 2200, q: 0.8 });
+    tone({ freq: 1200, type: 'square', dur: 0.05, gain: 0.04, delay: 0.24 });
+  },
+
   escSave() {
     if (!ok()) return;
     [660, 880, 1320].forEach((f, i) => tone({ freq: f, type: 'triangle', dur: 0.35, gain: 0.16, delay: i * 0.11 }));
@@ -719,6 +846,44 @@ export const sfx = {
     tone({ freq: 157, to: 600, type: 'sawtooth', dur: 1.5, gain: 0.5, attack: 0.01 });
     noise({ dur: 1.4, gain: 0.6, filter: 'bandpass', freq: 1800, to: 3800, q: 0.7 });
     tone({ freq: 90, to: 28, type: 'sine', dur: 0.8, gain: 0.8 });
+  },
+
+  // The FNAF screech: a harsh electronic shriek, wobbling hard, with a crunch of noise and a
+  // thump underneath. (The old scream, above, is still used by the phantoms.)
+  fnafScream() {
+    if (!ok()) return;
+    const t = now(), dur = 1.2;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.85, t + 0.02);
+    out.gain.setValueAtTime(0.85, t + dur - 0.3);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const ws = ctx.createWaveShaper();
+    ws.curve = distortion();
+    out.connect(ws).connect(sfxGain);
+    for (const [f, type] of [[640, 'sawtooth'], [955, 'square'], [1270, 'sawtooth'], [470, 'sawtooth'], [1900, 'square']]) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f * 0.6, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.09);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 24 + Math.random() * 14;
+      const depth = ctx.createGain();
+      depth.gain.value = f * 0.14;
+      lfo.connect(depth).connect(o.frequency);
+      const g = ctx.createGain();
+      g.gain.value = f > 1500 ? 0.07 : 0.16;
+      o.connect(g).connect(out);
+      o.start(t); lfo.start(t);
+      o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    }
+    noise({ at: t, dur, gain: 0.5, filter: 'bandpass', freq: 2600, q: 0.6 });
+    tone({ freq: 80, to: 30, type: 'sine', dur: 0.5, gain: 0.8, at: t });
+  },
+  // the TV-static hiss after a jumpscare
+  staticHiss(dur = 0.85) {
+    if (!ok()) return;
+    noise({ dur, gain: 0.32, filter: 'highpass', freq: 1200, attack: 0.01 });
   },
 
   // ── Bosses and friends

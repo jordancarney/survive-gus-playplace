@@ -21,6 +21,8 @@ export const freshProfile = () => ({
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },
   // When Jonathan Was Five, the story of when he was little (js/escape/).
   escape: freshEscape(),
+  // Lost in the Pizzaplex, the story of the night they all got lost (js/plex/). Same shape.
+  plex: freshEscape(),
 });
 
 export const freshEscape = () => ({
@@ -48,7 +50,9 @@ export function loadProfile() {
       seen: { ...(saved.seen || {}) },
       stars: { ...(saved.stars || {}) },
       escape: { ...freshEscape(), ...(saved.escape || {}) },
+      plex: { ...freshEscape(), ...(saved.plex || {}) },
     };
+    for (const k of ['seen', 'plushies', 'stars', 'quests']) p.plex[k] = { ...(p.plex[k] || {}) };
     p.escape.seen = { ...(p.escape.seen || {}) };
     p.escape.plushies = { ...(p.escape.plushies || {}) };
     p.escape.stars = { ...(p.escape.stars || {}) };
@@ -100,6 +104,16 @@ export function saveDifficulty(d) {
 }
 
 const DEBUG_KEY = 'survive_gus_debug';
+
+// The old-school FNAF look (the designer asked for graphics "like the og FNAF game"): 'plex'
+// for Lost in the Pizzaplex only (the default), 'all' for everywhere, or 'off'.
+const LOOK_KEY = 'survive_gus_look';
+export function loadLook() {
+  try { const v = localStorage.getItem(LOOK_KEY); return v === 'all' || v === 'off' ? v : 'plex'; } catch { return 'plex'; }
+}
+export function saveLook(v) {
+  try { localStorage.setItem(LOOK_KEY, v); } catch {}
+}
 
 export function loadDebug() {
   try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; }

@@ -67,14 +67,16 @@ export class Player {
     // When Jonathan Was Five: he's a little kid (KID sizes and speeds), and his hands are
     // built by the story mode instead of buildViewmodel.
     this.kid = false;
+    this.sizes = null;
     this.vmBuild = null;
     // In When Jonathan Was Five's box (the designer wanted to walk around in it, like Rainbow
     // Friends): slow, low, and no running.
     this.inBox = false;
   }
 
-  // Sizes and speeds: a teenager, or Jonathan at five.
-  get S() { return this.kid ? KID : PLAYER; }
+  // Sizes and speeds: a teenager, or Jonathan at five — or, in Lost in the Pizzaplex, whoever
+  // the chapter's about (`sizes`, set by the story).
+  get S() { return this.sizes || (this.kid ? KID : PLAYER); }
 
   get weapon() { return weaponById(this.weapons[this.slot]); }
 

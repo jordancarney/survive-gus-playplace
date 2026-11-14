@@ -657,6 +657,417 @@ With `?debug=1`, `__game.escape` is the story mode: `__game.escape.start(n)` jum
 `__game.escape.skip()` finishes every quest but the last, and `__game.escape.clock.t = 3590`
 puts the pizza place ten seconds from 6 AM. Debug mode (Settings) opens every level.
 
+## Lost in the Pizzaplex
+
+A third story, on its own title-screen button (🍕 Lost in the Pizzaplex), set six years
+before the PlayPlace and four after When Jonathan Was Five ([js/plex/](js/plex/)). It's one
+long night told in **50 chapters**, and every chapter you play as somebody else. Its progress
+is saved beside the others (`profile.plex`) and a New game of the main story leaves it alone.
+
+### The designer's decisions
+
+- **Story mode. Jonathan is the main character**; the others are **Max, Jackson, Jack and
+  Thomas** — and **Timmy, who doesn't appear until Chapter 27**, and then **joins the team**
+  as a character you play.
+- **You play every character at least once.** When you finish something, you do something
+  else as a new character.
+- **Each one plays like a different game:** Max like FNAF 4, Jackson like FNAF 1, Jack like
+  Sister Location, Thomas like Into the Pit — and Jonathan's chapters like Security Breach.
+- **They all meet as kids at Gus's Pizzaplex, and they get lost.** The Pizzaplex is **brand
+  new and way bigger** than anything before it.
+- **Each kid gets lost in their own spot:** Jonathan roams the whole Pizzaplex, Max hides in
+  the Sleepover Suite, Jackson is in the security office, Jack ends up in the tunnels under
+  the Pizzaplex, and Thomas falls into the ball pit and goes back in time.
+- **Ages:** Thomas 7, Jonathan 9, Jack 10, Max 11, and **Jackson 22 — the Pizzaplex's night
+  guard.**
+- **Who's after them: the old ones and new ones.** (Gus, Cranker, Chomper, Gerald, Flipper,
+  plus animatronics that only live at the Pizzaplex. The first new one is **DJ Rocco**, the
+  Pizzaplex's raccoon DJ — made up for this build, for the designer to change.)
+- **Chapter 50: they all escape together.**
+- **50 chapters**, built a few at a time, with more details coming from the designer.
+
+After playing the first five chapters, he asked for:
+
+- **Make the rest** — all fifty.
+- **Timmy's chapters: play tubes hide & seek.** He's the smallest, so he crawls through the
+  play tubes and hides where nobody else fits, while they hunt for him.
+- **Max is a girl, with red hair.** **Jonathan has a perm.** **Thomas has no glasses, brown
+  hair, green eyes and a baggy green sweatshirt.** **Everyone's hair is different.**
+- **Jumpscares like the real FNAF game** — everywhere in the game, not just here.
+- **Graphics like the original FNAF game** (Settings → FNAF look).
+
+### The night
+
+Gus's Pizzaplex has just opened, and its first Sleepover Night has kids camping out in
+sleeping bags under the Atrium's giant stage. Jonathan is nine. He meets Max, Thomas — and
+Jack, his best friend from Pjork's daycare, who he hasn't seen in four years. Jackson, the
+new night guard, says goodnight and heads up to the security office. At midnight the
+lights go out, Gus's music box starts to play, and every animatronic in the place opens its
+eyes. The kids scatter in the dark and lose each other.
+
+The whole story is that one night, from midnight to 6 AM: the chapters move the clock on,
+each character's piece happening at the same time as the others', and the walkie-talkies
+they find tie them together. Chapter 50 is 6 AM, and the way out.
+
+### The characters, and how each one plays
+
+| Who | Age | Where | Plays like | How it works |
+|-----|-----|-------|------------|--------------|
+| Jonathan | 9 (perm, blue hoodie) | All over the Pizzaplex | Security Breach | Free roam with the Gus Watch: quests, hiding spots, save boxes; Party Passes open locked doors ([js/plex/chapters/](js/plex/chapters/)) |
+| Max | 11 (a girl: long red hair) | The Sleepover Suite | FNAF 4 | You don't walk: you go to the left door, the right door, the closet or turn to the bed ([js/plex/bedroom.js](js/plex/bedroom.js)) |
+| Jackson | 22 (locs under his guard's cap) | The security office | FNAF 1 | Two doors, two hall lights, the cameras and a power meter ([js/plex/office.js](js/plex/office.js)) |
+| Jack | 10 (messy sandy hair, red) | The tunnels under it | Sister Location | A voice on the speakers (P.A.L.) gives you one job after another: vents, standing still in the dark, controlled shocks |
+| Thomas | 7 (spiky brown hair, green eyes, baggy green sweatshirt) | The giant ball pit | Into the Pit | Jump in the ball pit and you come out long ago, at Gus's first restaurant; jump back to come home |
+| Timmy | 6 (bowl cut, white t-shirt) | The play tubes | Hide & seek | From Chapter 27: crawl through the tubes and hide in the play houses where nothing else fits ([js/plex/timmy/tubes.js](js/plex/timmy/tubes.js)) |
+
+### DJ Rocco
+
+The Pizzaplex's new star, and its first animatronic that's never been anywhere else: a grey
+raccoon DJ with a black bandit mask, a ringed tail, neon-pink headphones, a glowing record on
+a chain, and purple eyes ([js/plex/cast.js](js/plex/cast.js)). He's fast and quiet —
+raccoons sneak. He lives in his Party Room with the light-up dance floor, sleeps until you
+pick up something he wants, and his line when he sees you is *"Nobody leaves the dance
+floor!"* Made up for the first build; the designer can change any of it.
+
+### The chapters
+
+The characters take turns: Jonathan, Max, Jackson, Jack, Thomas, then round again. From
+Chapter 27 Timmy is in the rotation too. It's one night, midnight to 6 AM; the times are when
+each chapter happens, and Max's and Jackson's chapters have a clock that runs over that time.
+
+**The story in four parts.**
+
+1. **Lost (12–1:30 AM, Ch 1–10).** Everyone gets split up. Each of them finds a walkie-talkie,
+   and Jackson, up in the office with the cameras, becomes the one voice that ties them
+   together.
+2. **The plan (1:30–3 AM, Ch 11–26).** The Pizzaplex locks itself at night and only unlocks at
+   6 AM. Jackson's plan: hold out, and meet at the Main Entrance at 6. Meanwhile they find out
+   what's going on. **P.A.L.**, the Pizzaplex computer that runs the animatronics' schedule,
+   is "a little bit wrong": it thinks the party never ends. And Gus's old **music box**, kept
+   backstage, is what wakes them all up. Thomas keeps falling through time and seeing where
+   it all started. In Chapter 25 he reaches *years from now* — Gus's PlayPlace, Night 2 —
+   and a crying kid in the ball pit follows him back.
+3. **Timmy (3–5 AM, Ch 27–45).** The kid is **Timmy**, from the future. He's the smallest of
+   all, so he can squeeze through the play tubes where nothing else fits. Together they
+   go after the two things keeping the night going: P.A.L.'s Core (Jack) and the music box
+   (Jonathan, Thomas). Max and Jackson hold the line.
+4. **The great escape (5–6 AM, Ch 46–50).** Jack switches P.A.L. off for good (49), Jonathan
+   gets everyone to the Main Entrance (46, 50), and at 6 AM the doors unlock. They all escape
+   together — and Timmy jumps back in the ball pit to go home, which is how a crying kid ends
+   up in the ball pit at Gus's PlayPlace on Night 2.
+
+| # | Who | Time | Chapter | What happens |
+|---|-----|------|---------|--------------|
+| 1 | Jonathan | 12:00 | Sleepover Night | Walkie-talkie, 3 Party Passes, the STAFF ONLY door |
+| 2 | Max | 12:00–1:00 | The Sleepover Suite | Doors, closet, bed: hold out until 1 AM |
+| 3 | Jackson | 12:00–1:00 | Night Guard | Doors, hall lights, cameras, power; spot the kids |
+| 4 | Jack | 12:30 | Under the Pizzaplex | P.A.L.'s jobs: vent, stand still, three shocks |
+| 5 | Thomas | 12:45 | Into the Ball Pit | Gus's Pizza Shack long ago; the old back door |
+| 6 | Jonathan | 1:00 | Backstage | Behind the STAFF ONLY door: the backstage halls, dressing rooms and Gus's room |
+| 7 | Max | 1:00–1:40 | Footsteps | Gerald and Flipper in the halls now |
+| 8 | Jackson | 1:00–1:40 | Night Guard, Part 2 | A phone call from John, the night guard who had this job before; faster animatronics |
+| 9 | Jack | 1:20 | Night Maintenance | P.A.L. needs the generator fixed |
+| 10 | Thomas | 1:30 | The Music Box | Back to the Pizza Shack: where Gus's music box came from |
+| 11 | Jonathan | 1:40 | The Fun Zone | The kart track and laser tag; meet Sparky |
+| 12 | Max | 1:40–2:20 | Lights Out | The night light breaks; DJ Rocco comes to the door |
+| 13 | Jackson | 1:40–2:20 | The Ball Pit Cam | Watch Flipper on the Ball Pit camera, or he runs for your door |
+| 14 | Jack | 2:00 | Hide and Don't Breathe | DJ Rocco checks the Workshop; stay hidden |
+| 15 | Thomas | 2:10 | The Pizza Palace | Long ago, the night Jonathan was five |
+| 16 | Jonathan | 2:20 | The Sleepover Suite | Find Max — and the way to the base |
+| 17 | Max | 2:20–3:00 | The Music Box | A music box to keep wound, on top of everything else |
+| 18 | Jackson | 2:20–3:00 | Chewed Wires | Chomper chews the camera wires |
+| 19 | Jack | 2:40 | P.A.L.'s Secret | Jack finds out P.A.L. is running the animatronics |
+| 20 | Thomas | 2:45 | Opening Day | The day the Pizzaplex opened, and P.A.L. was switched on |
+| 21 | Jonathan | 3:00 | The Prize Counter | Batteries for every walkie-talkie |
+| 22 | Max | 3:00–3:30 | Sparky | Sparky the robot dog at a door: fast |
+| 23 | Jackson | 3:00–3:30 | Sparky Runs | Sparky skips rooms |
+| 24 | Jack | 3:10 | The Core Key | P.A.L.'s Core needs a key |
+| 25 | Thomas | 3:20 | Years From Now | Gus's PlayPlace on Night 2 — a crying kid in the ball pit follows him home |
+| 26 | Jonathan | 3:30 | Gus's Room | Backstage, Gus's old music box |
+| 27 | Timmy | 3:30 | The Kid in the Ball Pit | Timmy wakes up in the wrong place; play tubes |
+| 28 | Jonathan | 3:40 | Up the Stairs | The upstairs party rooms |
+| 29 | Max | 3:30–4:00 | Plushie Party | The bed fills up fast |
+| 30 | Jackson | 3:30–4:00 | Gus Walks | Gus leaves the stage when the cameras are down |
+| 31 | Jack | 3:45 | The Core | Down to P.A.L.'s Core |
+| 32 | Thomas | 3:50 | The Storm | The night lightning hit the sign |
+| 33 | Timmy | 4:00 | Hide and Seek | DJ Rocco and Sparky count to twenty |
+| 34 | Jonathan | 4:00 | The Kitchen | Through the Pizzaplex kitchen |
+| 35 | Max | 4:00–4:30 | Everything At Once | Doors, closet, bed and music box |
+| 36 | Jackson | 4:00–4:30 | Timmy on Camera | Guide Timmy through the Pizzaplex by camera |
+| 37 | Jack | 4:15 | Reboot | P.A.L. reboots the animatronics |
+| 38 | Thomas | 4:20 | Gus's Workshop | Long, long ago: where Gus was built |
+| 39 | Timmy | 4:30 | The Tube Maze | The music box key, through tubes only Timmy fits |
+| 40 | Jonathan | 4:40 | The Music Box | Stop the music box |
+| 41 | Max | 4:30–5:00 | The Old Ones | The old originals come to the doors |
+| 42 | Jackson | 4:30–5:00 | Everyone's Coming | All of them, and the power drains faster |
+| 43 | Jack | 4:45 | Three Levers | Three levers, three corners of the tunnels |
+| 44 | Thomas | 4:50 | Home Time | Everything he learned, brought back |
+| 45 | Timmy | 5:00 | The Long Way Round | Through the tubes to the Main Entrance |
+| 46 | Jonathan | 5:10 | The Main Entrance | Get to the front doors |
+| 47 | Max | 5:30–6:00 | The Last Half Hour | Max's hardest night |
+| 48 | Jackson | 5:30–6:00 | 6 AM | Jackson's hardest night |
+| 49 | Jack | 5:40 | Goodbye, P.A.L. | Switch P.A.L. off for good |
+| 50 | Everyone | 5:50 | The Great Escape | All of them together, out the front doors at 6 AM |
+
+Everyone's hair is different (the designer's call): Jonathan's perm, Max's long red hair,
+Jack's messy tufts, Thomas's spikes, Jackson's locs (`style` on buildPerson, in
+[js/models.js](js/models.js)).
+
+### Jonathan's chapters (like Security Breach)
+
+Free roam with the Gus Watch, like Chapter 1: things to find, doors that only open when the
+quests are done, hiding spots, save boxes, and a golden Gus plushie hidden in every chapter
+([js/plex/chapters/jonathan.js](js/plex/chapters/jonathan.js)). Each happens in a different
+part of the Pizzaplex, with its own map in [js/plex/maps/](js/plex/maps/):
+
+| Map | File | Chapters |
+|-----|------|----------|
+| Backstage: Loading Hall, Backstage Hall, Dressing Rooms, Costume Storage, Stage Wings, Prop Room, Sound Booth, Gus's Room | backstage.js | 6, 26, 40 |
+| The Fun Zone: Sparky Speedway (the kart track), Laser Tag (a maze), Pit Garage, Snack Bar, Prize Booth | funzone.js | 11 |
+| Upstairs: three party rooms, the Sleepover Wing and Suite, Bathrooms, Pajama Shop, Laundry (the roof hatch) | upstairs.js | 16, 28 |
+| The kitchen: ovens, Dish Pit, Walk-in Freezer, Pantry, Staff Room, Loading Dock | kitchen.js | 34 |
+| The Main Entrance: Entry Hall (the front doors, the big Gus statue), Gift Shop, Ticket Booths, Main Hall, Security Desk, Coat Check | lobby.js | 46, 50 |
+| The main floor | pizzaplex.js | 1, 21 |
+
+- **6 Backstage** — three fuses power the stage lift down to the Fun Zone. A spare Cranker
+  suit in Costume Storage moves when you aren't looking.
+- **11 The Fun Zone** — P.A.L.'s kiosk won't open the gate without three checkered flags.
+  Sparky wakes up when you take the first.
+- **16 The Sleepover Suite** — the key and three batteries, and Jonathan finds Max. She
+  stays to keep the Suite safe as everyone's base.
+- **21 The Prize Counter** — five batteries, one for every walkie, all over the main floor.
+- **26 Gus's Room** — three keys to Gus's Room and the old music box inside. Touch it and it
+  plays, Gus opens his eyes, and everything hunts harder.
+- **28 Up the Stairs** — the walkie antenna, rebuilt at the roof hatch: everybody can hear
+  everybody, Timmy too.
+- **34 The Kitchen** — pizza and juice for everyone at the base.
+- **40 The Music Box** — the key Timmy sent through the tubes to the Prop Room; stand at
+  the music box for six seconds to wind it down. Gus sits behind it, so looking at the box
+  keeps him still. It stops, everything drops — and then P.A.L. reboots them all.
+- **46 The Main Entrance** — three beacon lights so everyone can find the way, then the
+  radio call: everybody to the front doors.
+
+New things to find: checkered flags, antenna pieces, slices of pizza, juice boxes and the
+music box key (registered in [maps/kit.js](js/plex/maps/kit.js)). Sparky barks when he spots you.
+
+### Timmy's chapters (play tubes hide & seek)
+
+Timmy's chapters ([js/plex/chapters/timmy.js](js/plex/chapters/timmy.js)) are free roam like
+Jonathan's, on floors full of **play tubes** and little **play houses** where tubes meet
+([js/plex/timmy/tubes.js](js/plex/timmy/tubes.js)). Timmy's the only one who fits: in a tube
+you crawl, and more than an arm's length inside one — or in the middle of a play house —
+nothing can see you or grab you. Anything that saw you go in comes to the opening and waits,
+so you come out somewhere else. The animatronics walk the open floor in between.
+
+| # | Chapter | Do |
+|---|---------|----|
+| 27 | The Kid in the Ball Pit | The walkie-talkie Thomas dropped, 4 glow stars, out the Jungle Gym gate. Flipper, Chomper, and Sparky after the second star |
+| 33 | Hide and Seek | DJ Rocco and Sparky count to twenty, then hunt. Stay hidden until the timer runs out — but stay in one hiding place too long and Sparky *sniffs you out*: move, or he gets you |
+| 39 | The Tube Maze | The music box key broke into 3 pieces in the Tube Tower, whose tubes only join up in places: cross the floor to get them, send them down the tube chute to the backstage Prop Room for Jonathan |
+| 45 | The Long Way Round | Through the tubes behind the walls — the Arcade, the Kitchen, Storage — to the Main Entrance |
+
+### Max's chapters (like FNAF 4)
+
+Max stands in the middle of the Sleepover Suite. **A / ←** walks to the left door, **D / →**
+the right door, **W / ↑** the closet, **S / ↓** turns round to the bed, and the opposite key
+goes back to the middle. At a door or the closet, **hold Space** (or the 🚪 button) to hold it
+shut, and **hold F** (or 🔦) to shine the flashlight.
+
+- **The doors.** Something comes down each hall. Far away, at the end of the hall, it's in
+  your flashlight — shine it and it backs off. When it's right outside, you don't see it:
+  you **hear it breathing**. Then *don't* shine the light: hold the door shut until its
+  footsteps go away. Leave it there too long and it comes in.
+- **The closet.** A baby Gus is in there, getting a little further out every time you look
+  away. Hold the closet shut to push it back in.
+- **The bed.** Tiny Gus plushies climb onto the bed when you aren't looking. Turn round and
+  shine the light to scatter them; three at once and they get you.
+
+
+### Max's chapters after the first
+
+Every one of Max's chapters is a night in the Sleepover Suite, the same room and controls
+as Chapter 2 ([js/plex/chapters/max.js](js/plex/chapters/max.js), the room in
+[ch2-suite.js](js/plex/chapters/ch2-suite.js)), each with something new and a little harder:
+
+| # | Chapter | What's new |
+|---|---------|------------|
+| 7 | Footsteps | Gerald in the left hall, Flipper in the right |
+| 12 | Lights Out | The night light breaks: only the moon and your flashlight. DJ Rocco, a bit faster, on the right |
+| 17 | The Music Box | A lullaby box on a table in the middle: while it's wound, Gus sleeps |
+| 22 | Sparky | The robot dog barks when he turns up, and gets to the door much faster than anyone |
+| 29 | Plushie Party | Four plushies on the bed to get you, but they climb on fast |
+| 35 | Everything At Once | Rocco and Sparky, the closet, the bed and the music box together |
+| 41 | The Old Ones | The old originals: they don't breathe, they knock, and they push harder on the door |
+| 47 | The Last Half Hour | Max's hardest night, all the way to 6 AM |
+
+**The music box** (Chapter 17 on): from the middle of the room, hold SPACE (or the 🎵 WIND
+IT UP button) to wind it; a meter at the top shows how wound it is. It runs down all the
+time. Nearly empty, it warns you; empty, Gus's own music box starts playing somewhere behind
+you, and if it isn't wound back up within about three seconds, Gus comes.
+
+**Knocking** (Chapter 41): the old ones make no breathing sound at the door; they knock.
+Knocking means the same as breathing: it's right outside, so hold the door shut.
+
+Each animatronic can have its own speed on top of the room's (`tune`): Sparky is the
+fastest, Rocco a little faster than the old ones, and the old ones take longer to push away.
+
+Tested (Horror): doing nothing gets you caught in under a minute in every chapter, sooner
+each time (about 55 s in Chapter 2, under 40 s in Chapter 47). A player going round the
+doors, closet and bed in turn, winding the music box whenever it drops under halfway, makes
+it every time, even with a pause in the middle each round. Chapter 47 is the closest call.
+
+### How the chapters are built
+
+Lost in the Pizzaplex runs on When Jonathan Was Five's engine ([js/escape/mode.js](js/escape/mode.js)),
+given a story of its own (`PLEX` in [js/plex/mode.js](js/plex/mode.js)): its chapters, its
+save, its menu words, nobody tagging along, no box. A chapter is a level file like the
+escape levels — floor plan, furniture, quests, what walks around — plus `hero` (who you play,
+[js/plex/heroes.js](js/plex/heroes.js)). Chapters where you don't walk about name a
+`controller` instead (Max's `Bedroom`, Jackson's `Office`), which runs the chapter while the
+engine keeps the clock, the quests, getting caught and winning. Each one's clock covers its
+own stretch of the night (`clock: { seconds, from, minutes }` — from 12:00–1:00 in Chapter 2
+to 5:30–6:00 in Chapters 47 and 48), over four to five real minutes. Only the last six
+chapters you played stay built; older ones are taken down and built again if you go back.
+
+Tested balance (Horror): in the Sleepover Suite, doing nothing gets you in about a minute,
+and checking the doors, closet and bed in turn gets you to 1 AM every time. In the office,
+doing nothing gets you in one to two and a half minutes; checking both hall lights and only
+shutting a door when someone's there gets you to 1 AM with about a third of the power left.
+
+### Jackson's chapters (like FNAF 1)
+
+Jackson sits at his desk in the security office. **A / D** look left and right, **Q / E**
+close or open the left and right doors, **hold Z / C** for the hall lights, **Space** (or the
+📹 button) brings up the cameras, and on them **← →** or the map switch camera. The power
+starts at 100% and drains faster with every door shut, every light on, and the cameras up.
+The animatronics come one room at a time, closer every few seconds; when one is in a
+doorway, the hall light shows it — shut that door. If the power runs out the doors open, the
+lights go out, and Gus's music box starts playing. The kids are out there too: spot them on
+the cameras for bonus quests.
+
+
+### Jackson's chapters after the first
+
+Every one of Jackson's chapters is the same security office, the same eleven cameras and the
+same rules (doors, hall lights, cameras, power), each a little harder, each with one twist
+([js/plex/chapters/jackson.js](js/plex/chapters/jackson.js), built from Chapter 3's office in
+[ch3-office.js](js/plex/chapters/ch3-office.js)). And every one starts with the phone ringing:
+**John**, the night guard at Gus's Giant Pizza Palace across town, years before he's Old John.
+He knows they walk at night ("they walk at my place too"), and he calls with tips.
+
+| # | Chapter | Time | The twist |
+|---|---------|------|-----------|
+| 8 | Night Guard, Part 2 | 1:00–1:40 | John's first call; everyone's a bit faster. Spot Jonathan, Jack and Thomas |
+| 13 | The Ball Pit Cam | 1:40–2:20 | **Flipper** waits in the ball pit (CAM 06). Watch him and he stays down; stop watching and he climbs out — then RUNS up the West Hall. Shut the left door in time and he bangs on it and goes back |
+| 18 | Chewed Wires | 2:20–3:00 | **Chomper** chews camera wires: a camera shows NO SIGNAL for a while (and sometimes the one he's standing under). The hall lights always work |
+| 23 | Sparky Runs | 3:00–3:30 | **Sparky** the robot dog skips rooms, two at a time, barking |
+| 30 | Gus Walks | 3:30–4:00 | **Gus** leaves his stage — but he only moves while the cameras are DOWN. A music box plays every step. Spot the new kid, Timmy |
+| 36 | Timmy on Camera | 4:00–4:30 | Follow Timmy across the Pizzaplex: the Ball Pit, the Atrium, the Food Court, the Gus Shop — a bonus for each |
+| 42 | Everyone's Coming | 4:30–5:00 | All of them, Gus walking and Flipper in the pit too, and the power drains faster |
+| 48 | 6 AM | 5:30–6:00 | Everything at once, chewed wires included, until the bells at 6 AM. Watch the others head for the Main Entrance |
+
+How the twists work (all switched on from a chapter's `office` numbers, [office.js](js/plex/office.js)):
+`runner` (Flipper: seconds of not being watched before he runs, how fast watching pushes him
+back down, a few seconds' warning while he runs — you hear him, and the screen says which door);
+`chew` (how often a camera goes, for how long); a bot's `skip` (rooms per move) and `whenDown`
+(only moves with the cameras down); the chapter's `calls` (John's lines, and when); `kids`
+(a kid walking from a to b on one camera; `key` lets the same kid be found more than once).
+
+Tested balance (Horror): a guard who does nothing is caught within about two minutes; a careful
+guard (each hall light every few seconds, a door only when someone's in it, a look at CAM 06
+every ten seconds) reaches the end every time, with about a third of the power left early on
+and about a quarter in Chapter 48. It's still winnable on Nightmare.
+
+### Jack's chapters (like Sister Location)
+
+P.A.L., the Pizzaplex Assistant Line, gives Jack one job at a time on the Gus Watch — polite,
+cheerful, and a little bit wrong. It starts out helpful; in Chapter 19 Jack reads its schedule
+(PARTY: FOREVER) and finds out P.A.L. is the one keeping the animatronics awake, and from then
+on he's going after it. Chapters 4–24 happen in the tunnels under the main floor; 31–49 in
+the **Deep Tunnels** down the service elevator, where P.A.L.'s Core is ([js/plex/tunnels/maps.js](js/plex/tunnels/maps.js)).
+
+The jobs ([js/plex/tunnels/kit.js](js/plex/tunnels/kit.js)), mixed differently in every chapter:
+
+- **Vents:** too low to stand in, and too small for an animatronic — they can't follow you in.
+- **Stand still:** the lights go out and something walks a loop round you. Move while it's
+  close and it hears you.
+- **Controlled shocks:** something walks up to a thick window. Shock it only while it's AT the
+  glass; too early wastes the shock and makes it faster; too slow and it breaks through.
+- **The inspection:** it checks every hiding spot in a room. Out in the open it sees you;
+  hidden, it can still hear you breathe — hold SPACE (or SHIFT or F) when it's close. Your
+  breath only lasts about 7 seconds.
+- **Reboots:** every 22 seconds P.A.L. reboots them all: 9 seconds of dark when they can't see.
+- **Gates, levers, keys, chips, cables and a code** (the code goes on the Gus Watch in 37 and
+  is typed on the keypad in 49).
+
+| # | Chapter | The jobs |
+|---|---------|----------|
+| 9 | Night Maintenance | Vent, 3 fuses in the dark, fix the generator (which wakes everything up), ladder |
+| 14 | Hide and Don't Breathe | Hide from DJ Rocco's rounds, hold your breath, his 3 records, play them, ladder |
+| 19 | P.A.L.'s Secret | 3 memory chips, plug them in, read the schedule, stand still, vent back to the hatch |
+| 24 | The Core Key | 3 shocks, open the Charging Bay, grab the Core Key in 25 seconds, Sparky gives chase |
+| 31 | The Core | Monitor Room, 3 fuses, the Core door, dodge the cameras, read the OFF book, elevator |
+| 37 | Reboot | 3 code chips behind 3 guards: move while they reboot; copy the code |
+| 43 | Three Levers | 3 levers, each one an alarm; Jackson on the walkie; the Core opens |
+| 49 | Goodbye, P.A.L. | 3 cables, hold 30 seconds shocking DJ Rocco, type the code. P.A.L. says goodnight |
+
+Tested balance (Horror): a careful player grabs each Reboot chip with 2–3 seconds of dark to
+spare, and pulling a lever then hiding in the nearest locker gets you through the alarm.
+
+### Thomas's chapters (like Into the Pit)
+
+The Pizzaplex's Giant Ball Pit goes further than anyone knows. Dive in (**E** at its edge) and
+you come up out of a ball pit somewhere else in time; jump back in to come home. **What you do
+there changes the present**: something hidden, unlocked, switched or taken long ago is still
+there (or gone) today. Every one is a single building with the present on its left and the
+other times to its right, unjoined ([js/plex/pit/](js/plex/pit/), shared pieces in
+[kit.js](js/plex/pit/kit.js)); the time you're in is saved as `m.flags.zone`, so a save box in
+the past brings you back to the past.
+
+| # | Chapter | When he goes | What he does there | And at home |
+|---|---------|--------------|--------------------|-------------|
+| 5 | Into the Ball Pit | Gus's Pizza Shack, a sunny birthday long ago | 3 tokens, unlock the old back door | the boarded back door opens |
+| 10 | The Music Box | The Shack after closing | the Toymaker's present: Gus's music box ("so you'll never stop singing") starts, Old Gus wakes; hide the gate key in a loose brick | the key's still in the brick |
+| 15 | The Pizza Palace | Gus's Giant Pizza Palace, the night Jonathan was five (little Jonathan and Jack are hiding there) | 3 tokens, claw machine, key into the time capsule | open the same capsule in the Palace Wing |
+| 20 | Opening Day | The Pizzaplex's opening day, a frozen crowd | the manager's keycard, P.A.L.'s panel ("THE PARTY WILL NEVER END" — DJ Rocco's first switch-on), one setting: BALL PIT DOOR → ALWAYS OPEN | P.A.L.'s lockdown is gone |
+| 25 | Years From Now | Gus's PlayPlace on Night 2 — the future | Timmy, crying in the ball pit, follows Thomas; 3 tickets; Jonathan, 15, frozen at the cameras | Thomas comes up alone: Timmy's lost in the balls (Ch 27) |
+| 32 | The Storm | The Shack, a stormy night, a blackout | 3 fuses; the music box plays, lightning hits the sign, and the old originals open their eyes for the first time — run | flip the Shack's old fuse box, still in the Power Room |
+| 38 | Gus's Workshop | The Toymaker's workshop, long, long ago | 3 gears open his desk's gear lock: the music box key (that's why it never stopped) | take the key to the others |
+| 44 | Home Time | Three in a row: the Shack, the Palace, the PlayPlace | each pit lets go once you grab something from its time | run for the Main Entrance |
+
+In the past, people are frozen still like a photo; the animatronics are not. Thomas's own
+monsters get harder as the night goes on: Flipper alone at first, then Sparky, DJ Rocco and
+Gerald round the Giant Ball Pit, and Old Gus, the baby Gus's, the old originals, Cranker and
+Chomper in the other times. The storm has rain and thunder. Every chapter has a golden
+plushie hidden in the past.
+
+### Chapter 50: The Great Escape
+
+You're Jonathan, at 5:50 AM in the **Main Entrance** ([js/plex/maps/lobby.js](js/plex/maps/lobby.js),
+[js/plex/chapters/finale.js](js/plex/chapters/finale.js)). Everybody's hiding in a different
+corner of it — Max at the Security Desk, Jack in the Coat Check, Thomas and Timmy in the Gift
+Shop, Jackson behind the Ticket Booths — and they're all on the Gus Watch map. Find each one
+(E) and they fall in behind you, a little group that follows wherever you go
+([js/plex/followers.js](js/plex/followers.js)); every friend you find wakes up another
+animatronic. Bring everyone to the front doors and the last minute starts: every animatronic
+in the Pizzaplex comes for you, and the big Gus statue moves when you aren't looking. At 6 AM
+P.A.L.'s steel shutters roll up, the doors unlock, and you all run out together.
+
+The ending (`plexFinale` in [js/plex/story.js](js/plex/story.js)): sunrise through the doors,
+every animatronic stopping where it stands, Jackson counting heads, and Timmy going home
+through the ball pit — which is how a crying kid comes to be in the ball pit at Gus's
+PlayPlace on Night 2, years later, for Jonathan to find. Nobody believes them; the Pizzaplex
+closes, and its animatronics are sent to a little fun centre across town: Gus's PlayPlace.
+Six years later: NOW HIRING. Finishing it puts a badge on the title screen.
+
+### Debug handles
+
+With `?debug=1`, `__game.plex` is this story: `__game.plex.start(n)` jumps to a chapter,
+`__game.plex.skip()` finishes every quest but the last, and in Max's and Jackson's chapters
+`__game.plex.clock.t = __game.plex.clock.len - 5` is five seconds from the end.
+`__game.plex.ctrl` is the bedroom or office: `ctrl.power = 1` nearly runs Jackson's power
+out, `ctrl.closet = 95` nearly lets the baby Gus out.
+
 ## Settings and difficulty
 
 The **⚙️ Settings** tab hangs off the bottom middle of the title screen, beside the **📷
@@ -718,7 +1129,23 @@ cutscenes seen — and turning it off reloads the real save. It's remembered und
 `survive_gus_debug`. (This is separate from `?debug=1`, which adds the developer handles
 below.)
 
+## Jumpscares
+
+Like the real FNAF games (the designer's call), everywhere in the game
+([js/jumpscare.js](js/jumpscare.js)): it lunges the last metre and a half into your face in
+a split second; holds there, filling the screen, mouth wide open, head jerking about like
+it's glitching, lit up so you see every bit of it, with an electronic screech; then the
+picture cuts to TV static for a moment before the GOTCHA screen. Nightmare holds the face
+longer and screams twice.
+
 ## Graphics
+
+**FNAF look** (Settings; the designer asked for graphics like the original FNAF game):
+washed-out colours, crushed blacks, film grain, faint scanlines and a dark vignette over
+everything — a CSS filter on the canvas and an overlay (`body.fnaf`, `#fnafLook` in
+[style.css](style.css)), so it works with either look below. **Pizzaplex** (the default)
+uses it in Lost in the Pizzaplex only; **Everywhere** for the whole game; or **Off**. Stored
+under `survive_gus_look`.
 
 Two looks, picked in Settings (Realistic / Fast) and stored apart from the save under
 `survive_gus_gfx`. Phones and tablets start on Fast; everything else on Realistic. Switching
@@ -812,6 +1239,21 @@ js/escape/enemies.js  Stalkers (walk their rounds, chase) and Watchers (move whe
 js/escape/jack.js   Jack, following you
 js/escape/watch.js  The Gus Watch: quests, the map, the Entity Tracker
 js/escape/story.js  Its cutscenes
+js/plex/mode.js   Lost in the Pizzaplex: When Jonathan Was Five's engine with its own chapters, cast and clock
+js/plex/chapters/ Its chapters, one file each (index.js lists them, and who plays chapters not built yet)
+js/plex/heroes.js Who you can be: each one's height, speed and hands
+js/plex/cast.js   The kids and Jackson, DJ Rocco, the tiny Gus plushies, everyone's hands
+js/plex/pizzaplex.js  The Pizzaplex's floor plan and furniture, shared by every chapter set on the main floor
+js/plex/bedroom.js    Max's chapters: the doors, the closet and the bed (like FNAF 4)
+js/plex/office.js     Jackson's chapters: doors, hall lights, cameras and power (like FNAF 1)
+js/plex/story.js  Its cutscenes
+js/plex/chapters/<name>.js  Each character's chapters after the first five (jonathan, max, jackson, jack, thomas, timmy, finale)
+js/plex/maps/     Jonathan's maps beyond the main floor (backstage, the Fun Zone, the Main Entrance...)
+js/plex/tunnels/  Jack's tunnels: P.A.L.'s jobs and maps
+js/plex/pit/      Thomas's ball pit: the eras he falls into
+js/plex/timmy/tubes.js  Timmy's play tubes and play houses: crawling, hiding where nothing else fits
+js/plex/followers.js    Friends walking along behind you (Chapter 50)
+js/jumpscare.js   The FNAF-style jumpscare every scare in the game uses: lunge, scream, static
 js/updates.js     Detects new deploys and refreshes stale sessions
 js/version.js     Build version — bump on every deploy
 dev/preview.html  Art preview: framed day/night shots of rooms and characters
@@ -850,3 +1292,8 @@ One profile in `localStorage` under `survive_gus_save_v1` — current night, kid
 whether the intro has been seen, whether the house level is done, whether Timmy is home, which one-time cutscenes
 have played (and whether you've read the old guard's note), the two boss wins, the furthest night reached, which nights have a Nightmare ⭐, whether you have Old John's badge, and lifetime stats. It's merged over a fresh profile on load, so a save written by an older build never
 arrives missing a field newer code reads, and it only changes at 6 AM (or a boss win).
+
+The two story modes keep their progress inside it, each the same shape: `escape` (When
+Jonathan Was Five) and `plex` (Lost in the Pizzaplex) — the furthest level or chapter reached,
+which cutscenes have played, golden plushies, ⭐s, every quest ever done, and the last save
+box touched. A New game of the main story leaves both alone.
