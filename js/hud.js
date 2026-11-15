@@ -27,13 +27,18 @@ export class Hud {
     this.toastTimer = secs;
   }
 
+  // Two playing, on a split screen: whoever's turn it is has their own half of the HUD.
+  get pane() { const g = this.game; return g.split && g.panes ? g.panes[g.player.index] : null; }
+
   hitmark() {
+    if (this.pane) { this.pane.hitmark(); return; }
     const c = $('crosshair');
     c.style.background = '#ffd23f';
     setTimeout(() => { c.style.background = ''; }, 120);
   }
 
   flashHit() {
+    if (this.pane) { this.pane.flashHit(); return; }
     const f = $('hitFlash');
     f.style.transition = 'none';
     f.style.opacity = '0.5';
@@ -42,6 +47,7 @@ export class Hud {
   }
 
   prompt(html) {
+    if (this.pane) { this.pane.prompt(html, this.game.player.ctl.keyNames); return; }
     const p = $('prompt');
     if (!html) { p.classList.add('hidden'); $('crosshair').classList.remove('can-use'); return; }
     p.innerHTML = html;
@@ -194,6 +200,9 @@ export class Hud {
     // Earned by finishing the whole game (Old John hands it over after Night 21).
     $('badgeTag').classList.toggle('hidden', !profile.badge);
     $('btnSelect').classList.toggle('hidden', profile.best < 2 && !this.game.debugMode);
+    const two = this.game.coop.on;
+    $('btnCoop').innerHTML = two ? '👥&nbsp; 2 Players: ON' : '👥&nbsp; 2 Players';
+    $('btnCoop').classList.toggle('on', two);
   }
 
   // `all` opens every night (debug mode).

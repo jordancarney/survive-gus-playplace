@@ -27,6 +27,8 @@
 
     <!-- ── In-game HUD ───────────────────────────────────────────────── -->
     <div id="hud" class="hidden">
+      <!-- Two players: each one's own half of the HUD (coop.js), and the line between -->
+      <div id="panes"><div id="nv0" class="pane-nv pane-0"></div><div id="nv1" class="pane-nv pane-1"></div><div class="pane-divider"></div></div>
       <div id="crosshair"></div>
       <div id="danger"></div>
       <div id="hitFlash"></div>
@@ -239,12 +241,53 @@
         <button id="btnSelect" class="btn btn-ghost hidden">Pick a night</button>
         <button id="btnFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
         <button id="btnPlex" class="btn btn-plex">🍕&nbsp; Lost in the Pizzaplex</button>
+        <button id="btnCoop" class="btn btn-coop">👥&nbsp; 2 Players</button>
       </div>
       <div class="title-tabs">
         <button id="btnGallery" class="settings-tab">📷&nbsp; Gallery</button>
         <button id="btnSettings" class="settings-tab">⚙️&nbsp; Settings</button>
       </div>
       <div id="buildTag" class="build-tag"></div>
+    </div>
+
+    <!-- ── 2 Players ──────────────────────────────────────────────────── -->
+    <div id="coop" class="screen">
+      <h2 class="screen-title">2 PLAYERS</h2>
+      <p class="coop-sub">Jonathan and his little brother <b>Jimmy</b> 🚀 — five years old, and he's going to be an astronaut. Same team! Get caught and you're out until morning: the other one has to make it on their own.</p>
+      <div class="settings coop-settings">
+        <div class="setting">
+          <div class="setting-head">PLAYERS</div>
+          <div id="coopChoice" class="choice"></div>
+        </div>
+        <div class="setting">
+          <div class="setting-head">SPLIT THE SCREEN</div>
+          <div id="splitChoice" class="choice"></div>
+          <p id="splitDesc" class="setting-desc"></p>
+        </div>
+      </div>
+      <div class="coop-cards">
+        <div class="coop-card">
+          <div class="coop-who">🔦 PLAYER 1 · JONATHAN</div>
+          <div class="coop-how">WASD + the trackpad</div>
+          <div id="coopKeys1" class="controls-list"></div>
+        </div>
+        <div class="coop-card">
+          <div class="coop-who">🚀 PLAYER 2 · JIMMY</div>
+          <div class="coop-how">The arrow keys — or a controller</div>
+          <div id="coopKeys2" class="controls-list"></div>
+          <div id="coopPad" class="coop-pad"></div>
+          <details class="coop-padkeys"><summary>Controller buttons</summary><div id="coopPadKeys" class="controls-list"></div></details>
+        </div>
+      </div>
+      <div class="setting-head coop-pick">PICK A GAME</div>
+      <div class="menu-actions coop-games">
+        <button id="btnCoopNights" class="btn btn-big">▶&nbsp; Survive the Nights</button>
+        <button id="btnCoopFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
+        <button id="btnCoopPlex" class="btn btn-plex">🍕&nbsp; Lost in the Pizzaplex</button>
+      </div>
+      <div class="menu-actions">
+        <button id="btnCoopBack" class="btn btn-ghost">Back</button>
+      </div>
     </div>
 
     <!-- ── Gallery ────────────────────────────────────────────────────── -->

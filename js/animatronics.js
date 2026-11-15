@@ -510,14 +510,15 @@ export class Animatronic {
   }
 
   updateCarried() {
-    const player = this.game.player;
+    // (two playing: whoever's dragging it, not whoever it'd be chasing)
+    const player = this.game.players.find((p) => p.carrying === this) || this.game.player;
     this.timer -= 1 / 60;
     const f = player.forward2();
     this.pos.set(player.pos.x - f.x * 0.9, 0, player.pos.z - f.z * 0.9);
     this.yaw = player.yaw + Math.PI;
     if (this.timer <= 0) {
       // It woke up in your arms.
-      this.game.dropCarried();
+      this.game.withPlayer(player, () => this.game.dropCarried());
       player.dazed = 1.2;
       player.shake = 0.6;
       setEyes(this.rig, 'on');
@@ -805,8 +806,10 @@ export class WingBot extends Animatronic {
     if (this.rig.fogMats) for (const f of this.rig.fogMats) f.mat.opacity = f.full * v;
   }
 
-  inBeam() {
-    const p = this.game.player;
+  // (two playing: either of your flashlights)
+  inBeam() { return this.game.alive().some((p) => this.inBeamOf(p)); }
+
+  inBeamOf(p) {
     if (!p.lightOn || !p.lightVisible) return false;
     const aim = p.aimDir();
     const dx = this.pos.x - p.pos.x, dz = this.pos.z - p.pos.z;

@@ -70,8 +70,11 @@ function staticEl() {
   return canvas;
 }
 
-export function showStatic() {
-  staticEl().classList.remove('hidden');
+// `pane`: two playing, the static only fills the half of whoever got caught.
+export function showStatic(pane = null) {
+  const el = staticEl();
+  el.classList.remove('hidden', 'pane-0', 'pane-1');
+  if (pane !== null) el.classList.add('pane-' + pane);
   sfx.staticHiss(STATIC);
   drawStatic();
 }

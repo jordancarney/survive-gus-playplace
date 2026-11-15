@@ -363,10 +363,17 @@ export class Watcher {
   }
 
   // Are you looking at it? In front of you, nothing in the way, and close enough to make out.
+  // (two playing: either of you looking at it keeps it still)
   seen() {
+    const g = this.mode.game;
+    if (g.players.length < 2) return this.seenBy(g.player);
+    return g.alive().some((p) => g.withPlayer(p, () => this.seenBy(p)));
+  }
+
+  seenBy(p) {
     const m = this.mode;
     if (m.hiding) return false;
-    const cam = m.game.camera;
+    const cam = p.camera;
     const head = tmp.set(this.pos.x, (this.rig.height || 2) * 0.6, this.pos.z);
     const dx = head.x - cam.position.x, dy = head.y - cam.position.y, dz = head.z - cam.position.z;
     const d = Math.hypot(dx, dy, dz);
@@ -374,7 +381,7 @@ export class Watcher {
     const f = m.player.aimDir();
     // a little inside the edge of the screen counts as looking
     const cos = (f.x * dx + f.y * dy + f.z * dz) / d;
-    if (cos < (m.game.camera.aspect > 1.2 ? 0.66 : 0.78)) return false;
+    if (cos < (cam.aspect > 1.2 ? 0.66 : 0.78)) return false;
     return this.place.sightClear(cam.position, head);
   }
 

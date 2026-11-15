@@ -440,14 +440,26 @@ export class Graphics {
     this.mirror.setSize(W, H);
   }
 
-  // `spot` is the flashlight, for the beam through the air.
-  render(scene, camera, { spot = null, dt = 0 } = {}) {
+  // `spot` is the flashlight, for the beam through the air. `rect` is the part of the screen
+  // to draw into ({ x, y, w, h } in CSS pixels, from the bottom left) — half of it, when two
+  // are playing; the targets must already be that size (setSize). `shadows: false` reuses
+  // this frame's shadow maps (the second half of a split screen).
+  render(scene, camera, { spot = null, dt = 0, rect = null, shadows = true } = {}) {
     const r = this.renderer;
-    if (!this.realistic) { r.render(scene, camera); return; }
+    if (rect) {
+      r.setViewport(rect.x, rect.y, rect.w, rect.h);
+      r.setScissor(rect.x, rect.y, rect.w, rect.h);
+      r.setScissorTest(true);
+    }
+    if (!this.realistic) {
+      r.render(scene, camera);
+      if (rect) this.fullView();
+      return;
+    }
     this.t += dt;
     const autoClear = r.autoClear;
     r.autoClear = false;
-    r.shadowMap.needsUpdate = true;
+    r.shadowMap.needsUpdate = shadows;
     camera.updateMatrixWorld();
 
     this.mirror.render(r, scene, camera, this.hidden);
@@ -499,5 +511,14 @@ export class Graphics {
     r.setRenderTarget(null);
     this.composite.run(r, null);
     r.autoClear = autoClear;
+    if (rect) this.fullView();
+  }
+
+  fullView() {
+    const r = this.renderer;
+    const size = r.getSize(this.size || (this.size = new THREE.Vector2()));
+    r.setScissorTest(false);
+    r.setViewport(0, 0, size.x, size.y);
+    r.setScissor(0, 0, size.x, size.y);
   }
 }

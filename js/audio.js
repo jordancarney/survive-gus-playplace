@@ -75,10 +75,23 @@ const ok = () => audio.enabled && audio.ready && ctx.state === 'running';
 // ── Listener and positional sound ───────────────────────────────────────
 
 const L = { x: 0, z: 0, yaw: 0 };
-export function setListener(x, z, yaw) { L.x = x; L.z = z; L.yaw = yaw; }
+// `all`: two playing, everyone's ears — each sound is heard by whoever's closest to it.
+let ears = null;
+export function setListener(x, z, yaw, all = null) { L.x = x; L.z = z; L.yaw = yaw; ears = all && all.length > 1 ? all : null; }
+
+function nearestEar(pos) {
+  if (!ears) return L;
+  let best = ears[0], bd = Infinity;
+  for (const e of ears) {
+    const d = Math.hypot(pos.x - e.x, pos.z - e.z);
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
 
 // A gain+pan pair routed to the sfx bus, or null if `pos` is out of earshot.
 function spatial(pos, range = 30) {
+  const L = nearestEar(pos);
   const dx = pos.x - L.x;
   const dz = pos.z - L.z;
   const d = Math.hypot(dx, dz);
@@ -835,6 +848,57 @@ export const sfx = {
       tone({ freq: f, to: f * 1.4, type: 'triangle', dur: 0.25, gain: 0.03, delay: Math.random() * 0.6 });
     }
     noise({ dur: 1.2, gain: 0.08, filter: 'bandpass', freq: 1600, q: 0.6, attack: 0.1 });
+  },
+
+  // Emotes: a kid's AAAH!, a chicken's bawk-bawk, a little tune to dance to, a ta-da.
+  emote(id) {
+    if (!ok()) return;
+    const t = now();
+    if (id === 'point') {
+      // a HIGH-pitched scream (the designer asked): a shrill rising AAAAAH with a wobble in it
+      const dur = 2.0;
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(0.5, t + 0.05);
+      out.gain.setValueAtTime(0.5, t + dur - 0.4);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 5200;
+      lp.connect(out);
+      out.connect(sfxGain);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.setValueAtTime(6, t);
+      lfo.frequency.linearRampToValueAtTime(11, t + dur);
+      for (const [mul, type, g, wob] of [[1, 'sawtooth', 0.22, 70], [2, 'triangle', 0.16, 140], [1.005, 'square', 0.06, 70]]) {
+        const osc = ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(1250 * mul, t);
+        osc.frequency.exponentialRampToValueAtTime(1900 * mul, t + 0.28);
+        osc.frequency.setValueAtTime(1900 * mul, t + dur - 0.5);
+        osc.frequency.exponentialRampToValueAtTime(1500 * mul, t + dur);
+        const lg = ctx.createGain();
+        lg.gain.value = wob;
+        lfo.connect(lg).connect(osc.frequency);
+        const og = ctx.createGain();
+        og.gain.value = g;
+        osc.connect(og).connect(lp);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+      }
+      lfo.start(t);
+      lfo.stop(t + dur + 0.05);
+      noise({ dur: 1.6, gain: 0.05, filter: 'bandpass', freq: 3600, q: 1.5 });
+    } else if (id === 'chicken') {
+      for (let i = 0; i < 6; i++) tone({ freq: 520 + (i % 2) * 140, to: 380, type: 'square', dur: 0.09, gain: 0.12, at: t + i * 0.32 + (i % 2) * 0.12 });
+    } else if (id === 'dance' || id === 'worm' || id === 'headspin') {
+      const notes = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047];
+      notes.forEach((f, i) => tone({ freq: f, type: 'square', dur: 0.14, gain: 0.07, at: t + i * 0.25 }));
+      notes.forEach((f, i) => { if (i % 2 === 0) tone({ freq: f / 4, type: 'triangle', dur: 0.2, gain: 0.12, at: t + i * 0.25 }); });
+    } else {
+      tone({ freq: 660, to: 880, type: 'triangle', dur: 0.12, gain: 0.15 });
+      tone({ freq: 990, type: 'triangle', dur: 0.2, gain: 0.12, at: t + 0.12 });
+    }
   },
 
   // Super scary, as requested by the game's designer.

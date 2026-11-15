@@ -12,9 +12,17 @@ import { sfx } from './audio.js';
 const VM_HOME = new THREE.Vector3(0, 0, 0);
 
 export class Player {
-  constructor(game, camera) {
+  // `ctl`: what this player presses — the shared `input` when one is playing, or their own
+  // Controls (coop.js) when two are.
+  constructor(game, camera, { ctl = input, index = 0 } = {}) {
     this.game = game;
     this.camera = camera;
+    this.ctl = ctl;
+    this.index = index;
+    this.out = false;           // caught, with the other player still going: out until morning
+    // (Jimmy, player 2: his own size and his own space-suit hands, everywhere)
+    this.fixedSizes = null;
+    this.look = null;
 
     this.pos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
@@ -76,7 +84,7 @@ export class Player {
 
   // Sizes and speeds: a teenager, or Jonathan at five — or, in Lost in the Pizzaplex, whoever
   // the chapter's about (`sizes`, set by the story).
-  get S() { return this.sizes || (this.kid ? KID : PLAYER); }
+  get S() { return this.fixedSizes || this.sizes || (this.kid ? KID : PLAYER); }
 
   get weapon() { return weaponById(this.weapons[this.slot]); }
 
@@ -112,6 +120,8 @@ export class Player {
     this.balls = weaponById('baseball').count;
     this.ammo = weaponById('magnum').ammo;
     this.slot = 0;
+    this.emote = null;
+    this.wheel = null;
   }
 
   setWeapons(ids) {
@@ -129,7 +139,7 @@ export class Player {
 
   rebuildViewmodel() {
     if (this.vm) this.vmGroup.remove(this.vm.root);
-    this.vm = this.vmBuild ? this.vmBuild() : buildViewmodel(this.carrying ? 'none' : this.weapons[this.slot]);
+    this.vm = this.vmBuild ? this.vmBuild() : buildViewmodel(this.carrying ? 'none' : this.weapons[this.slot], this.look);
     this.vmGroup.add(this.vm.root);
   }
 
@@ -152,8 +162,8 @@ export class Player {
   // ── Update ────────────────────────────────────────────────────────────
 
   update(dt, { canMove = true, canLook = true } = {}) {
-    if (canLook) this.look();
-    else input.drainLook();
+    if (canLook) this.turn(dt);
+    else this.ctl.drainLook();
     this.move(dt, canMove);
     this.flash(dt);
     for (const k of Object.keys(this.cool)) this.cool[k] = Math.max(0, this.cool[k] - dt);
@@ -164,10 +174,12 @@ export class Player {
     this.updateCamera(dt);
   }
 
-  look() {
-    const { dx, dy } = input.drainLook();
+  turn(dt = 1 / 60) {
+    const { dx, dy, level } = this.ctl.drainLook();
     this.yaw -= dx * PLAYER.mouseSensitivity;
     this.pitch -= dy * PLAYER.mouseSensitivity;
+    // (the arrow keys can't look up or down, so the view drifts back to level)
+    if (level) this.pitch *= 1 - Math.min(1, dt * 2.5);
     this.pitch = Math.max(-PLAYER.maxPitch, Math.min(PLAYER.maxPitch, this.pitch));
   }
 
@@ -179,17 +191,24 @@ export class Player {
 
   move(dt, canMove) {
     let fx = 0, fz = 0;
-    if (canMove) {
-      if (input.down('forward')) fz -= 1;
-      if (input.down('back')) fz += 1;
-      if (input.down('left')) fx -= 1;
-      if (input.down('right')) fx += 1;
+    const ctl = this.ctl;
+    const stick = canMove && ctl.moveAxis ? ctl.moveAxis() : null;
+    if (stick) { fx = stick.x; fz = stick.z; }
+    else if (canMove) {
+      if (ctl.down('forward')) fz -= 1;
+      if (ctl.down('back')) fz += 1;
+      // (player 2's left and right arrows turn instead)
+      if (!ctl.turns) {
+        if (ctl.down('left')) fx -= 1;
+        if (ctl.down('right')) fx += 1;
+      }
     }
-    const len = Math.hypot(fx, fz);
-    if (len > 0) { fx /= len; fz /= len; }
+    let len = Math.hypot(fx, fz);
+    if (len > 1) { fx /= len; fz /= len; len = 1; }
+    else if (len > 0 && !stick) { fx /= len; fz /= len; len = 1; }
 
     // Sprinting drains stamina; run it dry and you're winded until it's half back.
-    const wantSprint = canMove && input.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching && !this.inBox;
+    const wantSprint = canMove && ctl.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching && !this.inBox;
     this.sprinting = wantSprint && this.stamina > 0;
     if (this.sprinting) {
       if (!this.game.diff.unlimited) this.stamina = Math.max(0, this.stamina - dt);
@@ -215,6 +234,7 @@ export class Player {
     this.vel.x += wishX * PLAYER.accel * dt;
     this.vel.z += wishZ * PLAYER.accel * dt;
     const hs = Math.hypot(this.vel.x, this.vel.z);
+    if (stick) speed *= Math.max(0.35, len);
     if (hs > speed) { this.vel.x *= speed / hs; this.vel.z *= speed / hs; }
     if (len === 0) {
       const drop = Math.max(0, hs - PLAYER.friction * dt * Math.max(hs, 3)) / Math.max(hs, 1e-6);
@@ -291,7 +311,10 @@ export class Player {
       this.pos.z,
     );
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
-    this.vmGroup.position.set(VM_HOME.x + bobX * 0.6, VM_HOME.y + bobY * 0.6 - this.useAnim * 0.02, VM_HOME.z + this.useAnim * 0.06);
+    // (a tall half of a split screen crops the sides, so the hands come in a little smaller)
+    const vs = this.game.split && this.game.splitDir === 'v' ? 0.8 : 1;
+    this.vmGroup.scale.setScalar(vs);
+    this.vmGroup.position.set(VM_HOME.x + bobX * 0.6, VM_HOME.y + bobY * 0.6 - this.useAnim * 0.02 + (1 - vs) * 0.05, VM_HOME.z + this.useAnim * 0.06);
     this.vmGroup.rotation.x = this.useAnim * 0.35;
   }
 }

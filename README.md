@@ -77,6 +77,14 @@ means starting the night over.
   **Timmy**, six and from the future, crawls through the play tubes where nothing else fits.
   New animatronics **DJ Rocco** the raccoon DJ and **Sparky** the robot dog. In Chapter 50
   they all escape together
+- **👥 2 Players**, split screen, in everything: Jonathan on WASD and the trackpad, his
+  little brother **Jimmy** 🚀 (five, in an astronaut suit) on the arrow keys or a game
+  controller. Side by side or top and bottom. Same team — get caught and you're out until
+  morning, and the other one has to make it alone. In Max's bedroom and Jackson's office you
+  split the doors.
+- **Emotes**: hold T (or up on a controller) for the emote wheel — wave, thumbs up, point and
+  scream, dance, the chicken, the worm and a head spin — and the camera swings round so you
+  can watch yourself
 - Jumpscares like the real FNAF games: a lunge into your face, a screech, the head jerking
   about, then TV static
 - An old-school **FNAF look** (Settings): grainy, washed-out and dark, for Lost in the

@@ -170,7 +170,6 @@ export class Weapons {
   }
 
   update(dt) {
-    const p = this.game.player;
     const place = this.game.place;
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i];
@@ -202,9 +201,10 @@ export class Weapons {
         if (Math.hypot(b.vel.x, b.vel.y, b.vel.z) < 0.4 && m.y < 0.1) b.live = false;
         b.mesh.rotation.x += dt * 10;
       }
-      // walk over a ball to pick it up
-      if (b.age > 0.6 && Math.hypot(m.x - p.pos.x, m.z - p.pos.z) < 1.1 && m.y < 1.5) {
-        p.balls = Math.min(weaponById('baseball').count, p.balls + 1);
+      // walk over a ball to pick it up (either of you, when two are playing)
+      const by = b.age > 0.6 && m.y < 1.5 && this.game.alive().find((q) => Math.hypot(m.x - q.pos.x, m.z - q.pos.z) < 1.1);
+      if (by) {
+        by.balls = Math.min(weaponById('baseball').count, by.balls + 1);
         sfx.pickup();
         this.game.scene.remove(b.mesh);
         this.balls.splice(i, 1);

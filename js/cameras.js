@@ -83,34 +83,52 @@ export class CameraSystem {
     });
   }
 
+  // Whoever sat down at the desk. (Two playing: the monitor fills their half of the screen,
+  // and the other one keeps going.)
   open() {
     if (this.active) return;
+    const g = this.game;
     this.active = true;
+    this.user = g.player;
+    const two = g.players.length > 1;
     this.ui.classList.remove('hidden');
-    this.game.canvas.classList.add('night-vision');
-    this.game.lighting.setCams(true);
-    this.game.player.lightVisible = false;
-    this.game.player.vmGroup.visible = false;
+    this.ui.classList.toggle('pane-0', two && this.user.index === 0);
+    this.ui.classList.toggle('pane-1', two && this.user.index === 1);
+    if (two) { g.nightVision(this.user, true); document.body.classList.add('cams-split'); }
+    else {
+      this.game.canvas.classList.add('night-vision');
+      this.game.lighting.setCams(true);
+    }
+    this.user.lightVisible = false;
+    this.user.vmGroup.visible = false;
     this.static = 0.8;
-    this.game.hud.show(false);
+    if (!two) this.game.hud.show(false);
     document.getElementById('clickToPlay').classList.add('hidden');
     sfx.camOpen();
-    exitPointerLock();
+    if (!two || this.user.index === 0) exitPointerLock();
     this.refresh();
   }
 
   close() {
     if (!this.active) return;
+    const g = this.game, u = this.user || g.player;
+    const two = g.players.length > 1;
     this.active = false;
     this.ui.classList.add('hidden');
     this.game.canvas.classList.remove('night-vision');
+    g.nightVision(u, false);
+    document.body.classList.remove('cams-split');
     this.game.lighting.setCams(false);
-    this.game.player.lightVisible = this.game.mode !== 'day';
-    this.game.player.vmGroup.visible = true;
+    u.lightVisible = this.game.mode !== 'day';
+    u.vmGroup.visible = true;
     this.game.hud.show(this.game.isPlaying());
     sfx.camClose();
-    if (this.game.mode === 'night') requestPointerLock();
+    if (this.game.mode === 'night' && (!two || u.index === 0)) requestPointerLock();
+    this.user = null;
   }
+
+  // What the person at the monitor presses.
+  get ctl() { return (this.user || this.game.player).ctl; }
 
   switchTo(i) {
     this.index = (i + this.cams.length) % this.cams.length;
@@ -147,10 +165,11 @@ export class CameraSystem {
     }
     if (!this.active) return;
 
-    if (this.game.input.keyPressed('ArrowRight') || this.game.input.keyPressed('KeyD')) this.switchTo(this.index + 1);
-    if (this.game.input.keyPressed('ArrowLeft') || this.game.input.keyPressed('KeyA')) this.switchTo(this.index - 1);
-    for (let k = 1; k <= 9; k++) if (this.game.input.keyPressed('Digit' + k)) this.switchTo(k - 1);
-    if (this.game.input.keyPressed('Digit0')) this.switchTo(9);
+    const ctl = this.ctl;
+    if (ctl.keyPressed('ArrowRight') || ctl.keyPressed('KeyD')) this.switchTo(this.index + 1);
+    if (ctl.keyPressed('ArrowLeft') || ctl.keyPressed('KeyA')) this.switchTo(this.index - 1);
+    for (let k = 1; k <= 9; k++) if (ctl.keyPressed('Digit' + k)) this.switchTo(k - 1);
+    if (ctl.keyPressed('Digit0')) this.switchTo(9);
 
     const c = this.current;
     this.aim(this.cam, c, this.t);
@@ -205,7 +224,7 @@ export class CameraSystem {
   // looking at the desk and not already on the cameras.
   renderMonitors(renderer, scene, dt) {
     const g = this.game;
-    if (this.active || g.mode !== 'night' || g.place.roomAt(g.player.pos.x, g.player.pos.z) !== 'O') return;
+    if (this.active || g.mode !== 'night' || !g.alive().some((p) => g.place.roomAt(p.pos.x, p.pos.z) === 'O')) return;
     this.monitorTimer -= dt;
     if (this.monitorTimer > 0) return;
     this.monitorTimer = 0.2;
@@ -216,12 +235,12 @@ export class CameraSystem {
     const c = this.cams[[0, 6, 7][i]];
     this.aim(this.monitorCam, c, this.t);
     g.lighting.setCams(true);
-    const prevFlash = g.player.flashlight.intensity;
-    g.player.flashlight.intensity = 0;
+    const prevFlash = g.players.map((p) => p.flashlight.intensity);
+    for (const p of g.players) p.flashlight.intensity = 0;
     renderer.setRenderTarget(this.monitorTargets[i]);
     renderer.render(scene, this.monitorCam);
     renderer.setRenderTarget(null);
-    g.player.flashlight.intensity = prevFlash;
+    g.players.forEach((p, k) => { p.flashlight.intensity = prevFlash[k]; });
     g.lighting.setCams(false);
     if (mat.map !== this.monitorTargets[i].texture) {
       mat.map = this.monitorTargets[i].texture;

@@ -11,8 +11,9 @@
 import * as THREE from 'three';
 import {
   DEBUG, ANIMATRONIC_ORDER, WING_BOTS, ROAMERS, PLAYER, TIMMY, weaponsFor, unlocksAt, LAST_STORY_NIGHT, nightDef, REALISTIC,
-  DIFFICULTIES, SECOND_CHANCE_GRACE,
+  DIFFICULTIES, SECOND_CHANCE_GRACE, JIMMY, COOP_KEY, P1_KEYMAP, P2_KEYMAP, PAD_HELP, EMOTES,
 } from './config.js';
+import { Controls, PaneHud, readPads } from './coop.js';
 import { input, requestPointerLock, exitPointerLock, onPointerLockChange } from './input.js';
 import { audio, sfx, playMusic, stopMusic, setListener, startAmbience, stopAmbience, stopMusicBox } from './audio.js';
 import { PlayPlace, P, ROOMS, WING_ROOMS } from './map.js';
@@ -36,9 +37,9 @@ import { Timmy } from './timmy.js';
 import { Phone } from './phone.js';
 import {
   loadProfile, saveProfile, freshProfile, saveGraphics, takeReopenSettings, loadDifficulty, saveDifficulty,
-  loadDebug, saveDebug, loadLook, saveLook,
+  loadDebug, saveDebug, loadLook, saveLook, loadCoop, saveCoop,
 } from './save.js';
-import { setEyes, buildJonathan, buildManager, buildGramma, buildOldJohn } from './models.js';
+import { setEyes, buildJonathan, buildManager, buildGramma, buildOldJohn, buildJimmy, JIMMY_LOOK, poseRig, addKnees } from './models.js';
 import { signTex } from './textures.js';
 import { EscapeMode, STORY } from './escape/mode.js';
 import { PlexMode, PLEX_STORY } from './plex/mode.js';
@@ -116,6 +117,16 @@ export class Game {
     this.effects = new Effects(this.scene);
     this.machines = new Machines(this, this.decor);
     this.player = new Player(this, this.camera);
+    // Two players (coop.js): `players` is everyone playing, and `player` is whoever's turn it
+    // is right now — player 1 except while the game runs player 2's part of a step.
+    this.p1 = this.player;
+    this.players = [this.p1];
+    this.p2 = null;
+    this.coop = loadCoop();
+    this.split = false;
+    this.bodyCache = {};     // what people look like from outside (the other player, or you emoting)
+    this.wheels = [];
+    this.viewW = innerWidth; this.viewH = innerHeight;
     this.bots = ANIMATRONIC_ORDER.map((id) => new Animatronic(this, id));
     // Moony and Sunny live in the new wing, and only exist while it's open.
     this.wingBots = WING_BOTS.map((id) => new WingBot(this, id));
@@ -133,7 +144,7 @@ export class Game {
     this.night = new NightDirector(this);
     this.day = new Daytime(this);
     this.cams = new CameraSystem(this);
-    this.repair = new Repair(this);
+    this.p1.repair = new Repair(this);
     this.weapons = new Weapons(this);
     this.hud = new Hud(this);
     this.touch = new Touch(this);
@@ -167,10 +178,14 @@ export class Game {
     this.wireUI();
     onPointerLockChange((locked) => this.onLockChange(locked));
     $('buildTag').textContent = `v${VERSION}`;
+    if (this.coop.on) this.setCoop(true);
     if (DEBUG) window.__game = this;
   }
 
   bot(id) { return this.bots.find((a) => a.id === id) || this.wingBots.find((a) => a.id === id); }
+  // (each player has their own repair puzzle on screen)
+  get repair() { return this.player.repair; }
+  get ctl() { return this.player.ctl; }
   get diff() { return DIFFICULTIES[this.difficulty]; }
   get nightmare() { return !!this.diff.nightmare; }
 
@@ -263,6 +278,470 @@ export class Game {
 
   hidePeople() { for (const p of Object.values(this.people)) p.root.visible = false; }
 
+  // ── Two players ───────────────────────────────────────────────────────
+  //
+  // Split screen (the designer's idea): Jonathan on WASD and the trackpad, his little
+  // brother Jimmy on the arrow keys or a controller. Every step the game runs each player's
+  // own part (their keys, walking, what they press E on, their weapon) with `this.player`
+  // pointing at them, and each animatronic's turn with `this.player` pointing at whoever it's
+  // after — so all the code that asks about "the player" asks about the right one.
+
+  get twoUp() { return this.coop.on && this.players.length > 1; }
+  // Everyone still in (when one's caught, they're out until morning).
+  alive() { return this.players.filter((p) => !p.out); }
+  get lead() { return this.players.find((p) => !p.out) || this.p1; }
+
+  // Jimmy, built the first time two play: his camera and flashlight, his half of the HUD,
+  // his own repair puzzle, and the body each of you sees of the other.
+  buildP2() {
+    if (this.p2) return;
+    const cam = new THREE.PerspectiveCamera(72, 16 / 9, 0.1, 120);
+    const p2 = new Player(this, cam, { ctl: new Controls(1), index: 1 });
+    p2.fixedSizes = JIMMY;
+    p2.look = JIMMY_LOOK;
+    p2.name = 'Jimmy';
+    p2.repair = new Repair(this, '2');
+    p2.setWeapons(['taser']);
+    this.p2 = p2;
+    this.p2cam = cam;
+    this.p1ctl = new Controls(0);
+    this.p1.name = 'Jonathan';
+    this.panes = [new PaneHud($('panes'), 0, 'JONATHAN', '🔦'), new PaneHud($('panes'), 1, 'JIMMY', '🚀')];
+    p2.body = this.makeBody('jimmy', buildJimmy);
+    if (!this.p1.body) this.p1.body = this.makeBody('jonathan', buildJonathan);
+  }
+
+  // What someone looks like from the outside, built once and kept.
+  makeBody(key, build) {
+    if (!this.bodyCache[key]) {
+      const b = makePerson(this.scene, () => addKnees(build()));
+      this.bodyCache[key] = b;
+    }
+    return this.bodyCache[key];
+  }
+
+  // Who player 1 is, as player 2 sees them: Jonathan at fifteen, at five, or (in the
+  // Pizzaplex) whoever the chapter is about.
+  setP1Body(key, build) {
+    // (back at the PlayPlace, player 1 is Jonathan again)
+    if (key === 'jonathan') { this.p1.name = 'Jonathan'; this.panes?.[0].setName('JONATHAN', '🔦'); }
+    if (this.p1.body && this.p1.body !== this.bodyCache[key]) this.p1.body.root.visible = false;
+    this.p1.body = this.makeBody(key, build);
+  }
+
+  setCoop(on) {
+    this.coop.on = on;
+    saveCoop(this.coop);
+    if (on) {
+      this.buildP2();
+      this.p1.ctl = this.p1ctl;
+      this.players = [this.p1, this.p2];
+      if (!this.p2cam.parent) { this.scene.add(this.p2cam); this.graphics.track(this.p2cam); }
+    } else {
+      this.p1.ctl = input;
+      this.p1.out = false;
+      this.players = [this.p1];
+      if (this.p2cam && this.p2cam.parent) this.scene.remove(this.p2cam);
+      for (const b of Object.values(this.bodyCache || {})) b.root.visible = false;
+    }
+    input.clear();
+    document.body.classList.toggle('coop', on);
+    this.hud.title(this.profile);
+    this.layout();
+  }
+
+  // A fresh start for Jimmy, right beside Jonathan: the same gear, the same light.
+  spawnPartner(night = 1) {
+    if (!this.twoUp) return;
+    const p1 = this.p1, p2 = this.p2;
+    p1.out = p2.out = false;
+    const rx = Math.cos(p1.yaw), rz = -Math.sin(p1.yaw);
+    const place = this.place;
+    let at = p1.pos.clone();
+    for (const d of [0.9, -0.9, 1.3, -1.3, 0.6, -0.6]) {
+      const x = p1.pos.x + rx * d, z = p1.pos.z + rz * d;
+      if (place.isWalkable(x, z)) { at = new THREE.Vector3(x, p1.pos.y, z); break; }
+    }
+    p2.reset(at, p1.yaw, night);
+    p2.setWeapons(p1.weapons);
+    p2.lightOn = p1.lightOn;
+    p2.lightVisible = p1.lightVisible;
+    p2.vmGroup.visible = p1.vmGroup.visible;
+    p2.bigLight = p1.bigLight;
+    p2.flashlight.angle = p1.flashlight.angle;
+    p2.flashlight.distance = p1.flashlight.distance;
+    p2.updateCamera();
+    p2.ctl.clear();
+    for (const pane of this.panes) pane.prompt(null);
+  }
+
+  // Run `fn` for each player still in, with `this.player` pointing at them. Stops early (and
+  // returns true) if `fn` returns true.
+  eachPlayer(fn) {
+    let stop = false;
+    for (const p of this.alive()) {
+      this.player = p;
+      if (fn(p)) { stop = true; break; }
+    }
+    this.player = this.lead;
+    return stop;
+  }
+
+  withPlayer(p, fn) {
+    const was = this.player;
+    this.player = p;
+    try { return fn(); } finally { this.player = was; }
+  }
+
+  // Who this one goes after: whoever it can sense (the closer, if it senses both), or else
+  // whoever it was already after, or else whoever's closer.
+  preyFor(a) {
+    const alive = this.alive();
+    if (alive.length < 2) return alive[0] || this.p1;
+    const was = this.player;
+    const sense = a.sensesPlayer || a.senses;
+    let best = alive[0], score = Infinity;
+    for (const p of alive) {
+      this.player = p;
+      let d = Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z);
+      let sensed = false;
+      if (sense && !a.preyIsTimmy) { try { sensed = !!sense.call(a); } catch { sensed = false; } }
+      if (!sensed) d += 1000;
+      if (a.prey === p) d -= 4;
+      if (d < score) { score = d; best = p; }
+    }
+    this.player = was;
+    a.prey = best;
+    return best;
+  }
+
+  asPrey(a, fn) { return this.withPlayer(this.preyFor(a), fn); }
+
+  closeRepairs() { for (const p of this.players) if (p.repair && p.repair.active) p.repair.close(); }
+
+  // The one who just got caught is out until morning; the other one keeps going. True if
+  // somebody's still in.
+  knockOut(p, msg = null) {
+    p.out = true;
+    p.crouching = false;
+    p.lightOn = false;
+    p.lightVisible = false;
+    p.flashlight.intensity = 0;
+    p.vmGroup.visible = false;
+    if (p.body) p.body.root.visible = false;
+    if (p.repair && p.repair.active) p.repair.close();
+    if (this.cams.active && this.cams.user === p) this.cams.close();
+    const left = this.alive();
+    if (!left.length) return false;
+    const who = left[0];
+    this.hud.toast(msg || `${p.name} is out until morning! ${who.name}, you're on your own now — make it to 6 AM!`, 5);
+    return true;
+  }
+
+  // Back to the night after one of you was caught: whatever did it goes back to what it was
+  // doing, a little stunned, and nothing can catch the other one for a moment.
+  afterKnockOut(a, from) {
+    this.mode = from || 'night';
+    this.scarer = null;
+    this.scareP = null;
+    for (const pane of this.panes) pane.el.classList.remove('scared');
+    setEyes(a.rig, 'on');
+    const prev = this.prevScareState;
+    a.state = !prev || prev === 'jumpscare' || prev === 'chase' || prev === 'notice' ? 'search' : prev;
+    if (a.goTo && a.state === 'search') a.goTo(a.pos.clone());
+    if (a.id === 'junk') a.staggerT = 3;
+    else if (a.id === 'gus' || a.def?.unstoppable) a.freezeTimer = 3;
+    else if (a.stagger) a.stagger(3);
+    a.prey = null;
+    this.grace = 2;
+    this.player = this.lead;
+    this.layout();
+    if (!this.touch.active && this.lead.index === 0) requestPointerLock();
+  }
+
+  // ── Emotes ────────────────────────────────────────────────────────────
+  //
+  // The designer's idea: hold T (player 2: K; a controller: up on the d-pad) and a wheel of
+  // emotes pops up — point at one (the mouse, a stick, or the walking keys) and let go. The
+  // camera swings round in front of you so you can watch yourself do it (like Fortnite), and
+  // walking stops it. Two playing, the other one sees it too. The animatronics don't wait
+  // for you to finish.
+
+  // True if this player's step was the wheel or an emote (and nothing else should happen).
+  emoteTurn(dt, p) {
+    const ctl = p.ctl;
+    if (p.wheel) {
+      const w = p.wheel;
+      const { dx, dy } = ctl.drainLook();
+      w.x += dx; w.y += dy;
+      // the walking keys and the left stick point too
+      const ax = ctl.moveAxis ? ctl.moveAxis() : null;
+      let kx = (ctl.down('right') ? 1 : 0) - (ctl.down('left') ? 1 : 0), ky = (ctl.down('back') ? 1 : 0) - (ctl.down('forward') ? 1 : 0);
+      if (ax) { kx = ax.x; ky = ax.z; }
+      if (kx || ky) { w.x = kx * 200; w.y = ky * 200; }
+      const len = Math.hypot(w.x, w.y);
+      if (len > 220) { w.x *= 220 / len; w.y *= 220 / len; }
+      // straight up is the first one, then round clockwise
+      if (len > 40) {
+        const a = (Math.atan2(w.x, -w.y) + Math.PI * 2) % (Math.PI * 2);
+        w.sel = Math.round(a / (Math.PI * 2 / EMOTES.length)) % EMOTES.length;
+      }
+      this.drawWheel(p);
+      p.update(dt, { canMove: false, canLook: false });
+      this.hud.prompt(null);
+      if (!ctl.down('emote')) {
+        this.closeWheel(p);
+        if (w.sel !== null) this.startEmote(p, EMOTES[w.sel]);
+      }
+      return true;
+    }
+    if (p.emote) {
+      const e = p.emote;
+      e.t += dt;
+      const ax = ctl.moveAxis ? ctl.moveAxis() : null;
+      const walking = ['forward', 'back', 'left', 'right'].some((a) => ctl.down(a)) || (ax && Math.hypot(ax.x, ax.z) > 0.3);
+      if (e.t > e.len || (walking && e.t > 0.35) || ctl.pressed('emote')) { this.stopEmote(p); return false; }
+      // you can turn the camera round yourself while you watch
+      const { dx } = ctl.drainLook();
+      e.orbit -= dx * 0.004;
+      p.update(dt, { canMove: false, canLook: false });
+      this.emoteCamera(p);
+      this.hud.prompt(null);
+      return true;
+    }
+    if (ctl.pressed('emote') && !p.carrying) { this.openWheel(p); return true; }
+    return false;
+  }
+
+  openWheel(p) {
+    p.wheel = { x: 0, y: 0, sel: null };
+    sfx.ui();
+    this.drawWheel(p);
+  }
+
+  closeWheel(p) {
+    p.wheel = null;
+    const el = this.wheels[p.index];
+    if (el) el.classList.add('hidden');
+  }
+
+  drawWheel(p) {
+    let el = this.wheels[p.index];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'emote-wheel hidden';
+      const R = 112, n = EMOTES.length;
+      el.innerHTML = `<div class="ew-ring">${EMOTES.map((e, i) => {
+        const a = (i / n) * Math.PI * 2;
+        return `<div class="ew-slot" style="left:calc(50% + ${Math.sin(a) * R}px);top:calc(50% - ${Math.cos(a) * R}px)"><span>${e.icon}</span><small>${e.name}</small></div>`;
+      }).join('')}<div class="ew-mid">EMOTES</div></div>`;
+      $('hud').appendChild(el);
+      this.wheels[p.index] = el;
+    }
+    el.classList.remove('hidden');
+    el.classList.toggle('pane-0', this.split && p.index === 0);
+    el.classList.toggle('pane-1', this.split && p.index === 1);
+    const sel = p.wheel ? p.wheel.sel : null;
+    el.querySelectorAll('.ew-slot').forEach((s, i) => s.classList.toggle('on', i === sel));
+    const mid = el.querySelector('.ew-mid');
+    const t = sel === null ? 'EMOTES' : EMOTES[sel].name.toUpperCase();
+    if (mid.textContent !== t) mid.textContent = t;
+  }
+
+  // Point & scream (the designer's call): the mouth pops open so wide it covers the whole
+  // face, eyes and all, and wobbles while you scream. `t`: seconds into it, or null to shut.
+  screamMouth(rig, t) {
+    const m = rig.mouth;
+    if (!m) return;
+    if (!rig.mouthHome) rig.mouthHome = { pos: m.position.clone(), scale: m.scale.clone() };
+    const home = rig.mouthHome;
+    const hr = home.pos.z / 0.9;            // the head's radius (the mouth sits 0.9 of it out)
+    if (t === null) {
+      if (rig.screaming) {
+        m.position.copy(home.pos); m.scale.copy(home.scale); rig.screaming = false;
+        for (const bit of rig.screamBits) bit.visible = false;
+      }
+      return;
+    }
+    // teeth along the top and a tongue at the bottom, so it reads as a mouth
+    if (!rig.screamBits) {
+      const teeth = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.4 }));
+      teeth.scale.set(hr * 0.86, hr * 0.13, hr * 0.06);
+      teeth.position.set(0, hr * 1.4, hr * 1.1);
+      const tongue = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshStandardMaterial({ color: 0xd94a6a, roughness: 0.5 }));
+      tongue.scale.set(hr * 0.42, hr * 0.17, hr * 0.16);
+      tongue.position.set(0, hr * 0.38, hr * 1.06);
+      rig.screamBits = [teeth, tongue];
+      for (const bit of rig.screamBits) { bit.visible = false; rig.head.add(bit); }
+    }
+    rig.screaming = true;
+    for (const bit of rig.screamBits) bit.visible = t > 0.08;
+    const k = Math.min(1, t / 0.12);        // a split second to open all the way
+    const w = 1 + Math.sin(t * 38) * 0.06;  // and it shakes while you scream
+    m.position.set(0, home.pos.y + (hr * 0.86 - home.pos.y) * k, home.pos.z + (hr * 0.84 - home.pos.z) * k);
+    m.scale.set(
+      home.scale.x + (hr * 0.72 * w - home.scale.x) * k,
+      home.scale.y + (hr * 0.82 * w - home.scale.y) * k,
+      home.scale.z + (hr * 0.34 - home.scale.z) * k,
+    );
+  }
+
+  startEmote(p, def) {
+    if (!p.body) p.body = p === this.p1 ? this.makeBody('jonathan', buildJonathan) : this.makeBody('jimmy', buildJimmy);
+    p.crouching = false;
+    p.vel.set(0, 0, 0);
+    // (the worm looks best from the side)
+    p.emote = { id: def.id, len: def.len, t: 0, yaw: p.yaw, orbit: def.id === 'worm' ? 1.35 : 0, vm: p.vmGroup.visible };
+    sfx.emote(def.id);
+  }
+
+  stopEmote(p) {
+    if (!p.emote) return;
+    p.vmGroup.visible = p.emote.vm;
+    p.emote = null;
+    if (p.body) p.body.root.rotation.set(0, p.yaw + Math.PI, 0);
+    p.updateCamera();
+  }
+
+  // In front of you and a little above, looking back at you — pulled in short of any wall.
+  emoteCamera(p) {
+    const e = p.emote;
+    const h = p.S.eyeHeight;
+    const a = e.yaw + e.orbit;
+    const fx = -Math.sin(a), fz = -Math.cos(a);
+    const centre = new THREE.Vector3(p.pos.x, p.pos.y + (e.id === 'worm' ? 0.35 : h * 0.62), p.pos.z);
+    const want = 1.6 + h * 0.9;
+    let d = 0.6;
+    while (d < want && this.place.isWalkable(centre.x + fx * (d + 0.35), centre.z + fz * (d + 0.35))) d += 0.1;
+    const cam = p.camera;
+    cam.position.set(centre.x + fx * d, centre.y + 0.35 + d * 0.12, centre.z + fz * d);
+    cam.lookAt(centre);
+  }
+
+  // ── The split screen ──────────────────────────────────────────────────
+
+  // Which parts of the game are played in two halves: walking about, and the scare.
+  splitView() {
+    if (!this.twoUp || this.p1.out || this.p2.out) return false;
+    const m = this.mode === 'paused' ? this.pausedFrom : this.mode;
+    if (m === 'escape' || m === 'escScare') return !this.story.ctrl || this.story.ctrl.coopView === 'split';
+    return m === 'night' || m === 'home' || m === 'day' || m === 'jumpscare' || m === 'guardNote';
+  }
+
+  layout() {
+    const two = this.splitView();
+    const dir = this.coop.split;
+    if (two === this.split && dir === this.splitDir) return;
+    this.split = two;
+    this.splitDir = dir;
+    document.body.classList.toggle('split', two);
+    document.body.classList.toggle('split-v', two && dir === 'v');
+    document.body.classList.toggle('split-h', two && dir === 'h');
+    if (!two && this.panes) for (const pane of this.panes) pane.prompt(null);
+    this.resize(this.viewW, this.viewH);
+  }
+
+  // Each half, in CSS pixels from the bottom left (WebGL's way up): player 1 on the left or
+  // the top.
+  paneRects() {
+    const W = this.viewW, H = this.viewH;
+    if (this.splitDir === 'h') {
+      const h = Math.floor(H / 2);
+      return [{ x: 0, y: H - h, w: W, h }, { x: 0, y: 0, w: W, h }];
+    }
+    const w = Math.floor(W / 2);
+    return [{ x: 0, y: 0, w, h: H }, { x: W - w, y: 0, w, h: H }];
+  }
+
+  // The night-vision tint, in the half of whoever's on the cameras.
+  nightVision(p, on) {
+    const el = $('nv' + p.index);
+    if (el) el.classList.toggle('on', on);
+  }
+
+  // Draw the world as `viewer` sees it: their hands, not their body; everyone else's
+  // body, not their hands.
+  renderView(viewer, cam, opts) {
+    const view = this.playingView();
+    const others = this.twoUp && view;
+    const keep = this.players.map((p) => p.vmGroup.visible);
+    for (const p of this.players) {
+      // (emoting, you see yourself and not your hands — the camera's swung round in front)
+      if (p !== viewer || p.emote) p.vmGroup.visible = false;
+      // (not while they're hiding, or inside their box)
+      if (p.body) {
+        p.body.root.visible = view && !p.out && !p.bodyHidden && !p.hiding && !p.inBox &&
+          (p.emote ? true : others && p !== viewer);
+      }
+    }
+    this.graphics.render(this.scene, cam, opts);
+    this.players.forEach((p, i) => { p.vmGroup.visible = keep[i]; });
+  }
+
+  playingView() {
+    const m = this.mode === 'paused' ? this.pausedFrom : this.mode;
+    return ['night', 'home', 'day', 'escape', 'jumpscare', 'escScare', 'guardNote'].includes(m);
+  }
+
+  // Jimmy and Jonathan as each other sees them: walking, standing, crouching.
+  updateBodies(dt) {
+    for (const p of this.players) {
+      // (a fresh start — a new night, a level — puts any wheel away)
+      if (!p.wheel && this.wheels[p.index] && !this.wheels[p.index].classList.contains('hidden')) this.closeWheel(p);
+      if (p.emote && !this.isPlaying()) this.stopEmote(p);
+      const b = p.body;
+      if (!b) continue;
+      const e = p.emote;
+      // (emoting: the worm lies flat, the head spin stands on its head and spins)
+      const yaw = e ? e.yaw : p.yaw;
+      if (e && e.id === 'worm') {
+        b.root.position.set(p.pos.x, p.pos.y + 0.14 + Math.abs(Math.sin(e.t * 5)) * 0.08, p.pos.z);
+        b.root.rotation.set(Math.PI / 2, yaw + Math.PI, 0);
+      } else if (e && e.id === 'headspin') {
+        b.root.position.set(p.pos.x, p.pos.y + (b.rig.height || 1.2) * 0.98, p.pos.z);
+        b.root.rotation.set(Math.PI, yaw + Math.PI + e.t * 9, 0);
+      } else {
+        b.root.position.set(p.pos.x, p.pos.y, p.pos.z);
+        b.root.rotation.set(0, yaw + Math.PI, 0);
+      }
+      p.walkT = (p.walkT || 0) + dt * (4 + p.moving * 5);
+      this.screamMouth(b.rig, e && e.id === 'point' ? e.t : null);
+      if (e) poseRig(b.rig, e.id, e.t, 1, dt);
+      else if (p.crouching) poseRig(b.rig, 'crouch', p.walkT, p.moving * 1.6, dt);
+      else if (p.moving > 0.15) poseRig(b.rig, 'walk', p.walkT, Math.min(1.3, p.moving), dt);
+      else poseRig(b.rig, 'idle', this.t + p.index * 3, 0.3, dt);
+    }
+  }
+
+  // Each player's half of the HUD: their bars, their weapon, what they can do, what's after
+  // them.
+  updatePanes() {
+    if (!this.split || !this.panes) return;
+    const source = this.mode === 'escape' ? this.story : this;
+    for (const p of this.players) {
+      const info = this.withPlayer(p, () => source.paneInfo(p));
+      this.panes[p.index].update(p, info);
+    }
+  }
+
+  paneInfo(p) {
+    const night = this.mode !== 'day';
+    let danger = 0, chaser = null;
+    if (this.hunting) {
+      for (const a of this.allBots()) {
+        if (!a.dangerous || !a.root.visible) continue;
+        const d = a.distToPlayer();
+        if (d < 9) danger = Math.max(danger, 1 - d / 9);
+        if (a.prey === p && ['chase', 'hunt', 'notice'].includes(a.state)) chaser = a;
+      }
+    }
+    let status = '';
+    if (p.carrying) status = `Dragging ${p.carrying.name} — to Parts & Service! (wakes in ${Math.ceil(p.carrying.timer)}s)`;
+    else if (p.crouching) status = 'Crouching — only Gus can see you';
+    else if (this.cams.active && this.cams.user === p) status = '';
+    return { weapons: night, box: null, status, alert: chaser ? `${chaser.name.toUpperCase()} IS AFTER YOU!` : '', danger };
+  }
+
   // Open the new wing (Day 11 on) or board it up: walls and paths, its rooms and games, its
   // cameras, its lights, and where everyone wanders.
   setWing(open) {
@@ -342,6 +821,12 @@ export class Game {
     click('btnMorningGo', () => this.afterMorning());
     click('btnClockIn', () => this.clockIn());
     click('btnGuardNoteGo', () => this.closeGuardNote());
+    // Two players: the setup screen, and the three games to play together.
+    click('btnCoop', () => this.openCoop());
+    click('btnCoopBack', () => this.toTitle());
+    click('btnCoopNights', () => { this.setCoop(true); this.continueGame(); });
+    click('btnCoopFive', () => { this.setCoop(true); this.escape.showMenu(); });
+    click('btnCoopPlex', () => { this.setCoop(true); this.plex.showMenu(); });
 
     // Clicking the 3D view during play takes the mouse.
     // (not in the story chapters where you stay put and click buttons: Max's bedroom,
@@ -350,6 +835,50 @@ export class Game {
       if (this.isPlaying() && !this.cams.active && !this.touch.active && !this.fixedView()) requestPointerLock();
     });
     $('clickToPlay').addEventListener('click', () => requestPointerLock());
+  }
+
+  // ── 2 Players ─────────────────────────────────────────────────────────
+
+  openCoop() {
+    this.renderCoop();
+    this.showScreen('coop');
+  }
+
+  renderCoop() {
+    const choices = (el, options, current, pick) => {
+      el.innerHTML = '';
+      for (const [id, label] of options) {
+        const b = document.createElement('button');
+        b.className = 'btn' + (id === current ? ' on' : ' btn-ghost');
+        b.textContent = label;
+        b.addEventListener('click', () => { sfx.ui(); pick(id); this.renderCoop(); });
+        el.appendChild(b);
+      }
+    };
+    choices($('coopChoice'), [['1', '1 Player'], ['2', '2 Players 👥']], this.coop.on ? '2' : '1', (id) => this.setCoop(id === '2'));
+    choices($('splitChoice'), [['v', 'Side by side ◧'], ['h', 'Top and bottom ⬒']], this.coop.split, (id) => {
+      this.coop.split = id;
+      saveCoop(this.coop);
+      this.layout();
+    });
+    $('splitDesc').textContent = this.coop.split === 'h'
+      ? 'Jonathan on the top half, Jimmy on the bottom half.'
+      : 'Jonathan on the left half, Jimmy on the right half.';
+    const list = (map) => Object.values(map).map((d) => `<span class="key">${d.show}</span><span>${d.label}</span>`).join('');
+    $('coopKeys1').innerHTML = list(P1_KEYMAP) + '<span class="key">TRACKPAD</span><span>Look around</span>';
+    $('coopKeys2').innerHTML = list(P2_KEYMAP);
+    $('coopPadKeys').innerHTML = PAD_HELP.map(([k, l]) => `<span class="key">${k}</span><span>${l}</span>`).join('');
+    this.coopPads();
+  }
+
+  // Is there a controller? (Most only show up after you press a button on them.)
+  coopPads() {
+    const n = readPads().length;
+    const t = n > 1 ? '🎮🎮 Two controllers: Jimmy has the first, Jonathan the second.'
+      : n ? '🎮 Controller connected — it\'s Jimmy\'s!'
+      : '🎮 Got a controller? Plug it in and press a button on it — Jimmy can use it instead of the arrows.';
+    if ($('coopPad').textContent !== t) $('coopPad').textContent = t;
+    $('coopPad').classList.toggle('on', n > 0);
   }
 
   // ── Settings ──────────────────────────────────────────────────────────
@@ -431,7 +960,7 @@ export class Game {
     this.hud.el.classList.toggle('esc', name === 'escape');
     this.applyLook();
     $('dayPanel').classList.toggle('hidden', name !== 'day');
-    if (!playing) { this.cams.close(); if (this.repair.active) this.repair.close(); }
+    if (!playing) { this.cams.close(); this.closeRepairs(); }
     this.showDebugBadge();
   }
 
@@ -516,6 +1045,8 @@ export class Game {
     this.player.lightOn = false;
     this.player.lightVisible = false;
     this.player.vmGroup.visible = true;
+    this.setP1Body('jonathan', buildJonathan);
+    this.spawnPartner(this.profile.night);
     this.day.start(this.profile.happiness);
     const n = this.profile.night;
     this.timmyQuest = timmy;
@@ -587,6 +1118,8 @@ export class Game {
     this.player.lightOn = true;
     this.player.lightVisible = true;
     this.player.vmGroup.visible = true;
+    this.setP1Body('jonathan', buildJonathan);
+    this.spawnPartner(n);
     this.night.start(n, p.happiness);
     this.updatePhoto();
     this.showScreen('night');
@@ -624,6 +1157,8 @@ export class Game {
     this.player.lightOn = false;
     this.player.lightVisible = true;
     this.player.vmGroup.visible = true;
+    this.setP1Body('jonathan', buildJonathan);
+    this.spawnPartner(10);
     this.lighting.set('home');
     stopMusic();
     startAmbience('night');
@@ -649,9 +1184,14 @@ export class Game {
 
   // Something caught Jonathan.
   caught(who) {
-    if (!this.hunting || this.grace > 0) return;
+    if (!this.hunting || this.grace > 0 || this.player.out) return;
     if (this.night.secondChance) { this.getAway(who); return; }
-    this.cams.close();
+    // (two playing: only the one it caught sees it, in their half — `scareP`)
+    this.scareP = this.player;
+    this.stopEmote(this.player);
+    this.closeWheel(this.player);
+    this.scareFrom = this.mode;
+    if (!this.twoUp || this.cams.user === this.player) this.cams.close();
     if (this.repair.active) this.repair.close();
     if (this.player.carrying) this.dropCarried();
     this.mode = 'jumpscare';
@@ -667,11 +1207,16 @@ export class Game {
     // Flashlight off: the face is lit from below in red, which is far scarier.
     this.player.vmGroup.visible = false;
     this.player.lightVisible = false;
-    this.hud.show(false);
-    $('clickToPlay').classList.add('hidden');
-    stopMusicBox();
-    stopMusic();
-    stopAmbience();
+    // (when the other one's still in, the game only freezes for the scare: the music and
+    // the HUD carry on)
+    const partner = this.twoUp && this.alive().length > 1;
+    if (!partner) {
+      this.hud.show(false);
+      $('clickToPlay').classList.add('hidden');
+      stopMusicBox();
+      stopMusic();
+      stopAmbience();
+    } else this.panes[this.player.index].el.classList.add('scared');
     sfx.fnafScream();
     if (this.nightmare) setTimeout(() => sfx.fnafScream(), 700);
     this.profile.stats.caught++;
@@ -699,12 +1244,13 @@ export class Game {
     this.scareTimer -= dt;
     const t = this.scareLen - this.scareTimer;
     // It lunges into your face, screams with its head jerking about, then: static.
-    const cam = this.camera;
-    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 20);
-    this.player.shake = t < LUNGE ? 0.4 : 0.9;
-    this.player.updateCamera();
+    const sp = this.scareP || this.player;
+    const cam = sp.camera;
+    sp.pitch += (0 - sp.pitch) * Math.min(1, dt * 20);
+    sp.shake = t < LUNGE ? 0.4 : 0.9;
+    sp.updateCamera();
     if (this.scareTimer > STATIC) {
-      const { f, near } = placeScare(a, cam, this.player, t);
+      const { f, near } = placeScare(a, cam, sp, t);
       const keep = a.root.position.clone(), rot = a.root.rotation.clone();
       a.render(dt);
       a.root.position.copy(keep);
@@ -712,11 +1258,14 @@ export class Game {
       finishScare(a, cam, f, near, t, this.effects);
       return;
     }
-    if (!this.scareStatic) { this.scareStatic = true; showStatic(); }
+    if (!this.scareStatic) { this.scareStatic = true; showStatic(this.split ? sp.index : null); }
     drawStatic();
     if (this.scareTimer <= 0) {
       hideStatic();
       $('jumpFlash').classList.add('hidden');
+      // Two playing, and the other one's still in: this one's out until morning, and the
+      // night goes on.
+      if (this.twoUp && this.knockOut(sp)) { this.afterKnockOut(a, this.scareFrom); return; }
       exitPointerLock();
       const home = !this.area.isPlayPlace;
       const tip = home ? TIPS.home : a.id === 'gus' && this.night.boss === 'gus' ? TIPS.gusBoss : TIPS[a.id];
@@ -732,7 +1281,7 @@ export class Game {
     const n = this.night.n;
     exitPointerLock();
     this.cams.close();
-    if (this.repair.active) this.repair.close();
+    this.closeRepairs();
     const report = this.night.morningReport();
     this.night.stop();
     this.resetBots();
@@ -757,7 +1306,7 @@ export class Game {
     this.winTimer = 3;
     this.winWho = who;
     for (const a of this.bots) if (a !== who && a.state !== 'friend' && a.root.visible) a.befriend(null);
-    if (this.player.carrying) this.dropCarried();
+    for (const p of this.players) if (p.carrying) this.withPlayer(p, () => this.dropCarried());
   }
 
   finishBoss(who) {
@@ -929,6 +1478,7 @@ export class Game {
     }
     if (this.area.isPlayPlace && room === 'O' && near(this.decor.desk.point, 1.8)) {
       if (this.secret === 'heard') return { text: '<b>E</b> Read the note on the desk', act: () => this.readGuardNote() };
+      if (this.cams.active) return { text: `📹 ${this.cams.user?.name || 'Someone'} is on the cameras`, act: () => {}, quiet: true };
       return { text: '<b>E</b> Use the cameras', act: () => this.cams.open() };
     }
     return null;
@@ -939,7 +1489,18 @@ export class Game {
   update(dt) {
     this.t += dt;
     this.touch.apply();
-    if (this.mode === 'paused' && input.pressed('pause')) this.togglePause();
+    if (this.twoUp) {
+      const pads = readPads();
+      // the first controller plugged in is Jimmy's; a second one is Jonathan's
+      this.p2.ctl.pad = pads.length ? pads[0].index : null;
+      this.p1.ctl.pad = pads.length > 1 ? pads[1].index : null;
+      const all = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const p of this.players) p.ctl.poll(dt, all);
+    }
+    // (only player 1 has ESC, so player 2's START pauses too)
+    const p2Pause = this.twoUp && this.p2.ctl.pressed('pause');
+    if (this.mode === 'paused' && (input.pressed('pause') || p2Pause)) this.togglePause();
+    else if (p2Pause && this.isPlaying()) this.togglePause();
     switch (this.mode) {
       case 'night': this.updateNight(dt); break;
       case 'home': this.updateHome(dt); break;
@@ -951,6 +1512,10 @@ export class Game {
       case 'jumpscare': this.updateJumpscare(dt); break;
       case 'escape': this.story.update(dt); break;
       case 'escScare': this.story.updateScare(dt); break;
+      case 'coop':
+        this.updateBackdrop(dt);
+        if (Math.floor(this.t * 2) !== Math.floor((this.t - dt) * 2)) this.coopPads();
+        break;
       case 'title': case 'card': case 'howto': case 'select': case 'settings': case 'gallery':
       case 'escMenu': case 'escCard': case 'escWin':
         this.updateBackdrop(dt);
@@ -964,7 +1529,13 @@ export class Game {
     this.lighting.foggy = this.place === this.playplace && this.place.roomAt(cp.x, cp.z) === 'M';
     this.lighting.update(dt);
     this.decor.update(dt, this.t, (id) => this.machines.isBroken(id));
-    setListener(this.player.pos.x, this.player.pos.z, this.player.yaw);
+    const ear = this.lead;
+    setListener(ear.pos.x, ear.pos.z, ear.yaw, this.twoUp ? this.alive().map((p) => ({ x: p.pos.x, z: p.pos.z, yaw: p.yaw })) : null);
+    this.updateBodies(dt);
+    if (this.twoUp) {
+      this.layout();
+      this.updatePanes();
+    }
   }
 
   // The menus sit over a slow drift past the stage.
@@ -982,39 +1553,61 @@ export class Game {
   }
 
   handleCommonInput() {
-    const p = this.player;
-    if (input.pressed('pause') && !this.cams.active && !this.repair.active) { this.togglePause(); return true; }
-    if (input.pressed('flashlight') && this.hunting) p.toggleLight();
-    if (input.pressed('crouch')) p.toggleCrouch();
-    if (input.pressed('swap') || input.wheel) {
-      const dir = input.wheel < 0 ? -1 : 1;
+    const p = this.player, ctl = p.ctl;
+    if (ctl.pressed('pause') && !this.cams.active && !this.repair.active) { this.togglePause(); return true; }
+    if (ctl.pressed('flashlight') && this.hunting) p.toggleLight();
+    if (ctl.pressed('crouch')) p.toggleCrouch();
+    if (ctl.pressed('swap') || ctl.wheel) {
+      const dir = ctl.wheel < 0 ? -1 : 1;
       p.selectSlot((p.slot + dir + p.weapons.length) % p.weapons.length);
     }
-    for (let k = 1; k <= 4; k++) if (input.keyPressed('Digit' + k)) p.selectSlot(k - 1);
+    for (let k = 1; k <= 4; k++) if (ctl.keyPressed('Digit' + k)) p.selectSlot(k - 1);
     return false;
   }
 
-  updateNight(dt) {
-    const p = this.player;
-    this.grace = Math.max(0, this.grace - dt);
-    this.scareTick(dt, 75);
-    if (this.cams.active) {
-      if (input.keyPressed('KeyE') || input.keyPressed('Space') || input.keyPressed('Escape') || input.keyPressed('KeyS')) this.cams.close();
+  // One player's part of a night step: their keys, walking, pressing E, their weapon.
+  // True if that ended the step (paused, caught, a cutscene...).
+  nightTurn(dt, p) {
+    const ctl = p.ctl;
+    const mode = this.mode;
+    if (this.cams.active && this.cams.user === p) {
+      if (ctl.keyPressed('KeyE') || ctl.keyPressed('Space') || ctl.keyPressed('Escape') || ctl.keyPressed('KeyS')) this.cams.close();
       p.update(dt, { canMove: false, canLook: false });
       this.hud.prompt(null);
     } else if (this.repair.active) {
       this.repair.update(dt);
       p.update(dt, { canMove: false, canLook: true });
       this.hud.prompt(null);
+    } else if (this.emoteTurn(dt, p)) {
+      if (ctl.pressed('pause')) { this.togglePause(); return true; }
     } else {
-      if (this.handleCommonInput()) return;
+      if (this.handleCommonInput()) return true;
       p.update(dt);
       const it = this.findInteraction();
       this.hud.prompt(it ? it.text : null);
-      if (it && input.pressed('interact')) it.act();
-      if (input.firePressed && (input.locked || this.touch.active)) this.weapons.use();
+      if (it && ctl.pressed('interact')) it.act();
+      if (this.mode !== mode) return true;
+      if (ctl.firePressed && (ctl.locked || this.touch.active)) this.weapons.use();
     }
-    this.cams.update(dt);
+    return this.mode !== mode;
+  }
+
+  // Each animatronic's turn, aimed at whichever of you it's after.
+  botTurns(list, dt) {
+    const mode = this.mode;
+    for (const a of list) {
+      if (this.twoUp) this.asPrey(a, () => a.update(dt));
+      else a.update(dt);
+      if (this.mode !== mode) return true;
+    }
+    return false;
+  }
+
+  updateNight(dt) {
+    this.grace = Math.max(0, this.grace - dt);
+    this.scareTick(dt, 75);
+    if (this.eachPlayer((p) => this.nightTurn(dt, p))) return;
+    this.withPlayer(this.cams.user || this.lead, () => this.cams.update(dt));
     if (this.mode !== 'night') return;
     if (this.winTimer > 0) {
       this.winTimer -= dt;
@@ -1022,8 +1615,7 @@ export class Game {
     }
     this.night.update(dt);
     if (this.mode !== 'night') return;
-    for (const a of this.bots) a.update(dt);
-    for (const a of this.wingBots) a.update(dt);
+    if (this.botTurns(this.bots, dt) || this.botTurns(this.wingBots, dt)) return;
     for (const a of this.oldBots) if (a.state === 'friend') a.update(dt);
     if (this.mode !== 'night') return;
     if (this.secret === 'quiet') {
@@ -1031,45 +1623,47 @@ export class Game {
       if (moved) this.heardThem(moved);
     }
     this.timmy.update(dt);
-    this.junk.update(dt);
+    if (this.twoUp) this.asPrey(this.junk, () => this.junk.update(dt));
+    else this.junk.update(dt);
     this.weapons.update(dt);
     this.machines.update(dt);
     this.hud.update(dt);
   }
 
   updateHome(dt) {
-    const p = this.player;
     this.grace = Math.max(0, this.grace - dt);
     this.scareTick(dt, 75);
-    if (this.handleCommonInput()) return;
+    if (this.eachPlayer((p) => this.nightTurn(dt, p))) return;
+    if (this.mode !== 'home') return;
+    this.night.time += dt;
+    if (this.botTurns(this.bots.filter((a) => a.id !== 'gus'), dt)) return;
+    this.weapons.update(dt);
+    this.hud.update(dt);
+    if (this.vanCount() === ROAMERS.length && !this.players.some((p) => p.carrying)) this.winHome();
+  }
+
+  dayTurn(dt, p) {
+    if (this.emoteTurn(dt, p)) return false;
+    if (this.handleCommonInput()) return true;
     p.update(dt);
     const it = this.findInteraction();
     this.hud.prompt(it ? it.text : null);
-    if (it && input.pressed('interact')) it.act();
-    if (input.firePressed && (input.locked || this.touch.active)) this.weapons.use();
-    if (this.mode !== 'home') return;
-    this.night.time += dt;
-    for (const a of this.bots) if (a.id !== 'gus') a.update(dt);
-    if (this.mode !== 'home') return;
-    this.weapons.update(dt);
-    this.hud.update(dt);
-    if (this.vanCount() === ROAMERS.length && !p.carrying) this.winHome();
+    if (it && p.ctl.pressed('interact')) it.act();
+    return this.mode !== 'day';
   }
 
   updateDay(dt) {
-    const p = this.player;
     if (this.phone.active) {
-      this.phone.update(dt);
-      p.update(dt, { canMove: false, canLook: false });
-      this.hud.prompt(null);
+      this.eachPlayer((p) => {
+        if (p === this.phone.user) this.phone.update(dt);
+        if (p === this.phone.user || !this.twoUp) { p.update(dt, { canMove: false, canLook: false }); this.hud.prompt(null); }
+        else this.dayTurn(dt, p);
+      });
       this.timmy.update(dt);
+      if (this.twoUp) { this.day.update(dt); this.hud.update(dt); }
       return;
     }
-    if (this.handleCommonInput()) return;
-    p.update(dt);
-    const it = this.findInteraction();
-    this.hud.prompt(it ? it.text : null);
-    if (it && input.pressed('interact')) it.act();
+    if (this.eachPlayer((p) => this.dayTurn(dt, p))) return;
     if (this.mode !== 'day') return;
     for (const a of this.bots) a.update(dt);
     for (const a of this.wingBots) a.update(dt);
@@ -1127,8 +1721,8 @@ export class Game {
   timmyCaught(a) {
     if (this.mode !== 'night') return;
     this.cams.close();
-    if (this.repair.active) this.repair.close();
-    if (this.player.carrying) this.dropCarried();
+    this.closeRepairs();
+    for (const p of this.players) if (p.carrying) this.withPlayer(p, () => this.dropCarried());
     exitPointerLock();
     sfx.scream();
     this.night.stop();
@@ -1154,19 +1748,57 @@ export class Game {
 
   render(dt) {
     this.cams.renderMonitors(this.renderer, this.scene, dt);
+    if (this.twoUp) {
+      // (anyone not being played right now — out, or in a cutscene — has their light off)
+      const view = this.playingView();
+      for (const p of this.players) if (p.out || !view) p.flashlight.intensity = 0;
+    }
+    if (this.split) {
+      // Two halves: each of you through your own eyes (or the monitor, if you're on it).
+      const rects = this.paneRects();
+      this.players.forEach((p, i) => {
+        const onCams = this.cams.active && this.cams.user === p;
+        if (this.cams.active) this.lighting.setCams(onCams);
+        this.renderView(p, onCams ? this.cams.cam : p.camera, { spot: p.flashlight, dt: i ? 0 : dt, rect: rects[i], shadows: i === 0 });
+      });
+      if (this.cams.active) this.lighting.setCams(false);
+      return;
+    }
     // (`viewCam`: a story chapter looking through a camera of its own — Jackson's monitor)
-    const cam = this.viewCam || (this.cams.active ? this.cams.cam : this.camera);
-    this.graphics.render(this.scene, cam, { spot: this.player.flashlight, dt });
+    const solo = this.lead;
+    const cam = this.viewCam || (this.cams.active ? this.cams.cam : solo.camera);
+    if (this.twoUp || solo.body) {
+      // (one view: only its owner's flashlight is on)
+      for (const p of this.players) if (p !== solo) p.flashlight.intensity = 0;
+      this.renderView(solo, cam, { spot: solo.flashlight, dt });
+    }
+    else this.graphics.render(this.scene, cam, { spot: this.player.flashlight, dt });
   }
 
   resize(w, h) {
-    this.camera.aspect = w / h;
-    // Keep at least ~80° across on narrow (portrait) screens, so cutscenes and the night
-    // don't turn into a letterbox slot.
-    const minVertical = 2 * Math.atan(Math.tan((80 * Math.PI / 180) / 2) / this.camera.aspect) * 180 / Math.PI;
-    this.camera.fov = Math.min(100, Math.max(72, minVertical));
-    this.camera.updateProjectionMatrix();
-    this.cams.cam.aspect = w / h;
+    this.viewW = w; this.viewH = h;
+    // Two playing: each half is its own little screen.
+    let vw = w, vh = h;
+    if (this.split) { const r = this.paneRects()[0]; vw = r.w; vh = r.h; }
+    this.graphics.setSize(vw, vh);
+    const aspect = vw / vh;
+    const fit = (cam) => {
+      cam.aspect = aspect;
+      if (this.split) {
+        // tall halves keep ~76° across, wide ones stop at ~100°
+        const across = (aspect > 1.5 ? 100 : 76) * Math.PI / 180;
+        cam.fov = Math.min(92, Math.max(40, 2 * Math.atan(Math.tan(across / 2) / aspect) * 180 / Math.PI));
+      } else {
+        // Keep at least ~80° across on narrow (portrait) screens, so cutscenes and the night
+        // don't turn into a letterbox slot.
+        const minVertical = 2 * Math.atan(Math.tan((80 * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
+        cam.fov = Math.min(100, Math.max(72, minVertical));
+      }
+      cam.updateProjectionMatrix();
+    };
+    fit(this.camera);
+    if (this.p2cam) fit(this.p2cam);
+    this.cams.cam.aspect = aspect;
     this.cams.cam.updateProjectionMatrix();
     this.plex?.resize(w, h);
   }

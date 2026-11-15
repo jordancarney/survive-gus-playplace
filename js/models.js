@@ -631,7 +631,7 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
   const k = Math.min(1, dt * 10);
   const sw = rig.swing;
   let legL = 0, legR = 0, armLx = 0, armRx = 0, armLz = rig.armBase?.L[2] ?? 0.12, armRz = rig.armBase?.R[2] ?? -0.12;
-  let torsoX = 0, headX = 0, headY = 0, headZ = 0, jaw = 0, bob = 0, hipDrop = 0;
+  let torsoX = 0, headX = 0, headY = 0, headZ = 0, jaw = 0, bob = 0, hipDrop = 0, kneeL = 0, kneeR = 0;
 
   switch (pose) {
     case 'walk': {
@@ -720,6 +720,71 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
       jaw = Math.max(0, Math.sin(t * 3)) * 0.2;
       break;
     }
+    // ── Emotes (the designer's list; game.js plays them) ──
+    case 'thumbs': {
+      armRx = -1.25; armRz = -0.25;
+      headX = Math.sin(t * 5) * 0.12;
+      bob = Math.abs(Math.sin(t * 2.5)) * 0.03;
+      jaw = 0.15;
+      break;
+    }
+    case 'point': {       // pointing at something behind you and SCREAMING
+      armRx = -1.55; armRz = -0.05;
+      armLx = -2.9; armLz = 0.5;
+      torsoX = -0.18;
+      headY = Math.sin(t * 9) * 0.12; headX = -0.15;
+      jaw = 0.9;
+      bob = Math.abs(Math.sin(t * 10)) * 0.04;
+      break;
+    }
+    case 'chicken': {     // elbows flapping, knees bobbing, head pecking
+      const f = Math.abs(Math.sin(t * 7));
+      armLz = 0.45 + f * 0.75; armRz = -(0.45 + f * 0.75);
+      armLx = 0.35; armRx = 0.35;
+      torsoX = 0.3;
+      headX = Math.sin(t * 7) * 0.35;
+      hipDrop = Math.abs(Math.sin(t * 3.5)) * 0.07;
+      legL = Math.sin(t * 3.5) * 0.3; legR = -legL;
+      jaw = f * 0.4;
+      break;
+    }
+    case 'worm': {        // flat on the floor (game.js lays them down), a wave rolling along
+      torsoX = Math.sin(t * 5) * 0.4;
+      legL = legR = Math.sin(t * 5 + 1.8) * 0.45;
+      armLx = armRx = Math.PI;      // arms out past the head
+      headX = -0.5 + Math.sin(t * 5 - 1) * 0.25;
+      break;
+    }
+    case 'headspin': {    // upside down (game.js flips them), legs in a V, arms out
+      armLz = 1.4; armRz = -1.4;
+      headX = 0.1;
+      break;
+    }
+    // Low and sneaking (two players: the other one crouching, the designer asked for it
+    // not to look squished): knees forward, hips down, leaning in, head up to see ahead.
+    // `amt`: how fast they're creeping along.
+    case 'crouch': {
+      const s = Math.sin(t) * 0.18 * Math.min(1, amt);
+      if (rig.kneeL) {
+        // a real squat: thighs forward, shins folded back under, feet flat
+        const th = 1.25;
+        legL = -th + s; legR = -th - s;
+        kneeL = 1.95 - s * 0.6; kneeR = 1.95 + s * 0.6;
+        const down = (a, kn) => (Math.cos(-a) + Math.cos(kn + a)) / 2;
+        hipDrop = rig.hipY * (1 - Math.max(down(legL, kneeL), down(legR, kneeR))) - 0.01;
+        torsoX = 0.5;
+        headX = -0.42;
+      } else {
+        legL = -0.95 + s; legR = -0.95 - s;
+        hipDrop = rig.hipY * (1 - Math.cos(0.95)) + 0.015;
+        torsoX = 0.45;
+        headX = -0.38;
+      }
+      bob = Math.abs(Math.cos(t)) * 0.015 * Math.min(1, amt);
+      armLx = -0.5 - s * 0.8; armRx = -0.5 + s * 0.8;
+      armLz = 0.25; armRz = -0.25;
+      break;
+    }
     case 'throw': {
       armRx = -2.8 + amt * 3.4;
       torsoX = -0.2 + amt * 0.5;
@@ -745,6 +810,50 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
   rig.head.rotation.z = ease(rig.head.rotation.z, headZ + (rig.id === 'junk' ? 0.12 : 0), k);
   if (rig.jaw) rig.jaw.rotation.x = ease(rig.jaw.rotation.x, jaw * (rig.jawMax ?? 1), k * 1.5);
   rig.hips.position.y = ease(rig.hips.position.y, rig.hipY + bob - hipDrop, k);
+  // (the legs only spread for the head spin)
+  const spread = pose === 'headspin' ? 0.55 : 0;
+  rig.legL.rotation.z = ease(rig.legL.rotation.z, spread, k);
+  rig.legR.rotation.z = ease(rig.legR.rotation.z, -spread, k);
+  // Knees, for the ones that have them (addKnees: the players' bodies). Walking bends them a
+  // little on the way forward; crouching folds them right up.
+  if (rig.kneeL) {
+    let kl = 0, kr = 0;
+    if (pose === 'crouch') { kl = kneeL; kr = kneeR; }
+    else if (pose === 'walk' || pose === 'chase') { kl = Math.max(0, -legL) * 0.9 + 0.08; kr = Math.max(0, -legR) * 0.9 + 0.08; }
+    else if (pose === 'chicken') { kl = kr = hipDrop * 9; }
+    rig.kneeL.rotation.x = ease(rig.kneeL.rotation.x, kl, k);
+    rig.kneeR.rotation.x = ease(rig.kneeR.rotation.x, kr, k);
+  }
+}
+
+// Give someone knees: each leg cut in two at the middle, the shin (and the shoe, and
+// anything else below the knee) hanging from a knee joint. Only the players' bodies have
+// them (game.js), so the one crouching squats instead of sitting on thin air.
+export function addKnees(rig) {
+  if (rig.kneeL) return rig;
+  const L = rig.hipY;
+  for (const side of ['L', 'R']) {
+    const leg = rig['leg' + side];
+    const meshes = leg.children.filter((c) => c.isMesh);
+    if (!meshes.length) return rig;
+    const main = meshes.reduce((a, b) => (b.scale.y > a.scale.y ? b : a));
+    const knee = group(leg, [0, -L / 2, 0]);
+    // the thigh: the top half of the leg where it was
+    const top = main.position.y + L / 4;
+    main.scale.y *= 0.5;
+    main.position.y = top;
+    // the shin: the same again, below the knee
+    const shin = main.clone();
+    shin.position.y = main.position.y;
+    knee.add(shin);
+    // everything else below the knee moves onto it
+    for (const c of [...leg.children]) {
+      if (c === knee || c === main) continue;
+      if (c.position.y < -L / 2) { leg.remove(c); c.position.y += L / 2; knee.add(c); }
+    }
+    rig['knee' + side] = knee;
+  }
+  return rig;
 }
 
 // ── Kids ────────────────────────────────────────────────────────────────
@@ -934,10 +1043,12 @@ function addStyle(head, hr, m, style, geo, capped) {
 }
 
 // A baggy sweatshirt: a puffier body and sleeves, and a hood bunched up at the back.
+// (The designer asked for Thomas to look less fat: the sweatshirt hangs loose, not round —
+// only a little wider than he is, and long, down over the top of his trousers.)
 function addBaggy(rig, m, th, shoulders, geo) {
-  part(geo, m, rig.torso, { p: [0, th * 0.42, 0], s: [shoulders * 1.15, th * 0.55, shoulders * 0.85] });
-  part(geo, m, rig.torso, { p: [0, th * 0.95, -shoulders * 0.55], s: [shoulders * 0.75, th * 0.22, shoulders * 0.45] });
-  for (const arm of [rig.armL, rig.armR]) part(geo, m, arm, { p: [0, -th * 0.3, 0], s: [shoulders * 0.32, th * 0.42, shoulders * 0.32] });
+  part(geo, m, rig.torso, { p: [0, th * 0.4, 0], s: [shoulders * 0.88, th * 0.58, shoulders * 0.64] });
+  part(geo, m, rig.torso, { p: [0, th * 0.95, -shoulders * 0.5], s: [shoulders * 0.7, th * 0.2, shoulders * 0.38] });
+  for (const arm of [rig.armL, rig.armR]) part(geo, m, arm, { p: [0, -th * 0.3, 0], s: [shoulders * 0.27, th * 0.42, shoulders * 0.27] });
 }
 
 // A big beard under the mouth and a moustache over it, leaving the mouth free to open.
@@ -1043,16 +1154,19 @@ function vmMat(color, { rough = 0.6, metal = 0.1, glow = 0.22 } = {}) {
   return vmCache.get(key);
 }
 
-function hand(parent, x, y, z) {
+function hand(parent, x, y, z, look = null) {
   const g = group(parent, [x, y, z]);
-  part(G.cyl, vmMat(UNIFORM, { rough: 0.8 }), g, { p: [0, -0.02, 0.15], s: [0.05, 0.28, 0.05], r: [Math.PI / 2 - 0.15, 0, 0] });
-  part(G.box, vmMat(0xd9a07a, { rough: 0.7 }), g, { p: [0, 0, 0], s: [0.075, 0.065, 0.1] });
+  part(G.cyl, vmMat(look ? look.sleeve : UNIFORM, { rough: 0.8 }), g, { p: [0, -0.02, 0.15], s: [0.05, 0.28, 0.05], r: [Math.PI / 2 - 0.15, 0, 0] });
+  part(G.box, vmMat(look ? look.skin : 0xd9a07a, { rough: 0.7 }), g, { p: [0, 0, 0], s: [0.075, 0.065, 0.1] });
+  // a space suit's glove has a cuff
+  if (look && look.cuff) part(G.cyl, vmMat(look.cuff, { rough: 0.5 }), g, { p: [0, -0.005, 0.06], s: [0.06, 0.04, 0.06], r: [Math.PI / 2 - 0.15, 0, 0] });
   return g;
 }
 
-export function buildViewmodel(weapon) {
+// `look`: someone else's sleeves and hands (Jimmy's space suit), or Jonathan's uniform.
+export function buildViewmodel(weapon, look = null) {
   const root = new THREE.Group();
-  const right = hand(root, 0.3, -0.33, -0.78);
+  const right = hand(root, 0.3, -0.33, -0.78, look);
   const vm = { root, right, left: null, lens: null, spark: null, muzzle: null, item: null };
 
   const item = group(right, [0, 0.03, -0.05]);
@@ -1087,15 +1201,69 @@ export function buildViewmodel(weapon) {
     vm.muzzle.visible = false;
   }
 
-  vm.left = hand(root, -0.32, -0.35, -0.8);
+  vm.left = hand(root, -0.32, -0.35, -0.8, look);
   const torch = group(vm.left, [0, 0.03, -0.06]);
   part(G.cyl, vmMat(0x1a1a1a, { rough: 0.5 }), torch, { p: [0, 0, 0], s: [0.025, 0.2, 0.025], r: [Math.PI / 2, 0, 0] });
   part(G.cylTaper, vmMat(0x1a1a1a, { rough: 0.5 }), torch, { p: [0, 0, -0.12], s: [0.04, 0.05, 0.04], r: [-Math.PI / 2, 0, 0] });
   vm.lens = part(G.cyl, new THREE.MeshBasicMaterial({ color: 0xfff4c8 }), torch, { p: [0, 0, -0.146], s: [0.034, 0.005, 0.034], r: [Math.PI / 2, 0, 0] });
 
-  root.scale.setScalar(0.62);
+  root.scale.setScalar(0.62 * (look?.scale ?? 1));
   root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 10; } });
   return vm;
+}
+
+// ── Jimmy ───────────────────────────────────────────────────────────────
+//
+// Player 2 (the designer's idea): Jonathan's little brother, five, who wants to be an
+// astronaut — so he goes everywhere in his little white space suit, with a mission patch, a
+// backpack, and a helmet with a gold visor, flipped up so you can see his face.
+
+export const JIMMY_LOOK = { sleeve: 0xe9edf2, skin: 0xd8dde4, cuff: 0x3a6ab8, scale: 0.86 };
+
+export function buildJimmy() {
+  const h = 1.08;
+  const rig = buildPerson({
+    height: h, headScale: 0.11, shoulders: 0.155, shirt: 0xe9edf2, pants: 0xdfe3ea,
+    skin: 0xd9a07a, hair: 0x3a2414, shadows: true,
+  });
+  const hr = h * 0.11;
+  rig.headR = hr;
+  const suit = mat(0xe9edf2, { rough: 0.55 });
+  const trim = mat(0x3a6ab8, { rough: 0.5 });
+  const th = h * 0.3;
+  // the helmet: a round shell around the head, open at the front, and the gold visor tipped up
+  const shell = new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide });
+  // (three.js puts phi = π/2 at +Z, the way the face looks: leave ±65° of it open)
+  const open = Math.PI * 0.36;
+  const helm = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14, Math.PI / 2 + open, Math.PI * 2 - open * 2, 0, Math.PI * 0.8), shell);
+  helm.position.set(0, hr * 1.02, -hr * 0.04);
+  helm.scale.set(hr * 1.42, hr * 1.5, hr * 1.42);
+  rig.head.add(helm);
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd9a52a, roughness: 0.15, metalness: 0.95 });
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 8, Math.PI / 2 - open * 1.05, open * 2.1, Math.PI * 0.1, Math.PI * 0.26), gold);
+  visor.position.set(0, hr * 1.02, -hr * 0.04);
+  visor.rotation.x = -0.18;
+  visor.scale.set(hr * 1.47, hr * 1.55, hr * 1.47);
+  rig.head.add(visor);
+  // the neck ring, chest panel and mission patch
+  part(G.torus, trim, rig.neck, { p: [0, 0.0, 0], s: [hr * 1.05, hr * 1.05, hr * 0.9], r: [Math.PI / 2, 0, 0] });
+  part(G.box, mat(0x2a2f3a, { rough: 0.5 }), rig.torso, { p: [0, th * 0.62, 0.155 * 0.6], s: [0.11, 0.07, 0.02] });
+  for (const [x, c] of [[-0.03, 0xff3b30], [0, 0x3cff6b], [0.03, 0xffd23f]]) {
+    part(G.box, mat(c, { emissive: c }), rig.torso, { p: [x, th * 0.62, 0.155 * 0.6 + 0.012], s: [0.014, 0.014, 0.006] });
+  }
+  part(G.sphereLo, trim, rig.torso, { p: [-0.1, th * 0.8, 0.07], s: [0.035, 0.035, 0.012] });
+  // the backpack (his oxygen, he says)
+  part(G.box, suit, rig.torso, { p: [0, th * 0.55, -0.13], s: [0.2, 0.24, 0.1] });
+  for (const sx of [-1, 1]) part(G.cyl, trim, rig.torso, { p: [sx * 0.05, th * 0.58, -0.19], s: [0.03, 0.2, 0.03] });
+  // blue boots and belt
+  for (const leg of [rig.legL, rig.legR]) part(G.box, trim, leg, { p: [0, -rig.hipY + 0.05, 0.03], s: [0.1, 0.1, 0.17] });
+  part(G.cyl, trim, rig.hips, { p: [0, 0.01, 0], s: [0.155 * 0.82, 0.04, 0.155 * 0.6] });
+  rig.root.traverse((o) => { if (o.isMesh) o.castShadow = SHADOWS; });
+  rig.root.updateMatrixWorld(true);
+  const head = new THREE.Vector3();
+  rig.head.getWorldPosition(head);
+  rig.faceY = head.y + hr;
+  return rig;
 }
 
 // The building blocks, for the characters of When Jonathan Was Five (js/escape/cast.js).

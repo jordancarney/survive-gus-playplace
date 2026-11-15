@@ -35,8 +35,14 @@ export class GusWatch {
     $('gwClose').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.toggle(false); });
   }
 
+  // (two playing: it's held up in the half of whoever opened it, and their keys work it)
   toggle(on = !this.open) {
     this.open = on;
+    const g = this.mode.game;
+    if (on) this.owner = g.player;
+    const pane = on && g.split ? this.owner.index : null;
+    this.el.classList.toggle('pane-0', pane === 0);
+    this.el.classList.toggle('pane-1', pane === 1);
     this.el.classList.toggle('hidden', !on);
     sfx.escWatch();
     if (on) this.render();
@@ -56,11 +62,12 @@ export class GusWatch {
 
   update() {
     if (!this.open) return;
-    if (input.keyPressed('Digit1') || input.keyPressed('ArrowLeft')) this.setTab('quests');
-    if (input.keyPressed('Digit2') || input.keyPressed('KeyM')) this.setTab('map');
-    if (input.keyPressed('Digit3') || input.keyPressed('KeyT')) this.setTab('tracker');
-    if (input.keyPressed('ArrowRight')) this.setTab(this.tab === 'quests' ? 'map' : 'tracker');
-    if (input.keyPressed('ArrowLeft')) this.setTab(this.tab === 'tracker' ? 'map' : 'quests');
+    const k = (code) => (this.owner && this.mode.game.players.length > 1 ? this.owner.ctl : input).keyPressed(code);
+    if (k('Digit1')) this.setTab('quests');
+    if (k('Digit2') || k('KeyM')) this.setTab('map');
+    if (k('Digit3') || k('KeyT')) this.setTab('tracker');
+    if (k('ArrowRight')) this.setTab(this.tab === 'quests' ? 'map' : 'tracker');
+    else if (k('ArrowLeft')) this.setTab(this.tab === 'tracker' ? 'map' : 'quests');
     if (this.tab === 'map') this.drawMap();
     // the Entity Tracker keeps itself up to date
     this.refresh = (this.refresh || 0) - 1 / 60;

@@ -41,6 +41,7 @@ export class Phone {
     this.wrongTimer = 0;
     this.lock = 0.2;          // ignore the E that opened it
     this.active = true;
+    this.user = this.game.player;   // (two playing: the other one can keep walking about)
     $('phoneNote').innerHTML = `📝 ${label}<br><b>${number}</b>`;
     this.status.textContent = this.promptText;
     this.ui.classList.remove('hidden');

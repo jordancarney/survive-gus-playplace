@@ -55,6 +55,80 @@ export const KID = {
   crouchHeight: 0.62,
 };
 
+// Jimmy, player 2 (the designer's idea): Jonathan's little brother, five, who wants to be an
+// astronaut. Kid-sized everywhere — even at the PlayPlace he's a head shorter than everyone —
+// but quick enough to keep up with his big brother.
+export const JIMMY = {
+  ...KID,
+  eyeHeight: 0.98,
+  radius: 0.27,
+  walkSpeed: 3.8,
+  sprintSpeed: 6.3,
+  crouchSpeed: 1.8,
+  crouchHeight: 0.6,
+  carrySpeed: 2.6,
+};
+
+// Two players on one computer (the designer's idea): player 1 on WASD and the trackpad,
+// player 2 on the arrow keys — or a game controller. Saved apart from the progress.
+export const COOP_KEY = 'survive_gus_coop';
+
+// Player 2's keyboard: the arrow keys walk and turn, the keys just left of them do the rest.
+export const P2_KEYMAP = {
+  forward:    { keys: ['ArrowUp'],     label: 'Walk forward',      show: '↑' },
+  back:       { keys: ['ArrowDown'],   label: 'Walk back',         show: '↓' },
+  left:       { keys: ['ArrowLeft'],   label: 'Turn left',         show: '←' },
+  right:      { keys: ['ArrowRight'],  label: 'Turn right',        show: '→' },
+  fire:       { keys: ['Enter', 'NumpadEnter'], label: 'Zap / use weapon', show: 'ENTER' },
+  sprint:     { keys: ['ShiftRight'],  label: 'Run',               show: 'RIGHT SHIFT' },
+  interact:   { keys: ['Slash'],       label: 'Use / fix / grab',  show: '/' },
+  flashlight: { keys: ['Period'],      label: 'Flashlight',        show: '.' },
+  crouch:     { keys: ['Comma'],       label: 'Crouch',            show: ',' },
+  swap:       { keys: ['KeyL'],        label: 'Next weapon',       show: 'L' },
+  watch:      { keys: ['Semicolon'],   label: 'Gus Watch',         show: ';' },
+  box:        { keys: ['Quote'],       label: 'Hide in your box',  show: "'" },
+  emote:      { keys: ['KeyK'],        label: 'Emotes (hold)',     show: 'K' },
+};
+// Player 1's keys when two are playing: the usual ones, minus anything on player 2's side.
+export const P1_KEYMAP = {
+  forward:    { keys: ['KeyW'],        label: 'Walk forward',      show: 'W' },
+  back:       { keys: ['KeyS'],        label: 'Walk back',         show: 'S' },
+  left:       { keys: ['KeyA'],        label: 'Step left',         show: 'A' },
+  right:      { keys: ['KeyD'],        label: 'Step right',        show: 'D' },
+  fire:       { keys: [],              label: 'Zap / use weapon',  show: 'CLICK' },
+  sprint:     { keys: ['ShiftLeft'],   label: 'Run',               show: 'LEFT SHIFT' },
+  interact:   { keys: ['KeyE'],        label: 'Use / fix / grab',  show: 'E' },
+  flashlight: { keys: ['KeyF'],        label: 'Flashlight',        show: 'F' },
+  crouch:     { keys: ['KeyC'],        label: 'Crouch',            show: 'C' },
+  swap:       { keys: ['KeyQ'],        label: 'Next weapon',       show: 'Q' },
+  watch:      { keys: ['KeyG', 'Tab'], label: 'Gus Watch',         show: 'G' },
+  box:        { keys: ['KeyB'],        label: 'Hide in your box',  show: 'B' },
+  emote:      { keys: ['KeyT'],        label: 'Emotes (hold)',     show: 'T' },
+  pause:      { keys: ['Escape', 'KeyP'], label: 'Pause',          show: 'ESC' },
+};
+// A game controller (the standard layout: Xbox, PlayStation, Switch Pro).
+export const PAD_HELP = [
+  ['Left stick', 'Walk'], ['Right stick', 'Look around'], ['RT', 'Zap / use weapon'], ['A', 'Use / fix / grab'],
+  ['X', 'Flashlight'], ['B', 'Crouch'], ['Y', 'Next weapon'], ['LB', 'Run'], ['RB', 'Gus Watch'], ['LT', 'Box'],
+  ['D-pad ↑', 'Emotes (hold)'], ['D-pad', 'Repair puzzles · cameras'], ['START', 'Pause'],
+];
+// How fast the arrow keys turn you, in radians per second (and faster the longer you hold).
+export const COOP_TURN = 2.3;
+export const PAD_LOOK = 3.2;
+
+// Emotes (the designer's idea, and his list): hold T (or up on a controller's d-pad) for the
+// wheel, point at one, let go. The camera swings round so you can watch yourself do it;
+// walk to stop. `len`: seconds.
+export const EMOTES = [
+  { id: 'wave', name: 'Wave', icon: '👋', len: 2.6 },
+  { id: 'thumbs', name: 'Thumbs up', icon: '👍', len: 2.2 },
+  { id: 'point', name: 'Point & scream', icon: '😱', len: 2.4 },
+  { id: 'dance', name: 'Dance', icon: '🕺', len: 6 },
+  { id: 'chicken', name: 'Chicken', icon: '🐔', len: 6 },
+  { id: 'worm', name: 'The worm', icon: '🪱', len: 6 },
+  { id: 'headspin', name: 'Head spin', icon: '🌀', len: 6 },
+];
+
 export const FLASHLIGHT = {
   battery: 100,
   drain: 1.35,              // % per second while on: about 75 seconds from full
@@ -467,6 +541,7 @@ export const KEYMAP = {
   swap:       { keys: ['KeyQ'],                  label: 'Next weapon',   show: 'Q' },
   watch:      { keys: ['KeyG', 'Tab'],           label: 'Gus Watch (When Jonathan Was Five)', show: 'G' },
   box:        { keys: ['KeyB'],                  label: 'Hide in your box, 30 s (When Jonathan Was Five)', show: 'B' },
+  emote:      { keys: ['KeyT'],                  label: 'Emotes (hold, point at one, let go)', show: 'T' },
   pause:      { keys: ['Escape', 'KeyP'],        label: 'Pause',         show: 'ESC' },
 };
 

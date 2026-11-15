@@ -151,6 +151,27 @@ animatronic you'd zapped got back up behind the menu after you were caught.
   have a blackout each (Gus comes out), the flicker cutscene moved to Night 2, and the later
   nights keep their two and three.
 
+After the fifth build, he asked for:
+
+- **A 2 Players button: split screen, one player on the arrow keys and one on WASD and the
+  trackpad**, in **everything** — the players pick which game to play. Asked the rest, he
+  chose: since a laptop has one trackpad, the arrow-keys player **turns with the arrows, or
+  uses a game controller if one's plugged in (both ways)**; the two are **on the same team**;
+  when one is caught they're **out until morning** and the other survives alone; the screen
+  splits **side by side or top and bottom, the players' choice**; in Max's bedroom and
+  Jackson's office they **split the doors**; and in the Pizzaplex, **player 1 is whoever the
+  chapter's about**. Player 2 is always **"Jimmy, who is 5 and likes space"**: **Jonathan's
+  little brother, in an astronaut suit**.
+- **Make Thomas look less fat.** (His baggy sweatshirt hangs loose now instead of puffing out.)
+- **Fix the crouching animation** — the other player squished flat when they crouched. Then:
+  **"the crouching looks weird"** — with no knees, they sat on thin air. The players' bodies
+  have knees now (`addKnees` in models.js), and crouching is a real squat.
+- **Emotes, by pressing T or up on the controller.** Asked which, he picked all four offered
+  (wave, dance, thumbs up, point and scream) "plus the worm and chicken and spinning on your
+  head"; **you see yourself** while you do one; and you pick from an **emote wheel**. Then:
+  **on point and scream, "make your mouth open so wide it covers your whole face and make a
+  high pitched scream."**
+
 His original brief also fixed: Jonathan is 15 and found the job opening; five animatronics
 (Gus the platypus is the leader, Gerald the gorilla, Chomper the beaver, Cranker the penguin,
 Flipper the dolphin); upbeat techno by day and eerie silence by night; cameras to spot
@@ -1068,6 +1089,85 @@ With `?debug=1`, `__game.plex` is this story: `__game.plex.start(n)` jumps to a 
 `__game.plex.ctrl` is the bedroom or office: `ctrl.power = 1` nearly runs Jackson's power
 out, `ctrl.closet = 95` nearly lets the baby Gus out.
 
+## 2 Players
+
+The **👥 2 Players** button on the title screen opens its own screen
+([js/coop.js](js/coop.js), with the glue in [js/game.js](js/game.js)): 1 or 2 players, side by
+side or top and bottom, both players' keys, whether a controller is plugged in, and the three
+games to play together. It's saved in `localStorage` under `survive_gus_coop`, apart from the
+progress, so it stays on until you turn it off (the title button says **2 Players: ON**).
+
+**Who.** Player 1 is Jonathan — at fifteen, at five in When Jonathan Was Five, and in the
+Pizzaplex whoever the chapter is about. Player 2 is always **Jimmy**, Jonathan's five-year-old
+little brother, who's going to be an astronaut: a little white space suit with a blue neck
+ring, chest panel and mission patch, a backpack ("his oxygen"), blue boots, and a helmet with
+its gold visor flipped up (`buildJimmy` in [js/models.js](js/models.js)). He's kid-sized
+everywhere (`JIMMY` in config.js: eyes at 0.98 m), a little slower than Jonathan at the
+PlayPlace, and his hands on screen are white space-suit gloves (`JIMMY_LOOK`, and
+`jimmyHands` in the story modes, with a Gus Watch of his own). He gets the same weapons and
+gear as Jonathan each night.
+
+**Keys.** Player 1: WASD, the trackpad to look, click to zap, left Shift, E, F, C, Q, 1–4, G,
+B, Esc. Player 2 (`P2_KEYMAP`): ↑ ↓ walk, ← → turn (gently at first, then faster; the view
+levels itself out, since there's nothing to look up and down with), Enter zaps, right Shift
+runs, `/` uses, `.` flashlight, `,` crouch, `L` next weapon, `;` Gus Watch, `'` box. A game
+controller (`PAD_HELP`; the first one plugged in is Jimmy's, a second is Jonathan's): left
+stick walks, right stick looks, RT zaps, A uses, X flashlight, B crouch, Y next weapon, LB or
+L3 runs, RB Gus Watch, LT box, the d-pad does the puzzles and cameras, START pauses. Each
+player's keys reach the game through their own `Controls`, which answers the same questions
+as `input` (down, pressed, keyPressed, drainLook, fire); the repair puzzles and the monitor
+ask about arrows and SPACE by name, so player 1's WASD stand in for arrows and player 2's
+Enter for SPACE. Prompts in player 2's half name their keys (`/` instead of E).
+
+**How it runs.** Every step, the game runs each player's own part — keys, walking, what they
+can press E on, their weapon, their repair puzzle — with `game.player` pointing at them
+(`eachPlayer`), and each animatronic's turn with `game.player` pointing at whoever it's after
+(`preyFor`: the one it can sense, the closer if both, sticking with whoever it was already
+chasing), so everything that asks "where's the player?" asks about the right one. Sounds are
+heard by whoever's closest. A dragged animatronic follows whoever's dragging it; either
+flashlight finds Sunny; either player looking at a Watcher keeps it still; the cameras are one
+desk, so one of you at a time ("Jimmy is on the cameras").
+
+**The screen.** Two halves (`paneRects`), each drawn through the same graphics pipeline into
+its own part of the canvas (Graphics.render's `rect`; the second half reuses the first's
+shadow maps). Each half has its own field of view for its shape, and the hands come in a
+little smaller in a tall half. You see the other one's body — Jimmy, or Jonathan as he is in
+that story — walking, standing or crouching (the `crouch` pose: knees forward, hips down,
+leaning in — their bodies get knees, `addKnees`, so it's a real squat), never their hands. Each half has its own HUD (`PaneHud`: crosshair, flashlight,
+running, the box, weapon, what to press, what's after you, a red edge when something's
+close); the clock, the kids' happiness, the objective and the toasts stay shared. The camera
+monitor, the repair puzzle, the Gus Watch and the static after a scare fill only the half of
+whoever's using them, with the night-vision tint over just that half.
+
+**Caught.** Only the one who's caught sees the jumpscare, in their half; the night stops for
+it, then carries on. They're out until morning (in the story modes, until the level's
+escaped), the other player goes full screen, whatever caught them backs off stunned, and
+nothing can catch the survivor for a couple of seconds. Both out: GOTCHA, and the night
+starts over for both. In the chapters where you share one room (Max's bedroom, Jackson's
+office), getting caught gets you both.
+
+**Splitting the doors.** In **Jackson's office** there's one screen and one office: Jonathan
+has the left door (E or Q) and light (hold F or Z), Jimmy the right door (`/`) and light (hold
+`.`); either can work the cameras (Space or Enter) and look round. In **Max's bedroom** each of
+you has your own place in the room and your own half of the screen — A/D/W/S or the arrows to
+move between the doors, the closet, the middle and the bed — and a door's held shut if either
+of you is holding it; a hall's light is on if either of you shines it.
+
+## Emotes
+
+Hold **T** (player 2: **K**; a controller: **up on the d-pad**) and the emote wheel pops up
+(`EMOTES` in config.js): 👋 Wave, 👍 Thumbs up, 😱 Point & scream, 🕺 Dance, 🐔 Chicken, 🪱 The
+worm, 🌀 Head spin. Point at one — with the mouse, a stick, or the walking keys — and let go
+(`emoteTurn` in [js/game.js](js/game.js)). The camera swings round in front of you so you
+watch yourself do it, like Fortnite (from the side, for the worm), pulled in short of any
+wall, and you can turn it with the mouse or stick. Walk, or press it again, to stop. The poses
+are in `poseRig` ([js/models.js](js/models.js)); the worm lies you flat with a wave rolling
+along, the head spin stands you on your head and spins; on point & scream the mouth pops open
+so wide it covers the whole face, eyes and all, with teeth and a tongue (`screamMouth`), and
+wobbles. Each has its sound (a shrill, high-pitched, wobbling AAAAAH!, a
+bawk-bawk, a little tune to dance to). Two playing, the other one sees it too. You can't emote
+while dragging one, and nothing stops the animatronics while you do.
+
 ## Settings and difficulty
 
 The **⚙️ Settings** tab hangs off the bottom middle of the title screen, beside the **📷
@@ -1228,6 +1328,7 @@ js/repair.js      The three repair puzzles
 js/cameras.js     The security monitor and office monitor feeds
 js/hud.js         HUD updates and screen contents
 js/touch.js       Phone and tablet controls
+js/coop.js        2 Players: each player's keys and controller (Controls), and their half of the HUD (PaneHud)
 js/physics.js     Circle-vs-box sliding collision
 js/audio.js       Synthesized sound, ambience, Gus's music box, and the music
 js/save.js        localStorage profile, and the graphics and difficulty settings
@@ -1281,6 +1382,8 @@ __game.night.blackout();                     // lights out — here comes Gus
 __game.machines.breakRandom();               // break a game
 __game.bot('cranker').powerDown();           // zap one from the console
 __game.profile.night = 20; __game.profile.best = 20;  // unlock the Gus fight
+__game.setCoop(true);                        // 2 Players on (__game.p2 is Jimmy)
+__game.withPlayer(__game.p2, () => __game.caught(__game.bot('cranker')));  // catch Jimmy
 ```
 
 Note that `requestAnimationFrame` is paused whenever the tab is hidden, so stepping the game

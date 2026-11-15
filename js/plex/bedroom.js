@@ -95,6 +95,20 @@ export class Bedroom {
   get game() { return this.mode.game; }
   get place() { return this.lv.place; }
 
+  // Two playing (the designer's call: "split the doors"), each of you has your own place in
+  // the room and your own half of the screen — one on the left door and the closet, the
+  // other on the right door and the bed, or wherever you like. These are whoever's turn it
+  // is (`mode.player`, see game.js).
+  get st() { const p = this.mode.player; return p.bedroom || (p.bedroom = { spot: 'middle', from: null, k: 1 }); }
+  get spot() { return this.st.spot; }
+  set spot(v) { this.st.spot = v; }
+  get from() { return this.st.from; }
+  set from(v) { this.st.from = v; }
+  get k() { return this.st.k; }
+  set k(v) { this.st.k = v; }
+  // (split screen while two are playing — and getting caught gets you both: it's one room)
+  get coopView() { return 'split'; }
+
   // ── The buttons on screen ─────────────────────────────────────────────
 
   makeUI() {
@@ -143,9 +157,15 @@ export class Bedroom {
   start() {
     const m = this.mode;
     this.held = { hold: false, light: false };
-    this.spot = 'middle';
-    this.from = { ...this.views.middle, pos: this.views.middle.pos.clone() };
-    this.k = 1;
+    for (const p of m.game.players) {
+      m.game.withPlayer(p, () => {
+        this.spot = 'middle';
+        this.from = { ...this.views.middle, pos: this.views.middle.pos.clone() };
+        this.k = 1;
+      });
+      p.bodyHidden = true;    // (you're both standing in the same few places)
+    }
+    if (m.game.players.length > 1) m.game.hud.toast('👥 Jonathan\'s side: the LEFT door and the closet. Jimmy\'s side: the RIGHT door and the bed!', 5);
     this.t = 0;
     this.breathT = 0;
     this.atDoor = 0;
@@ -180,6 +200,7 @@ export class Bedroom {
   }
 
   stop() {
+    for (const p of this.mode.game.players) p.bodyHidden = false;
     this.ui.classList.add('hidden');
     for (const h of this.halls) h.root.visible = false;
     this.baby.root.visible = false;
@@ -230,21 +251,42 @@ export class Bedroom {
   // ── Update ────────────────────────────────────────────────────────────
 
   update(dt) {
-    const m = this.mode, p = m.player;
+    const m = this.mode, g = this.game;
     this.t += dt;
+    // `S`: where everyone is and what they're doing, put together — a door's held if either
+    // of you is holding it
+    const S = { here: new Set(), hold: new Set(), lit: new Set(), wind: false, bed: false, bedLit: false };
+    const ps = g.players.length > 1 ? g.alive() : [m.player];
+    for (const p of ps) g.withPlayer(p, () => this.turn(dt, p, S));
+    this.updateHalls(dt, S);
+    if (m.game.mode !== 'escape') return;
+    this.updateCloset(dt, S.hold.has('closet'));
+    if (m.game.mode !== 'escape') return;
+    this.updateBed(dt, S);
+    if (m.game.mode !== 'escape') return;
+    if (this.def.musicBox) { this.updateBox(dt, S.wind); if (m.game.mode !== 'escape') return; }
+    this.updateDoors(dt, S);
+    if (ps.length === 1) g.withPlayer(ps[0], () => this.hint(S.hold.has(this.spot)));
+  }
+
+  // One of you: the keys, where you're standing, what you're holding.
+  turn(dt, p, S) {
+    const ctl = p.ctl;
     this.k = Math.min(1, this.k + dt / 0.32);
-    // the keys
-    const key = (a, code) => input.pressed(a) || input.keyPressed(code);
+    // (playing alone, the on-screen buttons are yours; two playing, they're player 1's)
+    const btn = p.index === 0 ? this.held : {};
+    const key = (a, code) => ctl.pressed(a) || ctl.keyPressed(code);
     if (key('left', 'ArrowLeft')) this.go(this.spot === 'right' ? 'middle' : 'left');
     if (key('right', 'ArrowRight')) this.go(this.spot === 'left' ? 'middle' : 'right');
     if (key('forward', 'ArrowUp')) this.go(this.spot === 'bed' ? 'middle' : 'closet');
     if (key('back', 'ArrowDown')) this.go(this.spot === 'closet' ? 'middle' : 'bed');
     const arrived = this.k >= 1;
-    const pushing = arrived && (input.keysHeld.has('Space') || input.down('interact') || this.held.hold);
+    const space = ctl.keyHeld ? ctl.keyHeld('Space') : input.keysHeld.has('Space');
+    const pushing = arrived && (space || ctl.down('interact') || btn.hold);
     const holding = pushing && this.spot !== 'middle' && this.spot !== 'bed';
     // (in the middle, the same button winds the music box, when there is one)
     const winding = pushing && this.spot === 'middle' && !!this.def.musicBox;
-    const lit = arrived && (input.down('flashlight') || this.held.light);
+    const lit = arrived && (ctl.down('flashlight') || btn.light);
     this.holding = holding;
     this.winding = winding;
     p.lightOn = lit && !holding;
@@ -252,26 +294,35 @@ export class Bedroom {
     p.lightVisible = true;
     p.flash(dt);
     p.vmGroup.visible = true;
-    input.drainLook();
+    ctl.drainLook();
     this.applyView();
-
-    this.updateHalls(dt, arrived, holding, p.lightOn);
-    if (m.game.mode !== 'escape') return;
-    this.updateCloset(dt, holding && this.spot === 'closet');
-    if (m.game.mode !== 'escape') return;
-    this.updateBed(dt, arrived && this.spot === 'bed' && p.lightOn);
-    if (m.game.mode !== 'escape') return;
-    if (this.def.musicBox) { this.updateBox(dt, winding); if (m.game.mode !== 'escape') return; }
-    this.updateDoors(dt, holding);
-    this.hint(holding);
+    if (arrived) S.here.add(this.spot);
+    if (holding) S.hold.add(this.spot);
+    if (arrived && p.lightOn) S.lit.add(this.spot);
+    if (winding) S.wind = true;
+    if (arrived && this.spot === 'bed') { S.bed = true; if (p.lightOn) S.bedLit = true; }
+    p.roomHint = this.hintText(holding, winding, p);
   }
+
+  // What to do here, in a few words (two playing: in your own half).
+  hintText(holding, winding, p) {
+    const two = this.game.players.length > 1;
+    const k = two ? (p.index === 0 ? { lr: 'A / D', c: 'W', b: 'S', h: 'E' } : { lr: '← / →', c: '↑', b: '↓', h: '/' }) : null;
+    if (this.spot === 'left' || this.spot === 'right') return holding ? '🚪 Holding the door shut...' : `👂 Breathing? Hold it shut${k ? ` (${k.h})` : ''}. Far away? Shine the light.`;
+    if (this.spot === 'closet') return holding ? '🚪 Holding the closet shut...' : '🚪 Hold the closet shut to push it back in';
+    if (this.spot === 'bed') return this.bedCount ? `🧸 ${this.bedCount} on the bed! Shine the light!` : '🛏️ Nothing on the bed... yet';
+    if (!k) return '';
+    return winding ? '🎵 Winding the music box...' : `${k.lr}: doors · ${k.c}: closet · ${k.b}: bed`;
+  }
+
+  paneInfo(p) { return { weapons: false, box: null, status: p.roomHint || '', alert: '', danger: 0 }; }
 
   // Each hall: away → at the far end (shine the light!) → right outside (listen... hold it
   // shut!) → in.
-  updateHalls(dt, arrived, holding, lit) {
+  updateHalls(dt, S) {
     for (const h of this.halls) {
       const R = h.R;
-      const here = arrived && this.spot === h.side;
+      const here = S.here.has(h.side), lit = S.lit.has(h.side), holding = S.hold.has(h.side);
       h.timer -= dt * this.pace;
       if (h.state === 'away' && h.timer <= 0) {
         h.timer = R.step + Math.random() * R.step;
@@ -306,13 +357,13 @@ export class Bedroom {
       }
     }
     // breathing, when you're standing at a door with something right outside it
-    const at = this.halls.find((h) => arrived && this.spot === h.side);
+    const at = this.halls.find((h) => S.here.has(h.side) && h.state === 'near') || this.halls.find((h) => S.here.has(h.side));
     this.atDoor = at ? this.atDoor + dt : 0;
     this.breathT -= dt;
     // (the old ones don't breathe: they knock)
     if (at && at.state === 'near' && this.atDoor > 0.6 && this.breathT <= 0) {
       if (at.cue === 'knock') { sfx.plexKnock(this.views[at.side].pos); this.breathT = 1.9; }
-      else { sfx.plexBreath(holding ? 0.6 : 1); this.breathT = 2.4; }
+      else { sfx.plexBreath(S.hold.has(at.side) ? 0.6 : 1); this.breathT = 2.4; }
     }
   }
 
@@ -348,8 +399,9 @@ export class Bedroom {
   }
 
   // The bed: plushies, while you're looking somewhere else.
-  updateBed(dt, flashing) {
+  updateBed(dt, S) {
     const B = this.def.bed;
+    const flashing = S.bedLit;
     if (flashing && this.bedCount > 0) {
       for (let i = 0; i < this.bedCount; i++) setTimeout(() => sfx.plexPlop(), i * 90);
       this.bedCount = 0;
@@ -357,7 +409,7 @@ export class Bedroom {
       this.mode.check('bed');
     }
     const most = B.max || 3;
-    if (this.spot !== 'bed') {
+    if (!S.bed) {
       this.bedTimer -= dt * this.pace;
       if (this.bedTimer <= 0 && this.bedCount < most) {
         this.bedCount++;
@@ -411,11 +463,11 @@ export class Bedroom {
   }
 
   // The door leaves swing shut while you hold them.
-  updateDoors(dt, holding) {
+  updateDoors(dt, S) {
     const doors = this.lv.decor.roomDoors;
     if (!doors) return;
     for (const [side, d] of Object.entries(doors)) {
-      const shut = holding && this.spot === side ? 1 : 0;
+      const shut = S.hold.has(side) ? 1 : 0;
       d.k = (d.k ?? 0) + (shut - (d.k ?? 0)) * Math.min(1, dt * 12);
       d.pivot.rotation.y = d.open * (1 - d.k);
       if (shut && !d.wasShut) sfx.plexDoor();

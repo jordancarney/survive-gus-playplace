@@ -2,7 +2,7 @@
 //
 // The save only ever changes at 6 AM. That is what makes "lose and you start the night over"
 // work for free: a caught Jonathan reloads the profile as it was when the night began.
-import { HAPPINESS, NIGHTS, GFX_KEY, DIFFICULTY_KEY, DIFFICULTIES } from './config.js';
+import { HAPPINESS, NIGHTS, GFX_KEY, DIFFICULTY_KEY, DIFFICULTIES, COOP_KEY } from './config.js';
 
 const KEY = 'survive_gus_save_v1';
 
@@ -121,4 +121,15 @@ export function loadDebug() {
 
 export function saveDebug(on) {
   try { if (on) localStorage.setItem(DEBUG_KEY, '1'); else localStorage.removeItem(DEBUG_KEY); } catch {}
+}
+
+// Two players: on or off, and how the screen splits ('v' side by side, 'h' top and bottom).
+export function loadCoop() {
+  try {
+    const v = JSON.parse(localStorage.getItem(COOP_KEY) || '{}');
+    return { on: !!v.on, split: v.split === 'h' ? 'h' : 'v' };
+  } catch { return { on: false, split: 'v' }; }
+}
+export function saveCoop(c) {
+  try { localStorage.setItem(COOP_KEY, JSON.stringify({ on: c.on, split: c.split })); } catch {}
 }

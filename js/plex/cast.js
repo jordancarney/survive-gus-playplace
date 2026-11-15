@@ -166,7 +166,7 @@ export function buildHands({ sleeve, skin, watch = true, scale = 0.7, baggy = fa
   const root = new THREE.Group();
   const sl = vmMat(sleeve, { rough: 0.85 });
   const sk = vmMat(skin, { rough: 0.7 });
-  const sw = baggy ? 0.07 : 0.045;      // a baggy sweatshirt's sleeves come right down over the wrists
+  const sw = baggy ? 0.056 : 0.045;     // a baggy sweatshirt's sleeves come right down over the wrists
   const hand = (x, y, z) => {
     const g = group(root, [x, y, z]);
     part(G.cyl, sl, g, { p: [0, -0.02, baggy ? 0.12 : 0.15], s: [sw, 0.28, sw], r: [Math.PI / 2 - 0.15, 0, 0] });
@@ -189,5 +189,9 @@ export function buildHands({ sleeve, skin, watch = true, scale = 0.7, baggy = fa
   root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 10; } });
   return { root, right, left, lens, watch: face, spark: null, muzzle: null, item: null };
 }
+
+// Jimmy's, in the story modes (two players): white space-suit sleeves and gloves, and a Gus
+// Watch of his own.
+export const jimmyHands = () => buildHands({ sleeve: 0xe9edf2, skin: 0xd8dde4, scale: 0.6 });
 
 export { setEyes } from '../models.js';

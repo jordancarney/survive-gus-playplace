@@ -23,6 +23,7 @@ import { Stalker, Watcher } from './enemies.js';
 import { Jack } from './jack.js';
 import { GusWatch, ENTITY } from './watch.js';
 import { buildKidViewmodel, buildLittleJonathan, buildTeacher, buildMom, buildYoungJohn } from './cast.js';
+import { jimmyHands } from '../plex/cast.js';
 import { LEVELS } from './levels/index.js';
 import { STORY } from './story.js';
 import { LUNGE, STATIC, holdFor, placeScare, finishScare, showStatic, drawStatic, hideStatic } from '../jumpscare.js';
@@ -66,7 +67,6 @@ export class EscapeMode {
     this.levels = story.levels;
     this.built = new Map();     // level n → { def, place, decor, enemies, area }
     this.level = null;
-    this.hiding = null;
     this.grace = 0;
     this.sayT = 0;
     this.done = new Set();
@@ -77,15 +77,30 @@ export class EscapeMode {
     this.cast = this.makeCast();
     this.watch = new GusWatch(this);
     // The box you carry (the designer's idea): hide in it anywhere, but only for 30 seconds,
-    // and then it has to fill back up before you can use it again.
-    this.box = { charge: BOX_SECONDS };
-    this.boxMesh = buildCardboardBox();
-    this.boxMesh.visible = false;
-    game.scene.add(this.boxMesh);
+    // and then it has to fill back up before you can use it again. (Two playing: one each.)
+    this.boxMeshes = [buildCardboardBox(), buildCardboardBox()];
+    for (const b of this.boxMeshes) { b.visible = false; game.scene.add(b); }
     this.wireUI();
   }
 
   get player() { return this.game.player; }
+  // Each player's own: where they're hiding, their box, the room they're in. (`player` is
+  // whoever's turn it is — see game.js — so these are always about the right one.)
+  get hiding() { return this.player.hiding || null; }
+  set hiding(v) { this.player.hiding = v; }
+  get hideYaw() { return this.player.hideYaw || 0; }
+  set hideYaw(v) { this.player.hideYaw = v; }
+  get room() { return this.player.escRoom ?? null; }
+  set room(v) { this.player.escRoom = v; }
+  get box() { return this.player.escBox || (this.player.escBox = { charge: BOX_SECONDS }); }
+  get boxMesh() { return this.boxMeshes[this.player.index]; }
+
+  // Who player 1 looks like to player 2, and what their half of the screen calls them.
+  heroBody() { return ['jonathan5', buildLittleJonathan]; }
+  heroName() { return ['Jonathan', '🧸']; }
+
+  // Everyone (both of you, when two are playing), for a fresh start.
+  forAll(fn) { for (const p of this.game.players) this.game.withPlayer(p, () => fn(p)); }
   get place() { return this.level ? this.level.place : this.game.place; }
   get decor() { return this.level.decor; }
   get enemies() { return this.level ? this.level.enemies : []; }
@@ -282,13 +297,12 @@ export class EscapeMode {
     this.used = new Set(s ? s.used : []);
     this.upgrades = new Set(s ? s.upgrades || [] : []);
     this.flags = s ? { ...s.flags } : {};
-    this.hiding = null;
+    this.forAll(() => { this.hiding = null; this.box.charge = BOX_SECONDS; this.room = null; this.hideYaw = 0; });
+    for (const b of this.boxMeshes) b.visible = false;
     this.unseen = false;
     for (const h of d.hides) if (h.group) h.group.visible = true;
     this.grace = 0;
     this.chanceUsed = false;
-    this.box.charge = BOX_SECONDS;
-    this.boxMesh.visible = false;
     this.sayT = 0;
     this.beep = 0;
     this.speedK = 1;
@@ -311,12 +325,23 @@ export class EscapeMode {
     p.lightOn = def.lightOn !== false;
     p.lightVisible = true;
     p.vmGroup.visible = true;
-    this.applyLight();
+    // Who you are from the outside (for emotes, and for Jimmy to see).
+    g.setP1Body(...this.heroBody(def));
+    // Two playing: Jimmy starts right beside you, with his own little space-suit hands.
+    if (g.twoUp) {
+      const [name, icon] = this.heroName(def);
+      g.p1.name = name;
+      g.panes[0].setName(name.toUpperCase(), icon);
+      g.p2.vmBuild = jimmyHands;
+      g.spawnPartner(1);
+      g.p2.rebuildViewmodel();
+      g.p2.maxStamina = g.p2.stamina = p.maxStamina;
+    }
+    this.forAll(() => this.applyLight());
     const back = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
     const jackAt = at.clone().addScaledVector(back, -1.2);
     this.jack.place(lv.place.isWalkable(jackAt.x, jackAt.z) ? jackAt : at.clone(), p.yaw);
     g.lighting.setEscape(d, def.mood);
-    this.room = null;
     this.ctrl = lv.ctrl || null;
     if (this.ctrl) this.ctrl.start(!!s);
     if (def.start) def.start(this, !!s);
@@ -367,12 +392,14 @@ export class EscapeMode {
     if (this.ctrl) { this.ctrl.stop(); this.ctrl = null; }
     this.game.hud.el.classList.remove('esc-fixed', 'esc-nobox', 'cams-up');
     this.watch.toggle(false);
-    if (this.hiding && this.hiding.group) this.hiding.group.visible = true;
-    this.hiding = null;
-    if (this.boxMesh) this.boxMesh.visible = false;
-    this.game.player.inBox = false;
+    this.forAll((q) => {
+      if (this.hiding && this.hiding.group) this.hiding.group.visible = true;
+      this.hiding = null;
+      q.inBox = false;
+    });
+    for (const b of this.boxMeshes || []) b.visible = false;
     $('escHide')?.classList.add('hidden');
-    const p = this.game.player;
+    const p = this.game.p1;
     if (p.kid || p.sizes) {
       p.kid = false;
       p.sizes = null;
@@ -380,6 +407,8 @@ export class EscapeMode {
       p.height = 1.62;
       p.rebuildViewmodel();
     }
+    const p2 = this.game.p2;
+    if (p2 && p2.vmBuild) { p2.vmBuild = null; p2.rebuildViewmodel(); }
     this.game.touch.relabel?.('use', '⚡');
     this.game.touch.relabel?.('swap', '⇄');
   }
@@ -658,7 +687,7 @@ export class EscapeMode {
   // ── Update ────────────────────────────────────────────────────────────
 
   update(dt) {
-    const g = this.game, p = this.player;
+    const g = this.game;
     this.grace = Math.max(0, this.grace - dt);
     g.scareTick(dt, 75);
     if (this.sayT > 0) { this.sayT -= dt; if (this.sayT <= 0) $('escSay').classList.add('hidden'); }
@@ -667,7 +696,7 @@ export class EscapeMode {
 
     // Chapters where you stay in one place (Max's bedroom, Jackson's office) run themselves.
     if (this.ctrl) {
-      if (input.pressed('pause')) { g.togglePause(); return; }
+      if (g.ctl.pressed('pause')) { g.togglePause(); return; }
       g.hud.prompt(null);
       this.ctrl.update(dt);
       if (g.mode !== 'escape') return;
@@ -677,27 +706,50 @@ export class EscapeMode {
       this.updateHud(dt);
       return;
     }
-    if (g.phone.active) {
+    // Each of you in turn (just you, playing alone): keys, walking or hiding, pressing E,
+    // picking things up, your box.
+    if (g.eachPlayer((p) => this.turn(dt, p))) return;
+    if (g.mode !== 'escape') return;
+    if (this.clock) this.tickClock(dt);
+    if (g.mode !== 'escape') return;
+    if (this.def.update) this.def.update(this, dt);
+    for (const e of this.enemies) {
+      if (g.twoUp) g.asPrey(e, () => e.update(dt));
+      else e.update(dt);
+      if (g.mode !== 'escape') return;
+    }
+    this.jack.update(dt);
+    this.decor.update(dt, g.t);
+    g.withPlayer(this.watch.owner && !this.watch.owner.out ? this.watch.owner : g.lead, () => this.watch.update());
+    this.updateHud(dt);
+  }
+
+  // One player's part of a step. True if it ended the step (paused, caught, escaped...).
+  turn(dt, p) {
+    const g = this.game, ctl = p.ctl;
+    if (g.phone.active && g.phone.user === p) {
       g.phone.update(dt);
       p.update(dt, { canMove: false, canLook: false });
       g.hud.prompt(null);
+    } else if (!this.hiding && g.emoteTurn(dt, p)) {
+      if (ctl.pressed('pause')) { g.togglePause(); return true; }
     } else {
-      if (input.pressed('pause')) { if (this.watch.open) this.watch.toggle(false); else { g.togglePause(); return; } }
-      if (input.pressed('watch')) this.watch.toggle();
-      if (this.story.box && (input.pressed('box') || input.pressed('swap'))) {
+      if (ctl.pressed('pause')) { if (this.watch.open) this.watch.toggle(false); else { g.togglePause(); return true; } }
+      if (ctl.pressed('watch')) this.watch.toggle(!(this.watch.open && this.watch.owner === p) );
+      if (this.story.box && (ctl.pressed('box') || ctl.pressed('swap'))) {
         if (this.hiding && this.hiding.portable) this.unhide();
         else if (!this.hiding) this.enterBox();
       }
-      if (!this.story.box && input.pressed('swap') && !this.hiding) p.toggleCrouch();
-      if (input.pressed('flashlight') && !this.hiding) p.toggleLight();
-      if (input.pressed('crouch') && !this.hiding) p.toggleCrouch();
+      if (!this.story.box && ctl.pressed('swap') && !this.hiding) p.toggleCrouch();
+      if (ctl.pressed('flashlight') && !this.hiding) p.toggleLight();
+      if (ctl.pressed('crouch') && !this.hiding) p.toggleCrouch();
       if (this.hiding) this.updateHidden(dt);
       else p.update(dt);
       const it = this.interaction();
       g.hud.prompt(it ? it.text : null);
-      if (it && input.pressed('interact')) it.act();
+      if (it && ctl.pressed('interact')) it.act();
     }
-    if (g.mode !== 'escape') return;
+    if (g.mode !== 'escape') return true;
 
     // walking into things you're looking for picks them up (in your box too)
     if (!this.hiding || this.hiding.portable) {
@@ -709,17 +761,24 @@ export class EscapeMode {
       if (room !== this.room) { this.room = room; this.check('visit', room); }
     }
     if (this.story.box) this.tickBox(dt);
-    if (this.clock) this.tickClock(dt);
-    if (g.mode !== 'escape') return;
-    if (this.def.update) this.def.update(this, dt);
+    return g.mode !== 'escape';
+  }
+
+  // Two playing: what goes in your half of the screen.
+  paneInfo(p) {
+    if (this.ctrl && this.ctrl.paneInfo) return this.ctrl.paneInfo(p);
+    let danger = 0, chaser = null;
     for (const e of this.enemies) {
-      e.update(dt);
-      if (g.mode !== 'escape') return;
+      if (!e.dangerous || !e.root.visible) continue;
+      const d = e.distToPlayer();
+      if (d < 10) danger = Math.max(danger, 1 - d / 10);
+      if (e.prey === p && e.chasing) chaser = e;
     }
-    this.jack.update(dt);
-    this.decor.update(dt, g.t);
-    this.watch.update();
-    this.updateHud(dt);
+    let status = '';
+    if (this.hiding) status = this.hiding.portable ? `📦 In your box — ${Math.ceil(this.box.charge)} s left` : 'Hiding — shhh!';
+    else if (p.crouching) status = '⤓ Crouching — harder to see';
+    const alert = chaser ? (chaser.def.kind === 'watcher' ? `👀 DON'T LOOK AWAY FROM ${chaser.name.toUpperCase()}!` : `🏃 ${chaser.name.toUpperCase()} SEES YOU!`) : '';
+    return { weapons: false, box: this.story.box ? this.box.charge / BOX_SECONDS : null, status, alert, danger: this.hiding ? 0 : danger };
   }
 
   // In a hiding spot you can look around (a clear view — the designer asked for normal vision
@@ -741,7 +800,7 @@ export class EscapeMode {
       this.boxMesh.position.y += Math.abs(Math.sin(p.bobPhase)) * 0.03 * Math.min(1, p.moving);
       return;
     }
-    const { dx, dy } = input.drainLook();
+    const { dx, dy } = p.ctl.drainLook();
     this.hideYaw = Math.max(-1.4, Math.min(1.4, this.hideYaw - dx * 0.0022));
     p.pitch = Math.max(-1.1, Math.min(1.0, p.pitch - dy * 0.0022));
     p.yaw = s.yaw + this.hideYaw;
@@ -839,7 +898,7 @@ export class EscapeMode {
 
   caught(who, why = null) {
     const g = this.game;
-    if (g.mode !== 'escape' || this.grace > 0) return;
+    if (g.mode !== 'escape' || this.grace > 0 || this.player.out) return;
     // Spooky's second chance, and the lucky Gus coin
     if ((g.diff.secondChance && !this.chanceUsed) || this.upgrades.has('chance')) {
       if (this.upgrades.has('chance')) this.upgrades.delete('chance');
@@ -865,8 +924,15 @@ export class EscapeMode {
       this.player.yaw = s.yaw + Math.PI;
       this.player.height = this.player.S.eyeHeight;
     }
-    this.watch.toggle(false);
-    if (g.phone.active) g.phone.close();
+    g.stopEmote(this.player);
+    g.closeWheel(this.player);
+    // (two playing: only the one it caught sees it, in their half — except in the chapters
+    // where you both stay in one room, where it gets you both)
+    const partner = g.twoUp && g.alive().length > 1 && !this.ctrl;
+    this.partnerScare = partner;
+    if (!partner || this.watch.owner === this.player) this.watch.toggle(false);
+    if (g.phone.active && (!partner || g.phone.user === this.player)) g.phone.close();
+    this.scareP = this.player;
     this.scarer = who;
     this.why = why;
     // (the FNAF way — see jumpscare.js: lunge, scream in your face, static)
@@ -877,10 +943,12 @@ export class EscapeMode {
     setEyes(who.rig, 'scare');
     this.player.vmGroup.visible = false;
     this.player.lightVisible = false;
-    g.hud.show(false);
-    $('clickToPlay').classList.add('hidden');
-    stopAmbience();
-    stopMusic();
+    if (!partner) {
+      g.hud.show(false);
+      $('clickToPlay').classList.add('hidden');
+      stopAmbience();
+      stopMusic();
+    } else g.panes[this.player.index].el.classList.add('scared');
     sfx.fnafScream();
     if (g.nightmare) setTimeout(() => sfx.fnafScream(), 700);
     g.profile.stats.caught++;
@@ -894,20 +962,27 @@ export class EscapeMode {
     const g = this.game, a = this.scarer;
     this.scareTimer -= dt;
     const t = this.scareLen - this.scareTimer;
-    const cam = g.camera;
-    this.player.pitch += (0 - this.player.pitch) * Math.min(1, dt * 20);
-    this.player.shake = t < LUNGE ? 0.4 : 0.9;
-    this.player.updateCamera();
+    const sp = this.scareP || this.player;
+    const cam = sp.camera;
+    sp.pitch += (0 - sp.pitch) * Math.min(1, dt * 20);
+    sp.shake = t < LUNGE ? 0.4 : 0.9;
+    sp.updateCamera();
     if (this.scareTimer > STATIC) {
-      const { f, near } = placeScare(a, cam, this.player, t);
+      const { f, near } = placeScare(a, cam, sp, t);
       poseRig(a.rig, 'scare', t, 1, dt);
       finishScare(a, cam, f, near, t, g.effects);
       return;
     }
-    if (!this.scareStatic) { this.scareStatic = true; showStatic(); }
+    if (!this.scareStatic) { this.scareStatic = true; showStatic(g.split && this.partnerScare ? sp.index : null); }
     drawStatic();
     if (this.scareTimer > 0) return;
     hideStatic();
+    // Two playing, and the other one's still in: this one's out, and the other has to get
+    // out of here for both of them.
+    if (this.partnerScare && g.knockOut(sp, this.clock ? null : `${sp.name} got caught! ${g.alive()[0]?.name}, you have to finish the ${this.story.unit.toLowerCase()} on your own!`)) {
+      this.afterKnockOut(a);
+      return;
+    }
     exitPointerLock();
     setEyes(a.rig, 'on');
     const s = this.save.save;
@@ -919,6 +994,25 @@ export class EscapeMode {
     g.setArea('playplace');
     g.lighting.set('title');
     g.showScreen('caught');
+  }
+
+  // Back to the level after one of you was caught: whatever did it backs off, stunned for a
+  // moment, and nothing can catch the other one straight away.
+  afterKnockOut(a) {
+    const g = this.game;
+    g.mode = 'escape';
+    for (const pane of g.panes) pane.el.classList.remove('scared');
+    setEyes(a.rig, 'on');
+    if (a.frozen !== undefined) a.frozen = 3;
+    if (a.state && a.def && a.def.kind !== 'watcher' && a.goTo) { a.state = 'search'; a.goTo(a.lastSeen || a.pos.clone()); }
+    a.prey = null;
+    this.scarer = null;
+    this.scareP = null;
+    this.grace = 2.5;
+    if (this.ctrl && this.ctrl.backOff) this.ctrl.backOff(a);
+    g.player = g.lead;
+    g.layout();
+    if (!g.touch.active && !this.ctrl && g.lead.index === 0) requestPointerLock();
   }
 
   // ── Escaped! ──────────────────────────────────────────────────────────

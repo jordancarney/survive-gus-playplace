@@ -14,23 +14,42 @@ const PAD_COLORS = ['#ff3b30', '#ffd23f', '#3cff6b', '#3ec1d3'];
 const CANCEL_KEYS = ['Escape', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE'];
 
 export class Repair {
-  constructor(game) {
+  // `suffix`: player 2 gets a copy of the panel of their own ('repairUI2' and so on), drawn
+  // in their half of the screen.
+  constructor(game, suffix = '') {
     this.game = game;
     this.active = false;
-    this.ui = document.getElementById('repairUI');
-    this.titleEl = document.getElementById('repairTitle');
-    this.hintEl = document.getElementById('repairHint');
-    this.body = document.getElementById('repairBody');
-    this.pads = document.getElementById('repairPads');
+    if (suffix) {
+      const src = document.getElementById('repairUI');
+      const copy = src.cloneNode(true);
+      copy.id += suffix;
+      for (const el of copy.querySelectorAll('[id]')) el.id += suffix;
+      copy.classList.add('hidden', 'pane-1');
+      src.parentNode.appendChild(copy);
+      src.classList.add('pane-0');
+    }
+    this.ui = document.getElementById('repairUI' + suffix);
+    this.titleEl = document.getElementById('repairTitle' + suffix);
+    this.hintEl = document.getElementById('repairHint' + suffix);
+    this.body = document.getElementById('repairBody' + suffix);
+    this.pads = document.getElementById('repairPads' + suffix);
+    this.cancelEl = this.ui.querySelector('.repair-cancel');
     this.pendingTaps = [];
   }
+
+  // Whoever's fixing it, and what they press (the game's player when it started).
+  get ctl() { return this.who ? this.who.ctl : input; }
 
   start(machine, level) {
     this.m = machine;
     this.level = level;
     this.type = machine.fuse ? 'sequence' : machine.type;
     this.active = true;
+    this.who = this.game.player;
     this.lock = 0.25;            // ignore the E press that opened it
+    // (two playing: W A S D are player 1's arrows, so they can't also mean "stop")
+    const two = this.ctl !== input;
+    this.cancelEl.textContent = !two ? 'ESC to stop' : this.who.index === 0 ? 'W A S D for the arrows · E to stop' : 'ENTER for SPACE · / to stop';
     this.ui.classList.remove('hidden');
     this.titleEl.textContent = machine.fuse ? 'FIX THE FUSE BOX' : `FIX THE ${machine.name.toUpperCase()}`;
     this.buildPads();
@@ -132,7 +151,7 @@ export class Repair {
   pressed() {
     const out = [];
     const keys = this.type === 'timing' ? ['Space', ...REPAIR.keys] : REPAIR.keys;
-    for (const k of keys) if (input.keyPressed(k)) out.push(k);
+    for (const k of keys) if (this.ctl.keyPressed(k)) out.push(k);
     out.push(...this.pendingTaps);
     this.pendingTaps = [];
     return out;
@@ -165,7 +184,9 @@ export class Repair {
       if (this.type === 'timing') this.tickTiming(dt);
       return;
     }
-    for (const k of CANCEL_KEYS) if (input.keyPressed(k)) { this.cancel(); return; }
+    if (this.ctl === input) {
+      for (const k of CANCEL_KEYS) if (input.keyPressed(k)) { this.cancel(); return; }
+    } else if (this.ctl.pressed('interact') || this.ctl.keyPressed('Escape')) { this.cancel(); return; }
     const presses = this.pressed();
 
     if (this.type === 'sequence') {

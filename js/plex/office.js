@@ -173,7 +173,20 @@ export class Office {
 
   // ── Starting and stopping ─────────────────────────────────────────────
 
+  // The key hints on the buttons: two playing, each side is somebody's.
+  labelKeys() {
+    const two = this.game.players.length > 1;
+    const set = (id, t) => { const el = $(id)?.querySelector('small'); if (el) el.textContent = t; };
+    set('offDoorL', two ? 'JONATHAN: E' : 'Q');
+    set('offLightL', two ? 'hold F' : 'hold Z');
+    set('offDoorR', two ? 'JIMMY: /' : 'E');
+    set('offLightR', two ? 'hold .' : 'hold C');
+    set('offCamsBtn', two ? 'SPACE · ENTER' : 'SPACE');
+  }
+
   start() {
+    this.labelKeys();
+    if (this.game.players.length > 1) this.game.hud.toast('👥 Jonathan has the LEFT door and light. Jimmy has the RIGHT door and light!', 5);
     const m = this.mode, O = this.def;
     this.act = true;
     this.held = { lightL: false, lightR: false, lookL: false, lookR: false };
@@ -261,10 +274,12 @@ export class Office {
   view(dt) {
     const p = this.mode.player, O = this.def;
     let turn = 0;
-    if (input.down('left') || this.held.lookL || (!this.game.touch.active && this.mouseX < 0.14)) turn += 1;
-    if (input.down('right') || this.held.lookR || (!this.game.touch.active && this.mouseX > 0.86)) turn -= 1;
+    // (two playing, either of you can look round: there's one office and one screen)
+    const ctls = this.game.players.length > 1 ? this.game.players.map((q) => q.ctl) : [input];
+    if (ctls.some((c) => c.down('left')) || this.held.lookL || (!this.game.touch.active && this.mouseX < 0.14)) turn += 1;
+    if (ctls.some((c) => c.down('right')) || this.held.lookR || (!this.game.touch.active && this.mouseX > 0.86)) turn -= 1;
     if (!this.camsUp) this.yaw = Math.max(-O.yawMax, Math.min(O.yawMax, this.yaw + turn * dt * 2.2));
-    input.drainLook();
+    for (const c of ctls) c.drainLook();
     p.pos.copy(this.P(...O.seat));
     p.height = O.eye;
     p.yaw = this.yaw;
@@ -349,7 +364,23 @@ export class Office {
     const m = this.mode, O = this.def;
     this.t += dt;
     // input
-    if (!this.out) {
+    const two = this.game.players.length > 1;
+    if (!this.out && two) {
+      // Two playing (the designer's call: "split the doors"): Jonathan has the LEFT door and
+      // light (E or Q, hold F or Z), Jimmy the RIGHT (/, hold .). Either can work the cameras.
+      const a = this.game.p1.ctl, b = this.game.p2.ctl;
+      if (a.keyPressed('Space') || a.pressed('watch') || b.pressed('fire') || b.pressed('watch')) this.setCams(!this.camsUp);
+      if (!this.camsUp) {
+        if (a.pressed('interact') || a.keyPressed('KeyQ')) this.toggleDoor('left');
+        if (b.pressed('interact')) this.toggleDoor('right');
+      } else {
+        if (a.keyPressed('KeyD') || b.keyPressed('ArrowRight')) this.switchCam(this.camI + 1);
+        if (a.keyPressed('KeyA') || b.keyPressed('ArrowLeft')) this.switchCam(this.camI - 1);
+        for (let k = 1; k <= 9; k++) if (a.keyPressed('Digit' + k)) this.switchCam(k - 1);
+      }
+      this.setLight('left', !this.camsUp && (a.down('flashlight') || a.keyHeld('KeyZ') || this.held.lightL));
+      this.setLight('right', !this.camsUp && (b.down('flashlight') || this.held.lightR));
+    } else if (!this.out) {
       if (input.keyPressed('Space') || input.pressed('watch')) this.setCams(!this.camsUp);
       if (!this.camsUp) {
         if (input.keyPressed('KeyQ')) this.toggleDoor('left');

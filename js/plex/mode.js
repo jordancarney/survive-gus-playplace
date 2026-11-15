@@ -116,6 +116,19 @@ export class PlexMode extends EscapeMode {
     p.vmBuild = h.hands;
   }
 
+  // Two playing: player 1 is whoever the chapter's about (the designer's call), and that's
+  // who Jimmy sees.
+  heroBody(def) {
+    const id = HEROES[def.hero] ? def.hero : 'jonathan';
+    const build = { jonathan: buildJonathan9, max: buildMax, jack: buildJack10, thomas: buildThomas, jackson: buildJackson, timmy: buildTimmy }[id] || buildJonathan9;
+    return ['plex-' + id, build];
+  }
+
+  heroName(def) {
+    const h = HEROES[def.hero] || HEROES.jonathan;
+    return [h.name, h.icon];
+  }
+
   // In the Pizzaplex you're on your own, so whatever's said is said by you.
   speaker() { return this.level ? (HEROES[this.def.hero] || HEROES.jonathan).name : ''; }
 

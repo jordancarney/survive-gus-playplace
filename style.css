@@ -940,3 +940,156 @@ body.fnaf #fnafLook { display: block; }
   0% { transform: translate(0, 0); } 20% { transform: translate(-7%, 4%); } 40% { transform: translate(5%, -6%); }
   60% { transform: translate(-3%, -8%); } 80% { transform: translate(8%, 3%); } 100% { transform: translate(0, 0); }
 }
+
+/* ── 2 Players: split screen (js/coop.js) ───────────────────────────── */
+
+.btn-coop {
+  background: linear-gradient(180deg, #5ad1ff, #2a6ab8); color: #fff; box-shadow: 0 4px 0 #13325a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.btn-coop:active { box-shadow: 0 1px 0 #13325a; }
+.btn-coop.on { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.coop-sub { max-width: 60ch; color: var(--ink); line-height: 1.5; margin: 0; }
+.coop-settings { flex-direction: row; flex-wrap: wrap; justify-content: center; width: min(900px, 100%); }
+.coop-settings .setting { flex: 1 1 320px; }
+.coop-cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; width: min(900px, 100%); }
+.coop-card {
+  flex: 1 1 340px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--edge); border-radius: 14px;
+  padding: 12px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.coop-who { font-weight: 800; letter-spacing: 0.12em; color: var(--yellow); }
+.coop-how { color: var(--dim); font-size: 14px; }
+.coop-card .controls-list { font-size: 13px; }
+.coop-pad { font-size: 13px; color: var(--dim); max-width: 40ch; line-height: 1.4; }
+.coop-pad.on { color: var(--green); font-weight: 700; }
+.coop-padkeys { font-size: 13px; color: var(--dim); }
+.coop-padkeys summary { cursor: pointer; }
+.coop-padkeys .controls-list { margin-top: 8px; }
+.coop-pick { margin-top: 6px; }
+.coop-games { flex-wrap: wrap; justify-content: center; }
+
+/* Each player's half of the HUD. Only drawn while the screen is split. */
+#panes { position: absolute; inset: 0; display: none; pointer-events: none; }
+body.split #panes { display: block; }
+.pane, .pane-nv { position: absolute; overflow: hidden; }
+body.split-v .pane-0, body.split-v .pane-nv.pane-0 { left: 0; top: 0; bottom: 0; width: 50%; }
+body.split-v .pane-1, body.split-v .pane-nv.pane-1 { left: auto; right: 0; top: 0; bottom: 0; width: 50%; }
+body.split-h .pane-0, body.split-h .pane-nv.pane-0 { left: 0; right: 0; top: 0; height: 50%; }
+body.split-h .pane-1, body.split-h .pane-nv.pane-1 { left: 0; right: 0; top: auto; bottom: 0; height: 50%; }
+.pane-divider { position: absolute; background: #05020c; box-shadow: 0 0 8px rgba(0, 0, 0, 0.8); }
+body.split-v .pane-divider { left: calc(50% - 2px); width: 4px; top: 0; bottom: 0; }
+body.split-h .pane-divider { top: calc(50% - 2px); height: 4px; left: 0; right: 0; }
+/* the night-vision tint over the half that's on the cameras */
+.pane-nv { display: none; z-index: 0; }
+.pane-nv.on { display: block; backdrop-filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) brightness(1.25) contrast(1.15); }
+
+.pane-danger { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 0, 20, 0.55) 100%); }
+.pane-hit { position: absolute; inset: 0; background: #ff2020; opacity: 0; }
+.pane-cross {
+  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: rgba(255, 255, 255, 0.75); box-shadow: 0 0 4px #000;
+}
+.pane-cross.can-use { width: 12px; height: 12px; margin: -6px 0 0 -6px; background: transparent; border: 2px solid var(--yellow); }
+.pane-name {
+  position: absolute; left: 12px; bottom: 76px; font-size: 12px; font-weight: 800; letter-spacing: 0.2em;
+  color: var(--yellow); text-shadow: 0 1px 3px #000;
+}
+.pane-1 .pane-name { color: #9fe0ff; }
+.pane-bars { position: absolute; left: 12px; bottom: 12px; width: 150px; display: flex; flex-direction: column; gap: 5px; }
+.pane-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.pane-row .bar { flex: 1; }
+.pane-box { background: #c9a06a; }
+.pane-weapon { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.pane-weapon .charge { width: 120px; }
+.pane-slots { display: flex; gap: 4px; }
+.pane-slots .slot {
+  width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.5); font-size: 14px;
+}
+.pane-slots .slot.on { border-color: var(--yellow); background: rgba(255, 210, 63, 0.2); }
+.pane-wname { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-shadow: 0 1px 3px #000; }
+.pane-winfo { font-size: 11px; color: var(--dim); text-shadow: 0 1px 3px #000; }
+.pane-alert {
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); white-space: nowrap;
+  font-size: 12px; font-weight: 700; color: #fff; background: rgba(200, 0, 20, 0.75);
+  padding: 3px 9px; border-radius: 6px; animation: pulse 0.9s ease-in-out infinite;
+}
+body.split-h .pane-alert { top: 10px; }
+.pane-status {
+  position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); max-width: 90%;
+  font-family: var(--ui-font); font-size: 13px; padding: 5px 12px; border-radius: 8px; text-align: center;
+  background: rgba(255, 210, 63, 0.18); border: 1px solid var(--yellow);
+}
+.pane-prompt {
+  position: absolute; left: 50%; top: 60%; transform: translateX(-50%); white-space: nowrap;
+  font-family: var(--ui-font); font-size: 14px; padding: 5px 12px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.65); border: 1px solid var(--edge);
+}
+.pane-prompt b { color: var(--yellow); }
+.pane.scared .pane-bars, .pane.scared .pane-weapon, .pane.scared .pane-cross, .pane.scared .pane-prompt,
+.pane.scared .pane-status, .pane.scared .pane-alert, .pane.scared .pane-name { display: none; }
+
+/* split: the main HUD keeps what you share (clock, happiness, objective, toasts), and
+   each player's own things move into their half */
+body.split #crosshair, body.split #danger, body.split #hitFlash, body.split .hud-bl, body.split .hud-br,
+body.split #prompt, body.split #carryTag, body.split #alertTag, body.split .esc-bars, body.split #escAlert,
+body.split #escHide, body.split #escCrouch { display: none !important; }
+body.split .toast { top: 14%; font-size: 16px; max-width: 60vw; }
+body.split .hud-tr { max-width: 30vw; }
+body.split-h .hud-tl, body.split-h .hud-tr { top: calc(50% + 10px); }
+body.split-h .hud-top { top: calc(50% + 6px); }
+body.split-v .hud-top { top: 8px; }
+body.split-v .clock { font-size: 24px; }
+/* (with the clock in the middle, the halves' alerts sit below it) */
+
+/* overlays that belong to one player fill only their half */
+body.split-v #camUI.pane-0, body.split-v .scare-static.pane-0, body.split-v #repairUI.pane-0 { left: 0; right: 50%; width: auto; }
+body.split-v #camUI.pane-1, body.split-v .scare-static.pane-1, body.split-v #repairUI2.pane-1 { left: 50%; right: 0; width: auto; }
+body.split-h #camUI.pane-0, body.split-h .scare-static.pane-0, body.split-h #repairUI.pane-0 { top: 0; bottom: 50%; height: auto; }
+body.split-h #camUI.pane-1, body.split-h .scare-static.pane-1, body.split-h #repairUI2.pane-1 { top: 50%; bottom: 0; height: auto; }
+body.split #camUI .cam-map { width: min(260px, 22vw) !important; }
+body.split-h #camUI .cam-map { width: min(220px, 18vw) !important; }
+body.split #camUI .cam-hint { display: none; }
+body.split .repair-panel { min-width: min(340px, 46vw); padding: 12px 16px; }
+body.split-h .repair-panel { transform: scale(0.8); }
+#repairUI2 { position: absolute; inset: 0; z-index: 14; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+/* one of you on the cameras: the shared corners make way for the monitor */
+body.split.cams-split .hud-tl, body.split.cams-split .hud-tr, body.split.cams-split .hud-top { display: none; }
+body.split-v .click-to-play { left: 25%; }
+body.split-h .click-to-play { top: 25%; }
+/* the Gus Watch held up in one half */
+body.split-v .gus-watch.pane-0 { left: 25%; right: auto; top: 50%; bottom: auto; width: auto; height: auto; }
+body.split-v .gus-watch.pane-1 { left: 75%; right: auto; top: 50%; bottom: auto; width: auto; height: auto; }
+body.split-h .gus-watch.pane-0 { left: 50%; right: auto; top: 25%; bottom: auto; width: auto; height: auto; transform: translate(-50%, -50%) scale(0.62); }
+body.split-h .gus-watch.pane-1 { left: 50%; right: auto; top: 75%; bottom: auto; width: auto; height: auto; transform: translate(-50%, -50%) scale(0.62); }
+body.split-v .gus-watch .gw-face { width: min(400px, 44vw); }
+/* Max's bedroom, two playing: keys only, and each half says what to do */
+body.split #roomHint, body.split .room-pad, body.split .room-holds { display: none; }
+#hud.esc .pane-bars { left: auto; right: 12px; }
+#hud.esc .pane-name { left: auto; right: 12px; bottom: 74px; }
+/* the key lists side by side in two columns, so the 2 Players screen fits without scrolling */
+.coop-card .controls-list { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 12px; }
+.coop-card .controls-list .key { font-size: 11px; }
+#coop { gap: 12px; justify-content: flex-start; }
+
+/* ── Emotes: the wheel (hold T) ─────────────────────────────────────── */
+.emote-wheel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
+.ew-ring {
+  position: relative; width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 10, 32, 0.55) 30%, rgba(16, 10, 32, 0.82) 70%);
+  border: 2px solid var(--edge); box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+}
+body.split-h .ew-ring { transform: scale(0.7); }
+.ew-slot {
+  position: absolute; transform: translate(-50%, -50%); width: 76px; display: flex; flex-direction: column;
+  align-items: center; gap: 1px; padding: 6px 2px; border-radius: 14px; transition: transform 0.08s, background 0.08s;
+}
+.ew-slot span { font-size: 30px; filter: drop-shadow(0 2px 3px #000); }
+.ew-slot small { font-family: var(--ui-font); font-size: 11px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.1; text-shadow: 0 1px 2px #000; }
+.ew-slot.on { background: rgba(255, 210, 63, 0.3); transform: translate(-50%, -50%) scale(1.22); }
+.ew-slot.on small { color: var(--yellow); }
+.ew-mid {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--hud-font);
+  font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--yellow); text-align: center; width: 110px;
+}
