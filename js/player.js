@@ -8,6 +8,7 @@ import { input } from './input.js';
 import { buildViewmodel } from './models.js';
 import { resolveCircle } from './physics.js';
 import { sfx } from './audio.js';
+import { SHOP } from './shop.js';
 
 const VM_HOME = new THREE.Vector3(0, 0, 0);
 
@@ -149,6 +150,7 @@ export class Player {
   toggleCrouch() {
     if (this.carrying) { this.game.hud.toast(`Let go of ${this.carrying.name} first!`); return; }
     this.crouching = !this.crouching;
+    if (this.crouching) this.skating = false;   // (off the skateboard)
     sfx.ui();
   }
 
@@ -208,7 +210,9 @@ export class Player {
     else if (len > 0 && !stick) { fx /= len; fz /= len; len = 1; }
 
     // Sprinting drains stamina; run it dry and you're winded until it's half back.
-    const wantSprint = canMove && ctl.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching && !this.inBox;
+    // (no running in the Gus mask, and no need on a skateboard)
+    const wantSprint = canMove && ctl.down('sprint') && len > 0 && !this.carrying && !this.winded && !this.crouching && !this.inBox &&
+      !this.masked && !this.skating;
     this.sprinting = wantSprint && this.stamina > 0;
     if (this.sprinting) {
       if (!this.game.diff.unlimited) this.stamina = Math.max(0, this.stamina - dt);
@@ -221,7 +225,7 @@ export class Player {
     const place = this.game.place;
     const S = this.S;
     let speed = this.inBox ? S.crouchSpeed * 1.25 : this.carrying ? S.carrySpeed : this.crouching ? S.crouchSpeed
-      : this.sprinting ? S.sprintSpeed : S.walkSpeed;
+      : this.sprinting ? S.sprintSpeed : this.skating ? S.walkSpeed * SHOP.skateSpeed : S.walkSpeed;
     const wantHeight = this.inBox ? 0.72 : this.crouching ? S.crouchHeight : S.eyeHeight;
     this.height += (wantHeight - this.height) * Math.min(1, dt * 10);
     if (place.inSlowZone(this.pos.x, this.pos.z)) speed *= PLAYER.ballPitSpeed;

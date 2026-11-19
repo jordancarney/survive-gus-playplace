@@ -1,10 +1,19 @@
-// localStorage persistence for the one save.
+// localStorage persistence for the saves.
 //
 // The save only ever changes at 6 AM. That is what makes "lose and you start the night over"
 // work for free: a caught Jonathan reloads the profile as it was when the night began.
+//
+// There are two: Survival's (`main`, every story on its own, as it always was) and Story
+// mode's (`story`: every story in one go, js/campaign.js), so playing one never touches the
+// other. Whichever is in use (`setSlot`) is the one load and save read and write.
 import { HAPPINESS, NIGHTS, GFX_KEY, DIFFICULTY_KEY, DIFFICULTIES, COOP_KEY } from './config.js';
 
-const KEY = 'survive_gus_save_v1';
+const KEYS = { main: 'survive_gus_save_v1', story: 'survive_gus_story_v1' };
+let slot = 'main';
+export function setSlot(s) { slot = KEYS[s] ? s : 'main'; }
+export function hasProfile(which = slot) {
+  try { return !!localStorage.getItem(KEYS[which]); } catch { return false; }
+}
 
 export const freshProfile = () => ({
   night: 1,                 // the night you are on (1-21)
@@ -19,10 +28,18 @@ export const freshProfile = () => ({
   stars: {},                // nights beaten on Hard (night number, or 'home')
   badge: false,             // Old John's badge, for finishing the whole game
   stats: { survived: 0, caught: 0, fixed: 0, junked: 0 },
+  // Story mode only: which story you're on (an index into STORY_PARTS), and whether it's all
+  // done. Null in Survival's save.
+  campaign: null,
   // When Jonathan Was Five, the story of when he was little (js/escape/).
   escape: freshEscape(),
   // Lost in the Pizzaplex, the story of the night they all got lost (js/plex/). Same shape.
   plex: freshEscape(),
+  // Sushi's Pizzaplex (js/sushi/): the same, plus `plush`, every plushie found
+  // ({ p1: 'bag' | 'shelf', ... }: in your backpack, or traded onto the Gift Shop's shelf).
+  sushi: { ...freshEscape(), plush: {} },
+  // In the Closets (js/closets/), after the PlayPlace: the same shape again.
+  closets: freshEscape(),
 });
 
 export const freshEscape = () => ({
@@ -36,9 +53,9 @@ export const freshEscape = () => ({
   save: null,               // the last save point touched: { level, point, found, quests, time, ... }
 });
 
-export function loadProfile() {
+export function loadProfile(which = slot) {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEYS[which]);
     if (!raw) return freshProfile();
     // Merge over a fresh profile so a save written by an older build never arrives
     // missing a field that newer code reads.
@@ -51,8 +68,12 @@ export function loadProfile() {
       stars: { ...(saved.stars || {}) },
       escape: { ...freshEscape(), ...(saved.escape || {}) },
       plex: { ...freshEscape(), ...(saved.plex || {}) },
+      sushi: { ...freshEscape(), plush: {}, ...(saved.sushi || {}) },
+      closets: { ...freshEscape(), ...(saved.closets || {}) },
     };
     for (const k of ['seen', 'plushies', 'stars', 'quests']) p.plex[k] = { ...(p.plex[k] || {}) };
+    for (const k of ['seen', 'plushies', 'stars', 'quests']) p.closets[k] = { ...(p.closets[k] || {}) };
+    for (const k of ['seen', 'plushies', 'stars', 'quests', 'plush']) p.sushi[k] = { ...(p.sushi[k] || {}) };
     p.escape.seen = { ...(p.escape.seen || {}) };
     p.escape.plushies = { ...(p.escape.plushies || {}) };
     p.escape.stars = { ...(p.escape.stars || {}) };
@@ -64,12 +85,12 @@ export function loadProfile() {
   } catch { return freshProfile(); }
 }
 
-export function saveProfile(p) {
-  try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* private mode etc. */ }
+export function saveProfile(p, which = slot) {
+  try { localStorage.setItem(KEYS[which], JSON.stringify(p)); } catch { /* private mode etc. */ }
 }
 
-export function clearProfile() {
-  try { localStorage.removeItem(KEY); } catch {}
+export function clearProfile(which = slot) {
+  try { localStorage.removeItem(KEYS[which]); } catch {}
 }
 
 // The settings live beside the save, not in it, so a new game keeps them.

@@ -11,9 +11,10 @@
 import * as THREE from 'three';
 import { ANIMATRONICS, AI, BOSS, moodOf } from './config.js';
 import { WING_HOMES } from './map.js';
-import { buildAnimatronic, poseRig, setEyes } from './models.js';
+import { buildAnimatronic, poseRig, setEyes, setMouth } from './models.js';
 import { resolveCircle } from './physics.js';
-import { sfx, startMusicBox, stopMusicBox } from './audio.js';
+import { fooledByMask, SHOP } from './shop.js';
+import { sfx, startMusicBox, stopMusicBox, songNow } from './audio.js';
 
 const tmp = new THREE.Vector3();
 
@@ -205,18 +206,26 @@ export class Animatronic {
   preyPos() { return this.preyIsTimmy ? this.game.timmy.pos : this.game.player.pos; }
 
   // Crouching hides Jonathan from everyone except Gus (and the Junk Monster, which has his
-  // head and doesn't look for you anyway — it always knows).
-  playerHidden() { return this.game.player.crouching && this.id !== 'gus'; }
+  // head and doesn't look for you anyway — it always knows). So does the Shop's Gus mask,
+  // except from anything with Gus inside it (fooledByMask).
+  playerHidden() {
+    const p = this.game.player;
+    return (p.crouching && this.id !== 'gus') || (!!p.masked && fooledByMask(this.id));
+  }
 
   sensesPlayer() {
     const player = this.game.player;
     if (!this.game.hunting || this.playerHidden()) return false;
+    // (staring at a balloon decoy)
+    if (this.decoyUntil > this.game.t) return false;
     const dx = player.pos.x - this.pos.x, dz = player.pos.z - this.pos.z;
     const d = Math.hypot(dx, dz);
     const sight = this.def.sight * (0.8 + this.level() * 0.02);
     if (d > Math.max(sight * 1.4, 16)) return false;
     // You can be heard running, even through walls.
-    if (player.sprinting && d < (this.def.hearing || AI.hearSprint)) return true;
+    // (and rolling along on the Shop's skateboard is even louder)
+    const rolling = player.skating && player.moving > 0.3;
+    if ((player.sprinting || rolling) && d < (this.def.hearing || AI.hearSprint) * (rolling ? SHOP.skateHear : 1)) return true;
     const clear = this.game.place.sightClear(this.eye(), player.pos);
     if (!clear) return false;
     if (d < 2.6) return true;
@@ -419,7 +428,11 @@ export class Animatronic {
 
     if (night && this.game.hunting && this.dangerous && this.state !== 'return' && this.state !== 'stage') {
       const reach = AI.catchRadius + this.rig.radius * 0.5;
-      if (this.distToPlayer() < reach && Math.abs(this.game.player.pos.y - this.pos.y) < 1.2 && !this.playerHidden()) this.game.caught(this);
+      // Crouching hides you from a distance, but not from bumping into one: run into it, or
+      // let it run into you, and it's got you (the designer's call). The Gus mask still fools
+      // the ones it fools, right up close.
+      const p = this.game.player, fooled = !!p.masked && fooledByMask(this.id);
+      if (this.distToPlayer() < reach && Math.abs(p.pos.y - this.pos.y) < 1.2 && !fooled) this.game.caught(this);
       const t = this.game.timmy;
       if (this.game.mode === 'night' && t.vulnerable && Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) < reach) this.game.timmyCaught(this);
     }
@@ -656,6 +669,8 @@ export class Animatronic {
     r.rotation.x += (tipX - r.rotation.x) * Math.min(1, dt * 10);
     const phase = pose === 'walk' || pose === 'chase' ? this.animT * (4 + this.speed * 1.6) : this.animT;
     poseRig(this.rig, pose, phase, amt, dt);
+    // On stage in the daytime they sing the song: jaws open with the words, shut in between.
+    if (this.state === 'stage' && this.game.mode === 'day') setMouth(this.rig, songNow()?.level ?? 0);
   }
 }
 

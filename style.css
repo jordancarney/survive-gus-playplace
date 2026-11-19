@@ -154,16 +154,39 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
 
 .menu-actions { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-bottom: 3vh; }
 
-/* The Gallery and Settings tabs hang off the bottom middle of the title screen */
-#title .menu-actions { margin-bottom: calc(3vh + 34px); }
-.title-tabs { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: flex; gap: 10px; }
+/* The Gallery and Settings tabs hang off the bottom middle of the title screen. They're the
+   last thing in the title's column rather than pinned over it, so on a short or narrow screen
+   (a phone) the title scrolls and they come after the buttons instead of covering them. */
+#title { justify-content: flex-start; }
+#title .menu-actions { margin-top: auto; margin-bottom: 3vh; }
+/* The title's menu pages (Game.titlePage): only the one that's on shows. */
+#title .menu-page:not(.on) { display: none; }
+.menu-note { margin: -6px 0 2px; font-family: var(--ui-font); font-size: 13px; color: rgba(243, 238, 254, 0.75); text-shadow: 0 1px 3px #000; }
+#storyWhere { max-width: min(420px, 86vw); text-align: center; }
+/* Story mode (js/campaign.js): a storybook gold, and Survival's night blue */
+.btn-story {
+  background: linear-gradient(180deg, #ffd23f, #e08a1a); color: #2a1406; box-shadow: 0 4px 0 #6a3a08;
+}
+.btn-story:active { box-shadow: 0 1px 0 #6a3a08; }
+.btn-survival {
+  background: linear-gradient(180deg, #4a5ad8, #1a2470); color: #fff; box-shadow: 0 4px 0 #0a0f3a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.btn-survival:active { box-shadow: 0 1px 0 #0a0f3a; }
+.story-next .screen-title { font-size: clamp(30px, 6.5vw, 64px); text-align: center; }
+.title-tabs {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; flex-shrink: 0;
+  /* down through the screen's padding, onto the bottom edge */
+  margin-bottom: calc(-24px - env(safe-area-inset-bottom));
+}
+@media (max-width: 520px) { .settings-tab { padding-left: 18px; padding-right: 18px; font-size: 14px; } }
 .settings-tab {
   font-family: var(--ui-font); font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink); white-space: nowrap;
   background: var(--panel); border: 2px solid var(--edge); border-bottom: none; border-radius: 14px 14px 0 0;
   padding: 9px 30px calc(9px + env(safe-area-inset-bottom)); cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
 }
-.settings-tab:hover { background: rgba(60, 16, 60, 0.92); border-color: var(--pink); padding-top: 12px; }
+.settings-tab:hover { background: rgba(60, 16, 60, 0.92); border-color: var(--pink); padding-top: 12px; margin-top: -3px; }
 
 .build-tag {
   position: absolute;
@@ -173,6 +196,8 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   font-size: 11px;
   color: rgba(169, 156, 196, 0.6);
 }
+/* (on a narrow phone the tabs reach the corner, so the version goes up top) */
+@media (max-width: 620px) { .build-tag { bottom: auto; top: calc(10px + env(safe-area-inset-top)); } }
 
 /* ── How to play / pause controls ───────────────────────────────────── */
 
@@ -541,6 +566,17 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   pointer-events: auto; touch-action: none;
 }
 .tbtn.pressed, .tbtn.on { background: rgba(255, 63, 164, 0.4); border-color: var(--pink); }
+.tbtn { font-size: calc(18px * var(--tk, 1)); }
+/* Two playing on a phone or iPad: Jonathan has the screen and Jimmy a controller, so the touch
+   controls cover only Jonathan's half (smaller in a short half), and his weapon readout moves
+   in from under the buttons. */
+body.split-v #touchLayer { right: 50%; --tsr: 0px; }
+body.split-h #touchLayer { bottom: 50%; --tsb: 0px; }
+@media (max-height: 560px) { body.split-h { --tk: 0.62; } }
+body.touching.split-h .pane-0 .pane-weapon { right: calc(214px * var(--tk, 1)); }
+/* (above his bars, clear of the top row of buttons, which has the Shop's at night) */
+body.touching.split-v .pane-0 .pane-weapon { left: 90px; right: auto; bottom: 96px; align-items: flex-start; }
+body.touching.split-v .pane-0 .pane-prompt { top: 42%; }
 
 @media (max-width: 700px) {
   .hud-tl { width: 150px; }
@@ -789,6 +825,18 @@ body.nightmare #nmTitle { display: block; animation: nm-title-flicker 6.5s infin
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .btn-plex:active { box-shadow: 0 1px 0 #3a0a5a; }
+/* Sushi's Pizzaplex (js/sushi/): Sushi's own red and navy */
+.btn-sushi {
+  background: linear-gradient(180deg, #e0283a, #8a0a1a); color: #fff; box-shadow: 0 4px 0 #3a0610;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.btn-sushi:active { box-shadow: 0 1px 0 #3a0610; }
+/* In the Closets (js/closets/): old wardrobe wood and a dark crack */
+.btn-closets {
+  background: linear-gradient(180deg, #8a5a32, #3a2014); color: #ffe9c0; box-shadow: 0 4px 0 #1a0c06;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.btn-closets:active { box-shadow: 0 1px 0 #1a0c06; }
 .screen-five.screen-plex {
   background:
     radial-gradient(ellipse at 50% 20%, rgba(192, 64, 255, 0.34), transparent 60%),
@@ -920,6 +968,52 @@ body.nightmare #nmTitle { display: block; animation: nm-title-flicker 6.5s infin
   image-rendering: pixelated; filter: contrast(1.3) brightness(0.9);
 }
 
+/* The jumpscare's screen going crazy (js/jumpscare.js, the designer: "super scary like
+   fnaf"): playing alone the whole picture shakes and flickers between harsh, red and
+   negative; over it (in your half, with two playing) red flashes and glitch bars tear
+   across. */
+body.scaring-all canvas#game, body.scaring-all.fnaf canvas#game {
+  animation: scare-shake 0.07s steps(2) infinite, scare-color 0.21s steps(1) infinite;
+}
+@keyframes scare-shake {
+  0% { transform: translate(-9px, 6px) rotate(-0.7deg) scale(1.05); }
+  50% { transform: translate(8px, -7px) rotate(0.8deg) scale(1.07); }
+  100% { transform: translate(-5px, -4px) rotate(0.3deg) scale(1.05); }
+}
+@keyframes scare-color {
+  0% { filter: contrast(1.6) saturate(1.7) brightness(1.1); }
+  30% { filter: contrast(2.1) saturate(2.4) hue-rotate(-18deg) brightness(1.25); }
+  55% { filter: contrast(1.4) saturate(0.2) brightness(0.8); }
+  80% { filter: invert(0.88) contrast(1.6) hue-rotate(160deg); }
+}
+.scare-fx { position: absolute; inset: 0; z-index: 31; pointer-events: none; overflow: hidden; }
+.scare-fx > div { position: absolute; inset: 0; }
+.sfx-red {
+  background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0) 35%, rgba(200, 0, 0, 0.75) 100%);
+  animation: sfx-pulse 0.16s steps(2) infinite;
+}
+@keyframes sfx-pulse { 0% { opacity: 0.35; } 50% { opacity: 1; } }
+.sfx-bars {
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0) 0 22px, rgba(255, 40, 40, 0.35) 22px 26px,
+    rgba(255, 255, 255, 0) 26px 61px, rgba(0, 0, 0, 0.55) 61px 70px);
+  mix-blend-mode: hard-light; animation: sfx-tear 0.13s steps(3) infinite;
+}
+@keyframes sfx-tear {
+  0% { transform: translate(-14px, 0); opacity: 0.9; }
+  33% { transform: translate(18px, 37px); opacity: 0.4; }
+  66% { transform: translate(-6px, -21px); opacity: 1; }
+}
+.sfx-neg { background: #fff; mix-blend-mode: difference; opacity: 0; animation: sfx-neg 0.47s steps(1) infinite; }
+@keyframes sfx-neg { 0% { opacity: 0; } 86% { opacity: 1; } 93% { opacity: 0; } }
+body.split-v .scare-fx.pane-0 { right: 50%; }
+body.split-v .scare-fx.pane-1 { left: 50%; }
+body.split-h .scare-fx.pane-0 { bottom: 50%; }
+body.split-h .scare-fx.pane-1 { top: 50%; }
+@media (prefers-reduced-motion: reduce) {
+  body.scaring-all canvas#game { animation: none; }
+  .sfx-bars, .sfx-neg { animation: none; opacity: 0; }
+}
+
 /* ── The old-school FNAF look (Settings → FNAF look; body.fnaf) ──────── */
 body.fnaf canvas#game { filter: saturate(0.52) sepia(0.2) contrast(1.22) brightness(0.98); }
 body.fnaf canvas#game.night-vision { filter: saturate(0.25) sepia(0.45) hue-rotate(55deg) contrast(1.3) brightness(1.12); }
@@ -949,6 +1043,16 @@ body.fnaf #fnafLook { display: block; }
 }
 .btn-coop:active { box-shadow: 0 1px 0 #13325a; }
 .btn-coop.on { outline: 3px solid var(--yellow); outline-offset: 2px; }
+/* 2 Players: ON and, right beside it, the one-tap way back to 1 player */
+.coop-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+/* On a short screen (a phone), the pause menu's buttons (Resume, Back to 1 player, Quit) come
+   before the long list of keys, not after it. */
+@media (max-height: 600px) {
+  /* (and it starts at the top: centred, the overflow was cut off above and couldn't be scrolled to) */
+  #pause { justify-content: flex-start; }
+  #pause .screen-title { order: -2; }
+  #pause .menu-actions { order: -1; }
+}
 .coop-sub { max-width: 60ch; color: var(--ink); line-height: 1.5; margin: 0; }
 .coop-settings { flex-direction: row; flex-wrap: wrap; justify-content: center; width: min(900px, 100%); }
 .coop-settings .setting { flex: 1 1 320px; }
@@ -1068,6 +1172,19 @@ body.split-v .gus-watch .gw-face { width: min(400px, 44vw); }
 body.split #roomHint, body.split .room-pad, body.split .room-holds { display: none; }
 #hud.esc .pane-bars { left: auto; right: 12px; }
 #hud.esc .pane-name { left: auto; right: 12px; bottom: 74px; }
+/* Two playing on a phone or iPad (Jonathan on the touch screen): his bars stay on the left,
+   out from under his buttons, and in Max's bedroom the door and closet buttons come back,
+   smaller, in his half (they're his; Jimmy has the controller). */
+body.touching.split #hud.esc .pane-0 .pane-bars, body.touching.split #hud.esc .pane-0 .pane-name { left: 12px; right: auto; }
+body.touching.split .room-pad, body.touching.split .room-holds { display: flex; transform: scale(0.75); }
+body.touching.split .room-pad { transform-origin: left bottom; }
+body.touching.split .room-holds { transform-origin: right bottom; }
+body.touching.split-v .room-holds { right: calc(50% + 16px); }
+body.touching.split-h .room-pad, body.touching.split-h .room-holds { bottom: calc(50% + 12px); }
+@media (max-height: 560px) { body.touching.split-h .room-pad, body.touching.split-h .room-holds { transform: scale(0.55); } }
+/* (in the bedroom his light never runs out, so his bars make way, and what to do goes up top) */
+body.touching.split #hud.esc-fixed .pane-0 .pane-bars, body.touching.split #hud.esc-fixed .pane-0 .pane-name { display: none; }
+body.touching.split #hud.esc-fixed .pane-0 .pane-status { bottom: auto; top: 22%; }
 /* the key lists side by side in two columns, so the 2 Players screen fits without scrolling */
 .coop-card .controls-list { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 12px; }
 .coop-card .controls-list .key { font-size: 11px; }
@@ -1093,3 +1210,112 @@ body.split-h .ew-ring { transform: scale(0.7); }
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--hud-font);
   font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: var(--yellow); text-align: center; width: 110px;
 }
+
+/* ── The Shop (js/shop.js): Gus tokens and what they buy ────────────── */
+
+#shop { justify-content: flex-start; gap: 12px; }
+#shop > :first-child { margin-top: auto; }
+#shop > :last-child { margin-bottom: auto; }
+.shop-wallet {
+  display: flex; align-items: center; gap: 10px; padding: 8px 22px; border-radius: 999px;
+  background: var(--panel); border: 2px solid rgba(255, 210, 63, 0.55); box-shadow: 0 0 24px rgba(255, 210, 63, 0.18);
+}
+.shop-wallet b { font-family: var(--hud-font); font-size: 30px; color: var(--yellow); }
+.shop-wallet span:last-child { font-weight: 700; color: var(--ink); }
+.shop-coin { font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+.shop-how { margin: 0; color: var(--dim); font-size: 14px; max-width: 560px; }
+.shop-how b { color: var(--yellow); }
+.shop-debug { font-family: var(--hud-font); font-size: 12px; color: var(--cyan); }
+.shop-note {
+  max-width: 620px; padding: 10px 16px; border-radius: 12px; font-size: 15px; color: var(--ink);
+  background: rgba(60, 255, 107, 0.12); border: 2px solid rgba(60, 255, 107, 0.45);
+}
+.shop-note b { color: var(--yellow); }
+.shop-tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.shop-tab {
+  font-family: var(--hud-font); font-size: 13px; font-weight: 700; letter-spacing: 0.18em; color: var(--ink);
+  background: rgba(255, 255, 255, 0.04); border: 2px solid var(--edge); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+}
+.shop-tab.on { background: var(--yellow); color: #1a0a24; border-color: var(--yellow); }
+.shop-sub { font-family: var(--hud-font); font-size: 12px; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; }
+.shop-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 230px)); gap: 12px;
+  justify-content: center; width: min(980px, 100%);
+}
+.shop-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 12px 12px;
+  background: var(--panel); border: 2px solid var(--edge); border-radius: 14px;
+}
+.shop-card.mine { border-color: rgba(60, 255, 107, 0.55); }
+.shop-icon { font-size: 44px; line-height: 1.1; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6)); }
+.shop-name { font-size: 17px; font-weight: 800; color: var(--ink); }
+.shop-name small { color: var(--yellow); font-size: 13px; }
+.shop-desc { flex: 1; font-size: 13px; line-height: 1.35; color: var(--dim); }
+.shop-have { font-family: var(--hud-font); font-size: 12px; color: var(--green); }
+.shop-buy { width: 100%; padding: 10px 12px; }
+.shop-owned { font-weight: 800; color: var(--green); padding: 9px 0; }
+.shop-wear { display: flex; gap: 6px; width: 100%; }
+.shop-wear .btn { flex: 1; min-width: 0; padding: 9px 6px; font-size: 14px; }
+.shop-wear .btn.on { background: rgba(60, 255, 107, 0.2); border-color: var(--green); color: var(--green); }
+/* three tabs along the bottom of the title screen: squeeze them on a phone */
+@media (max-width: 520px) { .title-tabs { gap: 5px; } .settings-tab { padding-left: 10px; padding-right: 10px; } }
+
+/* 🪙 +1, by the clock, whenever you earn one */
+.token-pop {
+  position: absolute; top: calc(70px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  font-family: var(--hud-font); font-size: 22px; font-weight: 800; color: var(--yellow); text-shadow: 0 2px 6px #000;
+  pointer-events: none; opacity: 0; z-index: 25;
+}
+.token-pop.show { animation: tokenPop 1.4s ease-out forwards; }
+@keyframes tokenPop {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -26px) scale(1); }
+}
+
+/* Your pocket at night: what you've got from the Shop, and the keys */
+.shop-pocket {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(112px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 3px; padding: 7px 10px; border-radius: 10px; pointer-events: none;
+  background: rgba(16, 10, 32, 0.7); border: 1px solid rgba(255, 210, 63, 0.35); font-family: var(--hud-font); color: var(--ink);
+  max-width: 240px; z-index: 4;
+}
+.pane .shop-pocket { left: 12px; bottom: 118px; }
+/* (on a touch screen: under the kids' happiness, right of the 🏃 and ⤓ buttons) */
+body.touching .shop-pocket { bottom: auto; top: calc(88px + env(safe-area-inset-top)); left: calc(92px + env(safe-area-inset-left)); padding: 5px 8px; }
+.sp-item { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
+.sp-icon { font-size: 20px; }
+.sp-name b { color: var(--yellow); }
+.sp-keys, .sp-tags { font-size: 11px; color: var(--dim); }
+.sp-keys b, .sp-tags b { color: var(--yellow); }
+.sp-tags { color: var(--ink); }
+
+/* Looking out through the Gus mask: dark fur all round, two eye holes */
+.gus-mask { position: absolute; inset: 0; pointer-events: none; }
+.gm-face {
+  position: absolute; inset: -2%;
+  background:
+    radial-gradient(ellipse 24% 13% at 50% 101%, rgba(205, 150, 60, 0.95), rgba(150, 100, 40, 0.95) 70%, transparent 72%),
+    radial-gradient(ellipse at 50% 40%, #3a2a5e 0%, #24183c 60%, #120a20 100%);
+  -webkit-mask-image:
+    radial-gradient(ellipse 15% 19% at 36% 42%, transparent 92%, #000 100%),
+    radial-gradient(ellipse 15% 19% at 64% 42%, transparent 92%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(ellipse 15% 19% at 36% 42%, transparent 92%, #000 100%),
+    radial-gradient(ellipse 15% 19% at 64% 42%, transparent 92%, #000 100%);
+  mask-composite: intersect;
+  opacity: 0.97;
+}
+.gm-air {
+  position: absolute; left: 50%; top: 14%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; font-family: var(--hud-font); font-size: 12px; font-weight: 800; color: var(--yellow);
+}
+.gm-air .bar { width: 140px; }
+.gm-air .fill { background: var(--cyan); }
+
+/* the emote wheel, bigger once the Shop's emotes are on it */
+.emote-wheel.big .ew-ring { width: 380px; height: 380px; }
+.emote-wheel.big .ew-slot { width: 70px; }
+.emote-wheel.big .ew-slot span { font-size: 26px; }

@@ -28,13 +28,20 @@
 import * as THREE from 'three';
 import { input } from '../input.js';
 import { sfx, startMusicBox, stopMusicBox } from '../audio.js';
-import { buildAnimatronic, poseRig, setEyes } from '../models.js';
+import { buildAnimatronic, poseRig, setEyes, addBigTeeth } from '../models.js';
 import { buildBabyGus } from '../escape/cast.js';
 import { buildPlushGus } from './cast.js';
 
 const $ = (id) => document.getElementById(id);
 
 const SPOTS = ['middle', 'left', 'right', 'closet', 'bed'];
+// Getting from one place to another: seconds, strides, and how much the view bounces.
+const RUN = {
+  // (the designer: "make the footsteps slower" — fewer, bigger strides)
+  to: { time: 0.6, strides: 3, bob: 2.2 },     // running to a door or the closet
+  back: { time: 0.5, strides: 2, bob: 1.5 },   // backing away to the middle
+  spin: { time: 0.32, strides: 0, bob: 0 },    // turning round to the bed, or back
+};
 
 export class Bedroom {
   constructor(mode, lv) {
@@ -54,7 +61,8 @@ export class Bedroom {
     // the two things coming down the halls
     this.halls = ['left', 'right'].map((side) => {
       const h = this.def[side];
-      const rig = h.build ? h.build() : buildAnimatronic(h.bot, h.old ? { old: true } : undefined);
+      // (with big FNAF 4 teeth: the designer's call, for Max's chapters)
+      const rig = addBigTeeth(h.build ? h.build() : buildAnimatronic(h.bot, h.old ? { old: true } : undefined));
       rig.root.rotation.order = 'YXZ';
       rig.root.visible = false;
       mode.game.scene.add(rig.root);
@@ -65,14 +73,14 @@ export class Bedroom {
     });
     // the closet's baby Gus, and the plushies on the bed
     const c = this.def.closet;
-    const baby = c.build ? c.build() : buildBabyGus(2);
+    const baby = addBigTeeth(c.build ? c.build() : buildBabyGus(2));
     baby.root.rotation.order = 'YXZ';
     baby.root.visible = false;
     mode.game.scene.add(baby.root);
     this.baby = { rig: baby, root: baby.root, id: c.id || 'babygus', name: c.name || 'the baby Gus', def: { kind: 'watcher' }, pos: P(...c.back), yaw: 0, from: P(...c.back), to: P(...c.front) };
     // the music box's Gus: nowhere to be seen until it runs down
     if (this.def.musicBox) {
-      const gus = buildAnimatronic('gus');
+      const gus = addBigTeeth(buildAnimatronic('gus'));
       gus.root.rotation.order = 'YXZ';
       gus.root.visible = false;
       mode.game.scene.add(gus.root);
@@ -216,36 +224,55 @@ export class Bedroom {
 
   // ── Moving between the four places ────────────────────────────────────
 
+  // Like the real FNAF 4 (the designer's call): to a door or the closet you turn and RUN —
+  // the view bounces with every stride, leans in and rocks side to side, with your feet
+  // thumping on the carpet — and coming back you back away from it the same way. Turning
+  // round to the bed is a quick spin, no running. (`RUN`: how long each takes, and how many
+  // strides.)
   go(where) {
     if (!SPOTS.includes(where) || where === this.spot) return;
     // from a door or the closet, any other way is back to the middle first
     if (this.spot !== 'middle' && this.spot !== 'bed' && where !== 'middle') where = 'middle';
     if (this.spot === 'bed' && where !== 'middle' && where !== 'bed') where = 'middle';
     const v = this.current();
+    const st = this.st;
+    st.run = where === 'bed' || this.spot === 'bed' ? RUN.spin : where === 'middle' ? RUN.back : RUN.to;
+    st.stride = 0;
     this.from = { pos: v.pos.clone(), yaw: v.yaw };
     this.spot = where;
     this.k = 0;
     this.atDoor = 0;
-    sfx.escHide();
+    if (!st.run.strides) sfx.escHide();
   }
 
   current() {
     const a = this.from, b = this.views[this.spot];
-    const k = this.k * this.k * (3 - 2 * this.k);
+    const run = this.st.run || RUN.spin;
+    const ease = (x) => x * x * (3 - 2 * x);
+    // running there, you turn to face it first; backing away, you turn as you go
+    const k = ease(this.k);
+    const ky = run === RUN.to ? ease(Math.min(1, this.k / 0.4)) : k;
     let dy = b.yaw - a.yaw;
     while (dy > Math.PI) dy -= Math.PI * 2;
     while (dy < -Math.PI) dy += Math.PI * 2;
-    return { pos: a.pos.clone().lerp(b.pos, k), yaw: a.yaw + dy * k };
+    return { pos: a.pos.clone().lerp(b.pos, k), yaw: a.yaw + dy * ky };
   }
 
   applyView() {
     const p = this.mode.player;
+    const st = this.st;
     const v = this.current();
+    const run = st.run && st.run.strides && this.k < 1 ? st.run : null;
+    // how hard you're running right now: nothing, up to full in the middle, nothing again
+    const go = run ? Math.sin(Math.PI * this.k) * run.bob : 0;
     p.pos.set(v.pos.x, 0, v.pos.z);
     p.yaw = v.yaw + Math.sin(this.t * 0.7) * 0.015;
-    p.pitch = this.spot === 'bed' ? -0.28 : this.spot === 'closet' ? -0.05 : -0.04;
+    p.pitch = (this.spot === 'bed' ? -0.28 : this.spot === 'closet' ? -0.05 : -0.04) - go * 0.035;
     p.height = p.S.eyeHeight;
+    p.bobPhase = run ? this.k * run.strides * Math.PI : 0;
+    p.bob = go;
     p.updateCamera();
+    if (run) p.camera.rotation.z = Math.sin(p.bobPhase) * 0.016 * go;
   }
 
   // ── Update ────────────────────────────────────────────────────────────
@@ -272,7 +299,14 @@ export class Bedroom {
   // One of you: the keys, where you're standing, what you're holding.
   turn(dt, p, S) {
     const ctl = p.ctl;
-    this.k = Math.min(1, this.k + dt / 0.32);
+    const run = this.st.run || RUN.spin;
+    const was = this.k;
+    this.k = Math.min(1, this.k + dt / run.time);
+    // a thump each time a foot comes down (the bottom of each bounce)
+    if (run.strides && was < 1) {
+      const n = Math.floor(this.k * run.strides + 0.25);
+      if (n > this.st.stride) { this.st.stride = n; sfx.plexDash(); }
+    }
     // (playing alone, the on-screen buttons are yours; two playing, they're player 1's)
     const btn = p.index === 0 ? this.held : {};
     const key = (a, code) => ctl.pressed(a) || ctl.keyPressed(code);

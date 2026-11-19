@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import {
   buildPerson, mat, fur, cloth, setEyes, biped, part, group, eyes, addFur, MODEL_G as G,
-  buildGus, GUS_LOOK, DARK_METAL, vmMat,
+  buildGus, GUS_LOOK, DARK_METAL, vmMat, tailRoot, gusTail,
 } from '../models.js';
 import { REALISTIC, GLOW } from '../config.js';
 
@@ -242,7 +242,7 @@ export function buildPjork() {
   rig.propeller = group(cap, [0, 0.29, 0]);
   for (const sx of [-1, 1]) part(G.box, mat(sx > 0 ? 0xd11f2a : 0x2a4fa0, { rough: 0.4 }), rig.propeller, { p: [sx * 0.12, 0, 0], s: [0.24, 0.01, 0.05] });
   // a curly tail
-  part(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI * 1.6), light, rig.hips, { p: [0, -0.05, -0.46], r: [0, Math.PI / 2, 0] });
+  part(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI * 1.6), light, tailRoot(rig), { p: [0, 0.02, -0.08], r: [0, Math.PI / 2, 0] });
   return finish(rig, 'pjork', 0.55);
 }
 
@@ -317,7 +317,7 @@ export function buildBabyGus(seed = 0) {
   part(G.torus, cloth(0xffffff), h, { p: [0, 0.38, 0.2], s: [0.3, 0.3, 0.3], r: [-0.3, 0, 0] });
   part(G.sphere, cloth(0xffffff), rig.torso, { p: [0, 0.72, 0.3], s: [0.3, 0.22, 0.08] });
   part(G.torus, mat(pastel, { rough: 0.3 }), h, { p: [0, 0.2, 0.75], s: [0.07, 0.07, 0.07] });
-  part(G.sphere, fur(0x5a341d, { pile: 0.6 }), rig.hips, { p: [0, -0.2, -0.5], s: [0.3, 0.07, 0.42], r: [0.5, 0, 0] });
+  gusTail(rig, fur(0x5a341d, { pile: 0.6 }));
   rig.root.scale.setScalar(0.56);
   rig.headR = 0.34 * 0.56;
   rig.radius = 0.3;

@@ -35,6 +35,7 @@ import { Hud } from './hud.js';
 import { Touch } from './touch.js';
 import { Timmy } from './timmy.js';
 import { Phone } from './phone.js';
+import { Shop } from './shop.js';
 import {
   loadProfile, saveProfile, freshProfile, saveGraphics, takeReopenSettings, loadDifficulty, saveDifficulty,
   loadDebug, saveDebug, loadLook, saveLook, loadCoop, saveCoop,
@@ -43,6 +44,9 @@ import { setEyes, buildJonathan, buildManager, buildGramma, buildOldJohn, buildJ
 import { signTex } from './textures.js';
 import { EscapeMode, STORY } from './escape/mode.js';
 import { PlexMode, PLEX_STORY } from './plex/mode.js';
+import { SushiMode, SUSHI_STORY } from './sushi/mode.js';
+import { ClosetsMode, CLOSETS_STORY } from './closets/mode.js';
+import { Campaign } from './campaign.js';
 import { VERSION } from './version.js';
 import { LUNGE, STATIC, holdFor, placeScare, finishScare, showStatic, drawStatic, hideStatic } from './jumpscare.js';
 
@@ -157,6 +161,12 @@ export class Game {
     // Lost in the Pizzaplex: the third story, in the same engine (js/plex/).
     Object.assign(SCRIPTS, PLEX_STORY);
     this.plex = new PlexMode(this);
+    // Sushi's Pizzaplex: the fourth story, the same engine again (js/sushi/).
+    Object.assign(SCRIPTS, SUSHI_STORY);
+    this.sushi = new SushiMode(this);
+    // In the Closets: the fifth story, after the PlayPlace, the same engine (js/closets/).
+    Object.assign(SCRIPTS, CLOSETS_STORY);
+    this.closets = new ClosetsMode(this);
     this.story = this.escape;     // whichever story mode is open
     this.setArea('playplace');
     graphics.prepare(this.scene);
@@ -164,6 +174,8 @@ export class Game {
     this.setWing(false);
 
     this.profile = loadProfile();
+    this.shop = new Shop(this);     // Gus tokens, and what they buy (its own save)
+    this.campaign = new Campaign(this);   // Story mode: every story in one go (its own save)
     this.mode = 'loading';
     this.t = 0;
     this.playing = 1;
@@ -258,6 +270,7 @@ export class Game {
     this.debugMode = on;
     saveDebug(on);
     if (!on) { this.profile = loadProfile(); this.updatePhoto(); }
+    this.shop.setDebug(on);
     this.hud.title(this.profile);
   }
   allBots() {
@@ -327,6 +340,23 @@ export class Game {
     if (key === 'jonathan') { this.p1.name = 'Jonathan'; this.panes?.[0].setName('JONATHAN', '🔦'); }
     if (this.p1.body && this.p1.body !== this.bodyCache[key]) this.p1.body.root.visible = false;
     this.p1.body = this.makeBody(key, build);
+  }
+
+  // "It's hard to get out of 2 player" (the designer): one tap, on the title or in the pause
+  // menu, and it's just Jonathan again, carrying on right where he is. Whatever Jimmy was in
+  // the middle of (the cameras, a repair, dragging one, an emote) is put down first.
+  goSolo() {
+    const p2 = this.p2;
+    if (p2 && this.twoUp) {
+      if (this.cams.active && this.cams.user === p2) this.cams.close();
+      if (p2.repair && p2.repair.active) this.withPlayer(p2, () => p2.repair.cancel());
+      if (p2.carrying) this.withPlayer(p2, () => this.dropCarried());
+      if (p2.wheel) this.closeWheel(p2);
+      if (p2.emote) this.stopEmote(p2);
+      this.nightVision(p2, false);
+    }
+    this.setCoop(false);
+    sfx.uiBack();
   }
 
   setCoop(on) {
@@ -530,7 +560,9 @@ export class Game {
     if (!el) {
       el = document.createElement('div');
       el.className = 'emote-wheel hidden';
-      const R = 112, n = EMOTES.length;
+      // (a bigger wheel once the Shop's emotes are on it)
+      const n = EMOTES.length, R = n > 8 ? 150 : 112;
+      if (n > 8) el.classList.add('big');
       el.innerHTML = `<div class="ew-ring">${EMOTES.map((e, i) => {
         const a = (i / n) * Math.PI * 2;
         return `<div class="ew-slot" style="left:calc(50% + ${Math.sin(a) * R}px);top:calc(50% - ${Math.cos(a) * R}px)"><span>${e.icon}</span><small>${e.name}</small></div>`;
@@ -591,7 +623,7 @@ export class Game {
     p.crouching = false;
     p.vel.set(0, 0, 0);
     // (the worm looks best from the side)
-    p.emote = { id: def.id, len: def.len, t: 0, yaw: p.yaw, orbit: def.id === 'worm' ? 1.35 : 0, vm: p.vmGroup.visible };
+    p.emote = { id: def.id, len: def.len, t: 0, yaw: p.yaw, orbit: def.id === 'worm' || def.id === 'sleep' ? 1.35 : 0, vm: p.vmGroup.visible };
     sfx.emote(def.id);
   }
 
@@ -609,7 +641,7 @@ export class Game {
     const h = p.S.eyeHeight;
     const a = e.yaw + e.orbit;
     const fx = -Math.sin(a), fz = -Math.cos(a);
-    const centre = new THREE.Vector3(p.pos.x, p.pos.y + (e.id === 'worm' ? 0.35 : h * 0.62), p.pos.z);
+    const centre = new THREE.Vector3(p.pos.x, p.pos.y + (e.id === 'worm' || e.id === 'sleep' ? 0.35 : h * 0.62), p.pos.z);
     const want = 1.6 + h * 0.9;
     let d = 0.6;
     while (d < want && this.place.isWalkable(centre.x + fx * (d + 0.35), centre.z + fz * (d + 0.35))) d += 0.1;
@@ -706,6 +738,7 @@ export class Game {
       }
       p.walkT = (p.walkT || 0) + dt * (4 + p.moving * 5);
       this.screamMouth(b.rig, e && e.id === 'point' ? e.t : null);
+      this.shop.dress(p, b, e);     // a hat from the Shop, and the bought emotes that tip you over
       if (e) poseRig(b.rig, e.id, e.t, 1, dt);
       else if (p.crouching) poseRig(b.rig, 'crouch', p.walkT, p.moving * 1.6, dt);
       else if (p.moving > 0.15) poseRig(b.rig, 'walk', p.walkT, Math.min(1.3, p.moving), dt);
@@ -794,9 +827,13 @@ export class Game {
       // (When Jonathan Was Five is a story of its own: a new game keeps how far you got in it)
       const five = this.profile.escape;   // (its secret ending too)
       const plex = this.profile.plex;     // (and so is Lost in the Pizzaplex)
+      const sushi = this.profile.sushi;   // (and Sushi's Pizzaplex)
+      const closets = this.profile.closets;   // (and In the Closets)
       this.profile = freshProfile();
       this.profile.escape = five;
       this.profile.plex = plex;
+      this.profile.sushi = sushi;
+      this.profile.closets = closets;
       this.save();
       this.updatePhoto();
       this.continueGame();
@@ -805,13 +842,15 @@ export class Game {
       this.hud.select(this.profile, (n) => { sfx.ui(); if (n === 'home') this.startHome(); else this.showCard(n); }, this.debugMode);
       this.showScreen('select');
     });
-    click('btnSelectBack', () => this.toTitle());
+    click('btnSelectBack', () => this.toTitle('survival'));
     click('btnHowTo', () => this.showScreen('howto'));
     // How to Play lives in Settings, so Back goes back there.
     click('btnHowToBack', () => this.openSettings());
     click('btnSettings', () => this.openSettings());
     click('btnGallery', () => { this.hud.gallery(); $('galleryView').classList.add('hidden'); this.showScreen('gallery'); });
     click('btnGalleryBack', () => this.toTitle());
+    click('btnShop', () => { this.shop.open(); this.showScreen('shop'); });
+    click('btnShopBack', () => this.toTitle());
     click('btnSettingsBack', () => this.toTitle());
     click('btnCardGo', () => this.beginNight(this.cardNight));
     click('btnResume', () => this.togglePause());
@@ -823,10 +862,30 @@ export class Game {
     click('btnGuardNoteGo', () => this.closeGuardNote());
     // Two players: the setup screen, and the three games to play together.
     click('btnCoop', () => this.openCoop());
+    click('btnSolo', () => this.goSolo());
+    click('btnPauseSolo', () => { this.goSolo(); this.togglePause(); });
     click('btnCoopBack', () => this.toTitle());
     click('btnCoopNights', () => { this.setCoop(true); this.continueGame(); });
     click('btnCoopFive', () => { this.setCoop(true); this.escape.showMenu(); });
     click('btnCoopPlex', () => { this.setCoop(true); this.plex.showMenu(); });
+    click('btnCoopSushi', () => { this.setCoop(true); this.sushi.showMenu(); });
+    click('btnCoopStory', () => { this.setCoop(true); this.toTitle('story'); });
+    click('btnSushi', () => this.sushi.showMenu());
+    click('btnClosets', () => this.closets.showMenu());
+    click('btnCoopClosets', () => { this.setCoop(true); this.closets.showMenu(); });
+    // The title's pages: Play, then Story or Survival (titlePage).
+    click('btnMainPlay', () => this.titlePage('play'));
+    click('btnStory', () => this.titlePage('story'));
+    click('btnSurvival', () => this.titlePage('survival'));
+    for (const b of document.querySelectorAll('#title [data-back]')) {
+      b.addEventListener('click', () => { sfx.uiBack(); this.titlePage(b.dataset.back); });
+    }
+    click('btnStoryContinue', () => this.campaign.enter(false));
+    click('btnStoryNew', () => {
+      const w = this.campaign.where();
+      if (w && !w.done && !confirm('Start the story over from the very beginning? (Survival keeps all its progress.)')) return;
+      this.campaign.enter(true);
+    });
 
     // Clicking the 3D view during play takes the mouse.
     // (not in the story chapters where you stay put and click buttons: Max's bedroom,
@@ -865,10 +924,25 @@ export class Game {
       ? 'Jonathan on the top half, Jimmy on the bottom half.'
       : 'Jonathan on the left half, Jimmy on the right half.';
     const list = (map) => Object.values(map).map((d) => `<span class="key">${d.show}</span><span>${d.label}</span>`).join('');
-    $('coopKeys1').innerHTML = list(P1_KEYMAP) + '<span class="key">TRACKPAD</span><span>Look around</span>';
-    $('coopKeys2').innerHTML = list(P2_KEYMAP);
-    $('coopPadKeys').innerHTML = PAD_HELP.map(([k, l]) => `<span class="key">${k}</span><span>${l}</span>`).join('');
+    const pairs = (rows) => rows.map(([k, l]) => `<span class="key">${k}</span><span>${l}</span>`).join('');
+    // On a phone or iPad (the designer's call): Jonathan has the screen, Jimmy a controller.
+    const touch = this.touchScreen();
+    const [how1, how2] = document.querySelectorAll('#coop .coop-how');
+    how1.textContent = touch ? 'The touch screen' : 'WASD + the trackpad';
+    how2.textContent = touch ? 'A controller (like a PS5 controller)' : 'The arrow keys — or a controller';
+    $('coopKeys1').innerHTML = touch
+      ? pairs([['LEFT THUMB', 'Walk'], ['RIGHT THUMB', 'Look around'], ['⚡', 'Zap'], ['E', 'Use'], ['🔦', 'Flashlight'],
+        ['⇄', 'Next weapon'], ['🏃', 'Run'], ['⤓', 'Crouch'], ['😀', 'Emotes'], ['❚❚', 'Pause']])
+      : list(P1_KEYMAP) + '<span class="key">TRACKPAD</span><span>Look around</span>';
+    $('coopKeys2').innerHTML = touch ? pairs(PAD_HELP) : list(P2_KEYMAP);
+    document.querySelector('#coop .coop-padkeys').hidden = touch;
+    $('coopPadKeys').innerHTML = pairs(PAD_HELP);
     this.coopPads();
+  }
+
+  // A phone or tablet: touched, or a touch screen with no mouse.
+  touchScreen() {
+    return this.touch.active || (typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches);
   }
 
   // Is there a controller? (Most only show up after you press a button on them.)
@@ -876,6 +950,7 @@ export class Game {
     const n = readPads().length;
     const t = n > 1 ? '🎮🎮 Two controllers: Jimmy has the first, Jonathan the second.'
       : n ? '🎮 Controller connected — it\'s Jimmy\'s!'
+      : this.touchScreen() ? '🎮 Jimmy needs a controller! Connect one (like a PS5 controller) in Bluetooth settings, then press a button on it.'
       : '🎮 Got a controller? Plug it in and press a button on it — Jimmy can use it instead of the arrows.';
     if ($('coopPad').textContent !== t) $('coopPad').textContent = t;
     $('coopPad').classList.toggle('on', n > 0);
@@ -964,10 +1039,14 @@ export class Game {
     this.showDebugBadge();
   }
 
-  toTitle() {
+  // `page`: which of the title's menus to show (titlePage).
+  toTitle(page = 'main') {
     exitPointerLock();
     this.escape.leave();
     this.plex.leave();
+    this.sushi.leave();
+    this.closets.leave();
+    this.campaign.leave();    // (out of Story mode: Survival's save again)
     this.story = this.escape;
     this.viewCam = null;
     this.setArea('playplace');
@@ -987,9 +1066,27 @@ export class Game {
     this.hud.title(this.profile);
     this.escape.titleBadge();
     this.plex.titleBadge();
+    this.sushi.titleBadge();
+    this.closets.titleBadge();
+    this.titlePage(page);
     this.showScreen('title');
     playMusic(this.nightmare ? 'nightmare' : 'title');
     if (takeReopenSettings()) this.openSettings();
+  }
+
+  // The title's menu pages (the designer: "a main menu that says play, and it leads you to a
+  // screen that says story or survival"): 'main' (Play, 2 Players), 'play' (Story or
+  // Survival), 'story' (Continue or New game) and 'survival' (every story and night to pick
+  // from, the way the title always was).
+  titlePage(page = 'main') {
+    for (const el of document.querySelectorAll('#title .menu-page')) el.classList.toggle('on', el.dataset.page === page);
+    if (page !== 'story') return;
+    const w = this.campaign.where();
+    const going = !!w && !w.done;
+    $('btnStoryContinue').classList.toggle('hidden', !going);
+    $('storyWhere').textContent = w ? w.text : 'Start at Sushi\'s Pizzaplex and play every story, one after another.';
+    $('btnStoryNew').className = going ? 'btn btn-ghost' : 'btn btn-big btn-story';
+    $('btnStoryNew').innerHTML = going ? 'New game' : '▶&nbsp; New game';
   }
 
   continueGame() {
@@ -1186,6 +1283,7 @@ export class Game {
   caught(who) {
     if (!this.hunting || this.grace > 0 || this.player.out) return;
     if (this.night.secondChance) { this.getAway(who); return; }
+    if (this.shop.saveLife(who)) return;
     // (two playing: only the one it caught sees it, in their half — `scareP`)
     this.scareP = this.player;
     this.stopEmote(this.player);
@@ -1225,7 +1323,8 @@ export class Game {
 
   // Easy mode: the first time something catches you each night, you wriggle free. It's stunned
   // and nothing can catch you for a few seconds, so run!
-  getAway(who) {
+  // (the Shop's extra life does the same, with its own `msg`)
+  getAway(who, msg = null) {
     this.night.secondChance = false;
     this.grace = SECOND_CHANCE_GRACE;
     const stun = SECOND_CHANCE_GRACE + 1;
@@ -1235,7 +1334,7 @@ export class Game {
     if (this.player.carrying) this.dropCarried();
     this.player.shake = 0.8;
     this.hud.flashHit();
-    this.hud.toast(`You got away from ${who.name}! That was your second chance — RUN!`, 4);
+    this.hud.toast(msg || `You got away from ${who.name}! That was your second chance — RUN!`, 4);
   }
 
   updateJumpscare(dt) {
@@ -1329,11 +1428,14 @@ export class Game {
       sfx.victory();
       this.cutscene(who.id === 'gus' ? 'gusDown' : 'finale', () => {
         // The first time it's all over, the old night guard comes to meet who finally did it.
-        if (who.id === 'gus' || p.seen.oldJohn) { this.toTitle(); return; }
+        // (Story mode: on to Night 21 after Gus, and after it all, on to whatever comes next)
+        const after = () => (this.campaign.on ? this.campaign.partDone('nights') : this.toTitle());
+        if (who.id === 'gus') { if (this.campaign.on) this.continueGame(); else this.toTitle(); return; }
+        if (p.seen.oldJohn) { after(); return; }
         p.seen.oldJohn = true;
         p.badge = true;
         this.save();
-        this.cutscene('oldJohn', () => this.toTitle());
+        this.cutscene('oldJohn', after);
       });
     }
   }
@@ -1371,6 +1473,7 @@ export class Game {
     if (!this.isPlaying()) return;
     this.pausedFrom = this.mode;
     exitPointerLock();
+    $('btnPauseSolo').classList.toggle('hidden', !this.twoUp);
     this.showScreen('pause');
     this.mode = 'paused';
   }
@@ -1516,7 +1619,7 @@ export class Game {
         this.updateBackdrop(dt);
         if (Math.floor(this.t * 2) !== Math.floor((this.t - dt) * 2)) this.coopPads();
         break;
-      case 'title': case 'card': case 'howto': case 'select': case 'settings': case 'gallery':
+      case 'title': case 'card': case 'howto': case 'select': case 'settings': case 'gallery': case 'shop':
       case 'escMenu': case 'escCard': case 'escWin':
         this.updateBackdrop(dt);
         break;
@@ -1549,7 +1652,7 @@ export class Game {
       const dx = this.camera.position.x - a.pos.x, dz = this.camera.position.z - a.pos.z;
       a.rig.head.rotation.y = Math.atan2(dx, dz) * 0.6 + Math.sin(this.t * 0.5 + a.animT) * 0.05;
     }
-    if (this.mode === 'title' || this.mode === 'settings' || this.mode === 'gallery') this.scareTick(dt, 18);
+    if (this.mode === 'title' || this.mode === 'settings' || this.mode === 'gallery' || this.mode === 'shop') this.scareTick(dt, 18);
   }
 
   handleCommonInput() {
@@ -1583,7 +1686,9 @@ export class Game {
     } else {
       if (this.handleCommonInput()) return true;
       p.update(dt);
-      const it = this.findInteraction();
+      this.shop.turn(dt, p);
+      let it = this.findInteraction();
+      if (it && p.masked) it = this.shop.maskedPrompt(p);
       this.hud.prompt(it ? it.text : null);
       if (it && ctl.pressed('interact')) it.act();
       if (this.mode !== mode) return true;
@@ -1627,6 +1732,7 @@ export class Game {
     else this.junk.update(dt);
     this.weapons.update(dt);
     this.machines.update(dt);
+    this.shop.tick(dt);
     this.hud.update(dt);
   }
 
@@ -1638,6 +1744,7 @@ export class Game {
     this.night.time += dt;
     if (this.botTurns(this.bots.filter((a) => a.id !== 'gus'), dt)) return;
     this.weapons.update(dt);
+    this.shop.tick(dt);
     this.hud.update(dt);
     if (this.vanCount() === ROAMERS.length && !this.players.some((p) => p.carrying)) this.winHome();
   }
@@ -1748,6 +1855,8 @@ export class Game {
 
   render(dt) {
     this.cams.renderMonitors(this.renderer, this.scene, dt);
+    // (a story's own render-to-texture: In the Closets' mirrors)
+    if (this.mode === 'escape' && this.story.renderExtras) this.story.renderExtras(this.renderer, this.scene, dt);
     if (this.twoUp) {
       // (anyone not being played right now — out, or in a cutscene — has their light off)
       const view = this.playingView();

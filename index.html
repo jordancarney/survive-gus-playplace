@@ -234,16 +234,44 @@
         <div id="badgeTag" class="badge-tag hidden">🏅 Old John's badge</div>
         <div id="secretTag" class="badge-tag hidden">⭐ When Jonathan Was Five: secret ending found</div>
         <div id="plexTag" class="badge-tag hidden">🍕 Lost in the Pizzaplex: everybody got out!</div>
+        <div id="sushiTag" class="badge-tag hidden">🐧 Sushi's Pizzaplex: you got out... but Peter got away</div>
+        <div id="closetsTag" class="badge-tag hidden">🚪 In the Closets: Gramma came home!</div>
       </div>
-      <div class="menu-actions">
+      <!-- The title's menus, one page at a time (Game.titlePage): the designer's "main menu that
+           says play, and it leads you to a screen that says story or survival". -->
+      <div class="menu-actions menu-page on" data-page="main">
+        <button id="btnMainPlay" class="btn btn-big">▶&nbsp; Play</button>
+        <div class="coop-row">
+          <button id="btnCoop" class="btn btn-coop">👥&nbsp; 2 Players</button>
+          <!-- (only while 2 Players is on: one tap back to just Jonathan, right beside it) -->
+          <button id="btnSolo" class="btn btn-ghost hidden">👤&nbsp; Back to 1 player</button>
+        </div>
+      </div>
+      <div class="menu-actions menu-page" data-page="play">
+        <button id="btnStory" class="btn btn-big btn-story">📖&nbsp; Story</button>
+        <p class="menu-note">Every story, one after another</p>
+        <button id="btnSurvival" class="btn btn-big btn-survival">🌙&nbsp; Survival</button>
+        <p class="menu-note">Pick any story or night</p>
+        <button class="btn btn-ghost" data-back="main">Back</button>
+      </div>
+      <div class="menu-actions menu-page" data-page="story">
+        <button id="btnStoryContinue" class="btn btn-big btn-story">▶&nbsp; Continue</button>
+        <p id="storyWhere" class="menu-note"></p>
+        <button id="btnStoryNew" class="btn btn-ghost">New game</button>
+        <button class="btn btn-ghost" data-back="play">Back</button>
+      </div>
+      <div class="menu-actions menu-page" data-page="survival">
         <button id="btnPlay" class="btn btn-big">▶&nbsp; Start Night 1</button>
         <button id="btnNew" class="btn btn-ghost hidden">New game</button>
         <button id="btnSelect" class="btn btn-ghost hidden">Pick a night</button>
         <button id="btnFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
         <button id="btnPlex" class="btn btn-plex">🍕&nbsp; Lost in the Pizzaplex</button>
-        <button id="btnCoop" class="btn btn-coop">👥&nbsp; 2 Players</button>
+        <button id="btnSushi" class="btn btn-sushi">🐧&nbsp; Sushi's Pizzaplex</button>
+        <button id="btnClosets" class="btn btn-closets">🚪&nbsp; In the Closets</button>
+        <button class="btn btn-ghost" data-back="play">Back</button>
       </div>
       <div class="title-tabs">
+        <button id="btnShop" class="settings-tab">🪙&nbsp; Shop</button>
         <button id="btnGallery" class="settings-tab">📷&nbsp; Gallery</button>
         <button id="btnSettings" class="settings-tab">⚙️&nbsp; Settings</button>
       </div>
@@ -281,12 +309,30 @@
       </div>
       <div class="setting-head coop-pick">PICK A GAME</div>
       <div class="menu-actions coop-games">
+        <button id="btnCoopStory" class="btn btn-big btn-story">📖&nbsp; Story</button>
         <button id="btnCoopNights" class="btn btn-big">▶&nbsp; Survive the Nights</button>
         <button id="btnCoopFive" class="btn btn-five">🧸&nbsp; When Jonathan Was Five</button>
         <button id="btnCoopPlex" class="btn btn-plex">🍕&nbsp; Lost in the Pizzaplex</button>
+        <button id="btnCoopSushi" class="btn btn-sushi">🐧&nbsp; Sushi's Pizzaplex</button>
+        <button id="btnCoopClosets" class="btn btn-closets">🚪&nbsp; In the Closets</button>
       </div>
       <div class="menu-actions">
         <button id="btnCoopBack" class="btn btn-ghost">Back</button>
+      </div>
+    </div>
+
+    <!-- ── The Shop (js/shop.js): spend Gus tokens ────────────────────── -->
+    <div id="shop" class="screen">
+      <h2 class="screen-title">GUS'S SHOP</h2>
+      <div class="shop-wallet"><span class="shop-coin">🪙</span><b id="shopTokens">0</b><span>Gus tokens</span></div>
+      <p class="shop-how">Get <b>1 token</b> for every game you fix at night, and for every quest you finish in the stories.</p>
+      <div id="shopDebug" class="shop-debug hidden">🛠 Debug mode: 999 tokens to try things with. Nothing you buy is saved.</div>
+      <div id="shopNote" class="shop-note hidden"></div>
+      <div id="shopTabs" class="shop-tabs"></div>
+      <div id="shopSub" class="shop-sub"></div>
+      <div id="shopGrid" class="shop-grid"></div>
+      <div class="menu-actions">
+        <button id="btnShopBack" class="btn btn-ghost btn-big">Back</button>
       </div>
     </div>
 
@@ -414,6 +460,7 @@
       <div id="controlsList" class="controls-list"></div>
       <div class="menu-actions">
         <button id="btnResume" class="btn btn-big">Resume</button>
+        <button id="btnPauseSolo" class="btn btn-ghost hidden">👤&nbsp; Back to 1 player</button>
         <button id="btnQuit" class="btn btn-ghost">Quit to title</button>
       </div>
     </div>

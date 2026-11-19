@@ -17,9 +17,14 @@ means starting the night over.
 
 ## Features
 
+- **▶ Play → 📖 Story or 🌙 Survival.** Story plays every story in a row: Sushi's Pizzaplex,
+  When Jonathan Was Five, all fifty chapters of Lost in the Pizzaplex, the nights at Gus's
+  PlayPlace, then In the Closets, with just Continue or New game and a save of its own.
+  Survival is everything to pick from, one at a time
 - Gus's PlayPlace in 3D: a show stage, dining hall, arcade, ball pit, slide tower, party room,
   prize counter, kitchen and the dreaded Parts & Service room. By day it's full of kids and
-  upbeat techno; at night it's silent except for the footsteps
+  upbeat techno, and Gus and the band sing their song on the stage; at night it's silent
+  except for the footsteps
 - Twelve live security cameras with night vision, slow pans and static. What you see on a
   camera is exactly where an animatronic is, and anything broken gets marked on the map
 - Five animatronics, each with one trick you can learn: **Cranker** the penguin squeaks when
@@ -77,14 +82,39 @@ means starting the night over.
   **Timmy**, six and from the future, crawls through the play tubes where nothing else fits.
   New animatronics **DJ Rocco** the raccoon DJ and **Sparky** the robot dog. In Chapter 50
   they all escape together
+- **🐧 Sushi's Pizzaplex**, a fourth story, from the designer's own maps: four years before
+  the PlayPlace, **Tom** (12, with a perm) and his friends Bob, Billy and Tim sneak into the
+  old, closed Sushi's Pizzaplex on a dare. Free roam like Security Breach with just a
+  flashlight: collect **cards** to open the locked doors (blue, green, a mysterious DAYCARE
+  card, the Security Badge), hide in shelves and carts, and crawl through the **vents** above
+  and below. **Sushi** the penguin waddles the halls, **Moony** blinks about Laser Tag,
+  **Flipper** runs you over with a go-kart and **Chomper** with a roller-coaster cart, and in
+  **Gerald's Daycare** Gerald hangs from the ceiling on strings — find five fuses to set him
+  free. Fix the broken roller coaster to save Tim, then find out who's been pulling
+  everyone's strings all along. Twelve plushies to trade onto the Gift Shop's shelf for gear,
+  and a secret ending for finding them all
+- **🚪 In the Closets**, a fifth story, after the PlayPlace: Gramma's working nights, Timmy's
+  home alone, and every animatronic is hiding in the **closets** of his house — five on every
+  floor, up to four floors. When one starts **breathing**, run there and **spam E** to hold the
+  door shut until it stops. **Gus** is invisible: only a **mirror** shows which closet he's
+  in — and when he gets out, him standing right behind you, so hide in an empty closet until
+  he's gone. Ten levels, each harder, and they all have big teeth now. On Level 10, Gramma
+  comes home
 - **👥 2 Players**, split screen, in everything: Jonathan on WASD and the trackpad, his
   little brother **Jimmy** 🚀 (five, in an astronaut suit) on the arrow keys or a game
   controller. Side by side or top and bottom. Same team — get caught and you're out until
   morning, and the other one has to make it alone. In Max's bedroom and Jackson's office you
-  split the doors.
-- **Emotes**: hold T (or up on a controller) for the emote wheel — wave, thumbs up, point and
-  scream, dance, the chicken, the worm and a head spin — and the camera swings round so you
-  can watch yourself
+  split the doors. On a phone or iPad, Jonathan plays on the touch screen and Jimmy on a
+  controller.
+- **Emotes**: hold T (or up on a controller, or 😀 on a touch screen) for the emote wheel —
+  wave, thumbs up, point and scream, dance, the chicken, the worm and a head spin — and the
+  camera swings round so you can watch yourself
+- **🪙 Gus tokens and Gus's Shop**: a token for every game you fix at night and every story
+  quest you finish, to spend in the Shop on the title screen. A **Gus mask** that fools
+  everyone but Gus (15 seconds at a time), a loud, fast **skateboard**, three **generators**
+  (power back on in a blackout, a full charge, metal shutters over the office doors), a
+  **balloon decoy**, an **extra life**, **glow sticks**, four **hats** and five more
+  **emotes** (including eating pizza and saying "noice")
 - Jumpscares like the real FNAF games: a lunge into your face, a screech, the head jerking
   about, then TV static
 - An old-school **FNAF look** (Settings): grainy, washed-out and dark, for Lost in the
@@ -120,7 +150,8 @@ import map, so the game works offline and doesn't depend on a CDN. There are no 
 or texture files either: every mesh is built from primitives in code, every texture (with its
 bump and shine maps) is painted onto a canvas at startup, and every sound (the techno
 included) is synthesized at runtime. The only audio files are Jonathan's and Timmy's voices,
-recorded by real people with [dev/record.html](dev/record.html). The realistic look's reflections, ambient
+recorded by real people with [dev/record.html](dev/record.html), and the band's singing,
+made by robots with [dev/sing.py](dev/sing.py) until someone records it. The realistic look's reflections, ambient
 occlusion, bloom and volumetric flashlight are hand-written shader passes on top of Three.js.
 
 ## Run locally
@@ -163,4 +194,5 @@ title screen.
 
 See [DESIGN.md](DESIGN.md) for the full design document — the PlayPlace, the animatronics,
 the twenty-one nights, When Jonathan Was Five and its eight levels, Lost in the Pizzaplex and
-its chapters, balance tables, and the file map.
+its chapters, Sushi's Pizzaplex and its four parts, In the Closets and its ten levels, balance
+tables, and the file map.

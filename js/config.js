@@ -88,6 +88,9 @@ export const P2_KEYMAP = {
   watch:      { keys: ['Semicolon'],   label: 'Gus Watch',         show: ';' },
   box:        { keys: ['Quote'],       label: 'Hide in your box',  show: "'" },
   emote:      { keys: ['KeyK'],        label: 'Emotes (hold)',     show: 'K' },
+  mask:       { keys: ['KeyM'],        label: 'Gus mask',          show: 'M' },
+  item:       { keys: ['KeyN'],        label: 'Use Shop item',     show: 'N' },
+  nextItem:   { keys: ['KeyJ'],        label: 'Next Shop item',    show: 'J' },
 };
 // Player 1's keys when two are playing: the usual ones, minus anything on player 2's side.
 export const P1_KEYMAP = {
@@ -104,13 +107,17 @@ export const P1_KEYMAP = {
   watch:      { keys: ['KeyG', 'Tab'], label: 'Gus Watch',         show: 'G' },
   box:        { keys: ['KeyB'],        label: 'Hide in your box',  show: 'B' },
   emote:      { keys: ['KeyT'],        label: 'Emotes (hold)',     show: 'T' },
+  mask:       { keys: ['KeyR'],        label: 'Gus mask',          show: 'R' },
+  item:       { keys: ['KeyV'],        label: 'Use Shop item',     show: 'V' },
+  nextItem:   { keys: ['KeyX'],        label: 'Next Shop item',    show: 'X' },
   pause:      { keys: ['Escape', 'KeyP'], label: 'Pause',          show: 'ESC' },
 };
 // A game controller (the standard layout: Xbox, PlayStation, Switch Pro).
 export const PAD_HELP = [
   ['Left stick', 'Walk'], ['Right stick', 'Look around'], ['RT', 'Zap / use weapon'], ['A', 'Use / fix / grab'],
   ['X', 'Flashlight'], ['B', 'Crouch'], ['Y', 'Next weapon'], ['LB', 'Run'], ['RB', 'Gus Watch'], ['LT', 'Box'],
-  ['D-pad ↑', 'Emotes (hold)'], ['D-pad', 'Repair puzzles · cameras'], ['START', 'Pause'],
+  ['D-pad ↑', 'Emotes (hold)'], ['D-pad ←', 'Gus mask (Shop)'], ['D-pad ↓', 'Use Shop item'], ['D-pad →', 'Next Shop item'],
+  ['D-pad', 'Repair puzzles · cameras'], ['START', 'Pause'],
 ];
 // How fast the arrow keys turn you, in radians per second (and faster the longer you hold).
 export const COOP_TURN = 2.3;
@@ -522,6 +529,11 @@ export const GALLERY = [
   { file: 'timmy.jpg', caption: 'Timmy and his bowl cut' },
   { file: 'hard-star.jpg', caption: 'Beat a night on Nightmare, get a star' },
   { file: 'night-one.jpg', caption: 'Night 1: "nothing ever happens here"' },
+  // Sushi's Pizzaplex, as the designer drew it
+  { file: 'sushi-map.jpg', caption: "Sushi's Pizzaplex: the designer's map" },
+  { file: 'sushi-notes.jpg', caption: 'Cards, plushies, friends and vents: the rules, in his words' },
+  { file: 'daycare-map.jpg', caption: "Gerald's Daycare: the designer's map" },
+  { file: 'daycare-notes.jpg', caption: 'Gerald has strings...' },
 ];
 
 // ── Input ───────────────────────────────────────────────────────────────
@@ -542,6 +554,10 @@ export const KEYMAP = {
   watch:      { keys: ['KeyG', 'Tab'],           label: 'Gus Watch (When Jonathan Was Five)', show: 'G' },
   box:        { keys: ['KeyB'],                  label: 'Hide in your box, 30 s (When Jonathan Was Five)', show: 'B' },
   emote:      { keys: ['KeyT'],                  label: 'Emotes (hold, point at one, let go)', show: 'T' },
+  // Things from the 🪙 Shop (js/shop.js), at night at the PlayPlace
+  mask:       { keys: ['KeyR'],                  label: 'Gus mask on / off (from the Shop)', show: 'R' },
+  item:       { keys: ['KeyV'],                  label: 'Use your Shop item', show: 'V' },
+  nextItem:   { keys: ['KeyX'],                  label: 'Next Shop item', show: 'X' },
   pause:      { keys: ['Escape', 'KeyP'],        label: 'Pause',         show: 'ESC' },
 };
 

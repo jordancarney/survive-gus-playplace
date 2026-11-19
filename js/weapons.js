@@ -59,6 +59,7 @@ export class Weapons {
     const p = this.game.player;
     if (p.carrying) return;
     if (p.crouching) { this.game.hud.toast('Stand up (C) to use your weapon!'); return; }
+    if (p.masked) { this.game.hud.toast('You can\'t zap in the Gus mask. They\'d know it was you!'); return; }
     const w = p.weapon;
     if (!w) return;
     if (w.id === 'taser') this.taser();

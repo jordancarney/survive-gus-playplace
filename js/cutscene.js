@@ -21,6 +21,7 @@ const SPEAKER_COLORS = {
   Timmy: '#7cff6b', Gramma: '#ff9ad5', 'Old John': '#cfd6e0', 'Old Gus': '#d9b48a', '???': '#d9b48a',
   Jack: '#ff6b6b', 'Miss Penny': '#9fffb0', Mom: '#ffb3d9', 'Baby Gus': '#ffb02a', John: '#cfd6e0',
   Max: '#c98aff', Thomas: '#ffe08a', Jackson: '#ffd23f', 'P.A.L.': '#2de2e6', 'DJ Rocco': '#ff3fa4',
+  Tom: '#ff9a3a', Bob: '#5aa8ff', Billy: '#c8ccd8', Tim: '#7cff6b', Sushi: '#3a9aff', Peter: '#d9a85a',
 };
 
 export class Cutscene {
@@ -57,7 +58,7 @@ export class Cutscene {
     g.player.lightVisible = false;
     g.player.flashlight.intensity = 0;   // the player doesn't update during a cutscene
     if (script.light) g.lighting.set(script.light);
-    if (script.music) playMusic(script.music); else stopMusic();
+    if (script.music) playMusic(script.music, { words: false }); else stopMusic();   // no singing over the talking
     g.hidePeople();
     if (script.setup) script.setup(g, this);
     this.next();

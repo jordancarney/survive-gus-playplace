@@ -26,6 +26,8 @@ const P2_VIRTUAL = {
 const PAD_ACTIONS = {
   0: ['interact'], 1: ['crouch'], 2: ['flashlight'], 3: ['swap'], 4: ['sprint'], 5: ['watch'],
   6: ['box'], 7: ['fire'], 8: ['watch'], 9: ['pause'], 10: ['sprint'], 11: ['crouch'], 12: ['emote'],
+  // the rest of the d-pad, at night: the Shop's Gus mask and your pocket (js/shop.js)
+  13: ['item'], 14: ['mask'], 15: ['nextItem'],
 };
 const PAD_VIRTUAL = { 12: 'ArrowUp', 13: 'ArrowDown', 14: 'ArrowLeft', 15: 'ArrowRight', 0: 'Space', 1: 'Escape' };
 const DEAD = 0.18;
@@ -66,9 +68,11 @@ export class Controls {
 
   // ── The questions the game asks ───────────────────────────────────────
 
+  // (On a phone or iPad, player 1 is the touch screen: its buttons count as theirs.)
   down(action) {
     if (!this.enabled || !input.enabled) return false;
     if (this.padHeld.has(action)) return true;
+    if (this.which === 0 && input.touchHeld.has(action)) return true;
     const d = this.map[action];
     return !!d && d.keys.some((k) => input.keysHeld.has(k));
   }
@@ -76,6 +80,7 @@ export class Controls {
   pressed(action) {
     if (!this.enabled || !input.enabled) return false;
     if (this.padPressed.has(action)) return true;
+    if (this.which === 0 && input.touchPressed.has(action)) return true;
     const d = this.map[action];
     return !!d && d.keys.some((k) => input.keysPressed.has(k));
   }
@@ -84,6 +89,7 @@ export class Controls {
   keyPressed(code) {
     if (!this.enabled || !input.enabled) return false;
     if (this.padKeysPressed.has(code)) return true;
+    if (this.which === 0 && input.touchKeys.has(code)) return true;
     const v = this.virtual[code];
     if (v) return v.some((k) => input.keysPressed.has(k));
     // anything else is player 1's, unless it's one of player 2's keys

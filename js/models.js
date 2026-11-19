@@ -123,14 +123,35 @@ function eyes(head, rig, { color, x = 0.13, y = 0.08, z = 0.3, r = 0.085, white 
   const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(EYE_GLOW) });
   rig.eyeMat = glow;
   rig.eyeColor = new THREE.Color(color);
+  // (kept, for the jumpscare's creepy eyes: creepyEyes)
+  rig.eyeballs = rig.eyeballs || [];
+  rig.pupils = rig.pupils || [];
   for (const sx of [-1, 1]) {
-    if (white) part(G.sphereLo, eyeballMat(), head, { p: [sx * x, y, z], s: [r, r, r * 0.7] });
-    part(G.sphereLo, glow, head, { p: [sx * x, y, z + r * 0.55], s: [r * 0.45, r * 0.45, r * 0.25] });
+    if (white) rig.eyeballs.push(part(G.sphereLo, eyeballMat(), head, { p: [sx * x, y, z], s: [r, r, r * 0.7] }));
+    rig.pupils.push(part(G.sphereLo, glow, head, { p: [sx * x, y, z + r * 0.55], s: [r * 0.45, r * 0.45, r * 0.25] }));
     // a heavy upper lid in the head's own fur, half shut
     if (REALISTIC && white && rig.skull) {
       part(G.lid, rig.skull.material, head, { p: [sx * x, y + r * 0.08, z - r * 0.05], s: [r * 1.12, r * 1.05, r * 0.95], r: [-0.75, 0, 0] });
     }
   }
+}
+
+// The jumpscare's eyes, like FNAF: first `void` — the eyes go pitch black with one tiny white
+// dot in each — then `red`, the dots blaze up big and red; `null` puts them back.
+const VOID = new THREE.MeshBasicMaterial({ color: 0x000000 });
+export function creepyEyes(rig, mode) {
+  if (!rig.pupils) return;
+  if (!rig.eyeHome) rig.eyeHome = { balls: rig.eyeballs.map((m) => m.material), scale: rig.pupils.map((m) => m.scale.clone()) };
+  const home = rig.eyeHome;
+  rig.eyeballs.forEach((m, i) => { m.material = mode ? VOID : home.balls[i]; });
+  rig.pupils.forEach((m, i) => {
+    m.scale.copy(home.scale[i]).multiplyScalar(mode === 'void' ? 0.32 : mode === 'red' ? 1.35 : 1);
+  });
+  for (const m of rig.eyeMats || (rig.eyeMat ? [rig.eyeMat] : [])) {
+    if (mode === 'void') m.color.setRGB(3, 3, 3);
+    else if (mode === 'red') m.color.set(0xff0a0a).multiplyScalar(EYE_GLOW * 2.2);
+  }
+  if (!mode) delete rig.eyeHome;
 }
 
 export function setEyes(rig, mode) {
@@ -182,7 +203,31 @@ function biped(o) {
   }
   rig.armBase = { L: [0, 0, 0.12], R: [0, 0, -0.12] };
   rig.hipY = o.legLen;
+  // the body's egg shape, for tailRoot
+  rig.bodyDims = { cy: o.torsoH / 2, ry: o.torsoH / 2 + 0.08, rz: o.torsoD / 2 };
   return rig;
+}
+
+// Where a tail comes out: the small of the back, low on the body and tucked just inside it,
+// so the tail grows out of the costume instead of floating behind the legs (the designer: "the
+// animatronic tails aren't aligned"). It's on the torso, so the tail leans when the body does.
+// Build the tail in this group's space, pointing back (-z) from its origin.
+function tailRoot(rig, { k = 0.55, x = 0, dims = rig.bodyDims } = {}) {
+  const y = dims.cy - dims.ry * k;
+  const z = -dims.rz * Math.sqrt(1 - k * k) * 0.92;
+  return group(rig.torso, [x, y, z]);
+}
+
+// The flat beaver-ish tail every platypus has, drooping a little.
+function gusTail(rig, material, root = tailRoot(rig)) {
+  const a = 0.35, L = 0.42;
+  part(G.sphere, material, root, { p: [0, -Math.sin(a) * L, 0.06 - Math.cos(a) * L], s: [0.3, 0.07, L], r: [-a, 0, 0] });
+}
+
+// Chomper's flat paddle, drooping toward the floor like a real beaver's.
+function chomperTail(rig, root) {
+  const a = 0.55, half = 0.3;
+  part(G.box, mat(0x4a3020, { rough: 0.7 }), root, { p: [0, -Math.sin(a) * half, 0.06 - Math.cos(a) * half], s: [0.36, 0.06, half * 2], r: [-a, 0, 0] });
 }
 
 // ── Gus the Platypus ────────────────────────────────────────────────────
@@ -231,7 +276,7 @@ function buildGus(look = GUS_LOOK) {
   part(G.cone, mat(look.band, { metal: 0.5, rough: 0.3 }), tie, { p: [-0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, Math.PI / 2] });
   part(G.cone, mat(look.band, { metal: 0.5, rough: 0.3 }), tie, { p: [0.09, 0, 0], s: [0.07, 0.14, 0.07], r: [0, 0, -Math.PI / 2] });
   // the beaver-ish tail every platypus has
-  part(G.sphere, fur(look.tail, { pile: 0.6 }), rig.hips, { p: [0, -0.2, -0.5], s: [0.3, 0.07, 0.42], r: [0.5, 0, 0] });
+  gusTail(rig, fur(look.tail, { pile: 0.6 }));
   // microphone
   part(G.cyl, mat(0x222222), rig.armR, { p: [0, -0.72, 0.12], s: [0.03, 0.22, 0.03], r: [1.2, 0, 0] });
   part(G.sphereLo, METAL(), rig.armR, { p: [0, -0.68, 0.24], s: [0.06, 0.06, 0.06] });
@@ -353,8 +398,8 @@ function buildChomper() {
   // hard hat: he builds things (out of your arcade machines)
   part(G.sphere, mat(0xf2c230, { rough: 0.3 }), h, { p: [0, 0.5, -0.01], s: [0.3, 0.17, 0.3] });
   part(G.cyl, mat(0xf2c230, { rough: 0.3 }), h, { p: [0, 0.48, 0.06], s: [0.34, 0.025, 0.36] });
-  // flat paddle tail with a cross-hatch
-  part(G.box, mat(0x4a3020, { rough: 0.7 }), rig.hips, { p: [0, -0.3, -0.48], s: [0.36, 0.06, 0.6], r: [0.35, 0, 0] });
+  // flat paddle tail, drooping toward the floor
+  chomperTail(rig, tailRoot(rig));
   return rig;
 }
 
@@ -408,8 +453,13 @@ function buildFlipper() {
   eyes(h, rig, { color: 0xff5ad1, x: 0.17, y: 0.36, z: 0.2, r: 0.07 });
   // lifeguard sunglasses pushed up on the head
   for (const sx of [-1, 1]) part(G.cyl, mat(0x111111, { rough: 0.1 }), h, { p: [sx * 0.12, 0.58, 0.18], s: [0.08, 0.02, 0.08], r: [1.1, 0, 0] });
-  // tail fluke behind
-  part(G.sphere, blue, rig.hips, { p: [0, -0.3, -0.45], s: [0.38, 0.05, 0.16], r: [0.3, 0, 0] });
+  // a short tail out of the small of the back, tapering, with the fluke on the end
+  {
+    const root = tailRoot(rig), a = 0.45, L = 0.42;
+    const dy = -Math.sin(a), dz = -Math.cos(a);
+    part(G.cone, blue, root, { p: [0, dy * L / 2, 0.05 + dz * L / 2], s: [0.15, L + 0.1, 0.12], r: [-(Math.PI / 2 + a), 0, 0] });
+    part(G.sphere, blue, root, { p: [0, dy * L, 0.05 + dz * L], s: [0.36, 0.045, 0.14], r: [-a, 0, 0] });
+  }
   return rig;
 }
 
@@ -452,8 +502,12 @@ function buildJunk() {
   part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [-0.1, 0, 0], s: [0.08, 0.16, 0.08], r: [0, 0, Math.PI / 2] });
   part(G.cone, mat(0xf2c230, { metal: 0.5, rough: 0.3 }), tie, { p: [0.1, 0, 0], s: [0.08, 0.16, 0.08], r: [0, 0, -Math.PI / 2] });
   part(G.cone, fur(0x5b8fc4, { pile: 0.4 }), rig.torso, { p: [0, 1.6, -0.6], s: [0.08, 0.5, 0.35], r: [-0.6, 0, 0] });   // Flipper's fin
-  part(G.box, mat(0x4a3020, { rough: 0.7 }), rig.hips, { p: [0.25, -0.1, -0.6], s: [0.4, 0.06, 0.7], r: [0.4, 0.3, 0] }); // Chomper's tail
-  part(G.sphere, fur(0x5a341d, { pile: 0.6 }), rig.hips, { p: [-0.25, -0.1, -0.6], s: [0.32, 0.07, 0.45], r: [0.5, -0.3, 0] });          // Gus's tail
+  // Chomper's and Gus's tails, out of the bottom of Gerald's back, splayed apart
+  const back = { cy: 0.95, ry: 1.0, rz: 0.7 };
+  const ct = tailRoot(rig, { x: 0.28, dims: back }), gt = tailRoot(rig, { x: -0.28, dims: back });
+  ct.rotation.y = -0.3; gt.rotation.y = 0.3;
+  chomperTail(rig, ct);
+  gusTail(rig, fur(0x5a341d, { pile: 0.6 }), gt);
   for (const [x, y, z, sx, sy, sz, rz] of [[0.6, 0.4, 0.3, 0.35, 0.3, 0.3, 0.6], [-0.65, 1.3, 0.2, 0.3, 0.35, 0.3, -0.4], [0.4, 1.55, -0.3, 0.4, 0.25, 0.3, 0.2]]) {
     part(G.box, rust, rig.torso, { p: [x, y, z], s: [sx, sy, sz], r: [0, rz, rz] });
   }
@@ -619,6 +673,59 @@ export function buildAnimatronic(id, { old = false } = {}) {
   return rig;
 }
 
+// ── Big teeth, like FNAF 4 ──────────────────────────────────────────────
+//
+// The designer: "make animatronics have big teeth like in FNAF 4", for In the Closets and
+// Max's chapters. Two rows of long, sharp, yellowed teeth: the bottom row stands on the jaw
+// and the top row hangs from the head right above it, so they show even with the mouth shut
+// and the mouth becomes all teeth when it opens. Placed from the jaw's own size, so it fits
+// any animatronic with a jaw.
+export function addBigTeeth(rig, { n = 7, size = 1 } = {}) {
+  if (!rig.jaw || rig.bigTeeth) return rig;
+  rig.bigTeeth = true;
+  const jaw = rig.jaw, head = jaw.parent;
+  const box = new THREE.Box3(), b = new THREE.Box3();
+  for (const m of jaw.children) {
+    if (!m.isMesh) continue;
+    m.updateMatrix();
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    box.union(b.copy(m.geometry.boundingBox).applyMatrix4(m.matrix));
+  }
+  if (box.isEmpty()) return rig;
+  rig.teeth = [];
+  const keep = (m) => { rig.teeth.push(m); return m; };
+  const w = Math.max(0.1, (box.max.x - box.min.x) / 2);
+  const front = box.max.z, depth = Math.max(0.08, box.max.z - box.min.z);
+  const h = Math.max(0.07, w * 0.42) * size, r = h * 0.28;
+  const tooth = mat(0xe9dfc2, { rough: 0.35 });
+  for (let k = 0; k < n; k++) {
+    const u = (k / (n - 1)) * 2 - 1;                     // -1 … 1, side to side
+    const x = u * w * 0.8;
+    const z = front - depth * 0.12 - u * u * depth * 0.3;   // round the front of the mouth
+    const big = 1 - Math.abs(u) * 0.3;                   // biggest at the front
+    // bottom row, pointing up out of the jaw
+    keep(part(G.cone, tooth, jaw, { p: [x, box.max.y + h * big * 0.4, z], s: [r * big, h * big, r * big] }));
+    // top row, hanging from the hinge into the gaps between the bottom ones: tucked inside
+    // the jaw while it's shut, all there when it opens
+    if (k === n - 1) break;
+    const u2 = ((k + 0.5) / (n - 1)) * 2 - 1, x2 = u2 * w * 0.8;
+    const z2 = front - depth * 0.12 - u2 * u2 * depth * 0.3 - 0.01, big2 = 1 - Math.abs(u2) * 0.3;
+    keep(part(G.cone, tooth, head, {
+      p: [jaw.position.x + x2, jaw.position.y + 0.02 - h * big2 * 0.475, jaw.position.z + z2],
+      s: [r * big2, h * big2 * 0.95, r * big2], r: [Math.PI, 0, 0],
+    }));
+  }
+  return rig;
+}
+
+// Every jumpscare bares the big teeth (the designer: "super scary like FNAF"); the ones that
+// don't always have them (outside In the Closets and Max's chapters) hide them again after.
+export function scareTeeth(rig, on) {
+  if (on && !rig.bigTeeth) { addBigTeeth(rig, { size: 1.15 }); rig.teethForScare = true; }
+  if (!rig.teethForScare || !rig.teeth) return;
+  for (const m of rig.teeth) m.visible = on;
+}
+
 // ── Posing ──────────────────────────────────────────────────────────────
 //
 // One function poses any rig. `pose` picks what it's doing; `t` is a running clock and
@@ -758,6 +865,57 @@ export function poseRig(rig, pose, t, amt = 1, dt = 1 / 60) {
     case 'headspin': {    // upside down (game.js flips them), legs in a V, arms out
       armLz = 1.4; armRz = -1.4;
       headX = 0.1;
+      break;
+    }
+    // ── The Shop's emotes (js/shop.js holds the slice of pizza, the flip and the bed) ──
+    case 'pizza': {       // three big bites of pizza, then a thumbs up: "noice"
+      if (t < 2.25) {
+        const bite = (t % 0.75) / 0.75;
+        const up = bite < 0.45 ? bite / 0.45 : 1 - (bite - 0.45) / 0.55;
+        armRx = -1.1 - up * 1.3; armRz = -0.35 + up * 0.2;
+        headX = 0.12 * up;
+        jaw = up > 0.8 ? 0.45 : Math.max(0, Math.sin(t * 14)) * 0.2;
+      } else {
+        armRx = -0.9; armRz = -0.3;            // still holding what's left
+        armLx = -1.25; armLz = 0.25;           // thumbs up with the other hand
+        headX = -0.1 + Math.sin(t * 6) * 0.04;
+        jaw = t < 2.9 ? 0.35 : 0.05;
+      }
+      bob = Math.sin(t * 1.4) * 0.012;
+      break;
+    }
+    case 'floss': {       // both arms swinging side to side, in front and behind, hips the other way
+      const s = Math.sin(t * 7.5), f = Math.sin(t * 15);
+      armLz = 0.25 + s * 0.55; armRz = -0.25 + s * 0.55;
+      armLx = f * 0.45; armRx = -f * 0.45;
+      headZ = -s * 0.12;
+      legL = -s * 0.12; legR = -s * 0.12;
+      bob = Math.abs(f) * 0.025;
+      break;
+    }
+    case 'robot': {       // stiff and jerky: snap from pose to pose, like an animatronic
+      const q = Math.floor(t * 2);
+      const poses = [[-1.57, 0, 0], [-1.57, -1.57, 0.4], [0, -1.57, -0.4], [-2.6, 0, 0.4], [-0.8, -0.8, 0]];
+      const [a, b, h] = poses[q % poses.length];
+      armLx = a; armRx = b;
+      armLz = 0.15; armRz = -0.15;
+      headY = h;
+      torsoX = 0;
+      jaw = q % 2 ? 0.3 : 0;
+      bob = (q % 2) * 0.03;
+      break;
+    }
+    case 'backflip': {    // arms swing up, tuck in the air, land and ta-da
+      if (t < 0.25) { armLx = armRx = 0.6; hipDrop = 0.12; torsoX = 0.3; }
+      else if (t < 1.2) { armLx = armRx = -2.8; legL = legR = -1.1; jaw = 0.4; }
+      else { armLx = armRx = -2.9; armLz = 0.6; armRz = -0.6; jaw = 0.3; }
+      break;
+    }
+    case 'sleep': {       // flat on your back (shop.js lays you down), arms by your sides, snoring
+      armLz = 0.2; armRz = -0.2;
+      headZ = 0.25;
+      jaw = 0.15 + Math.max(0, Math.sin(t * Math.PI)) * 0.25;
+      bob = Math.sin(t * Math.PI) * 0.01;
       break;
     }
     // Low and sneaking (two players: the other one crouching, the designer asked for it
@@ -1267,4 +1425,4 @@ export function buildJimmy() {
 }
 
 // The building blocks, for the characters of When Jonathan Was Five (js/escape/cast.js).
-export { biped, part, group, eyes, limb, addFur, G as MODEL_G, buildGus, GUS_LOOK, METAL, DARK_METAL, eyeballMat, skinMat, vmMat };
+export { biped, part, group, eyes, limb, addFur, G as MODEL_G, buildGus, GUS_LOOK, METAL, DARK_METAL, eyeballMat, skinMat, vmMat, tailRoot, gusTail };

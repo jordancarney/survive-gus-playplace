@@ -1,5 +1,6 @@
 // Every sound in the game, synthesized at runtime. No audio files, nothing to download —
-// apart from the recorded voices (voices.js), and Timmy's crying if it's been recorded.
+// apart from the recorded voices (voices.js), Timmy's crying if it's been recorded, and the
+// singing in the daytime song (song.js).
 //
 // Browsers refuse to start an AudioContext until the player has interacted with the page,
 // so `resume()` is called from the first click/keypress and everything before that is a
@@ -8,10 +9,12 @@
 // The night is mostly silence on purpose. What you do hear is positional: footsteps, the
 // clank of a machine, Gus's music box — panned left or right and muffled through walls, so
 // your ears can tell you where things are before the cameras do.
+import { SONG } from './song.js';
 
 let ctx = null;
 let master = null;
 let musicGain = null;
+let vocalGain = null;
 let sfxGain = null;
 let ambGain = null;
 let echoIn = null;
@@ -43,6 +46,11 @@ export const audio = {
     musicGain = ctx.createGain();
     musicGain.gain.value = 0.34;
     musicGain.connect(master);
+
+    // The band's singing, on top of the daytime techno (measured: a couple of dB over it).
+    vocalGain = ctx.createGain();
+    vocalGain.gain.value = 0.45;
+    vocalGain.connect(musicGain);
 
     ambGain = ctx.createGain();
     ambGain.gain.value = 1;
@@ -668,6 +676,13 @@ export const sfx = {
       noise({ dur: 0.05, gain: 0.2, filter: 'lowpass', freq: 500, delay: i * 0.13, dest: d });
     }
   },
+  // Max's own feet on the Sleepover Suite's carpet as she runs to a door: soft and close,
+  // nothing like the footsteps in the halls
+  plexDash() {
+    if (!ok()) return;
+    tone({ freq: 120, to: 62, type: 'sine', dur: 0.07, gain: 0.16 });
+    noise({ dur: 0.045, gain: 0.08, filter: 'lowpass', freq: 650 });
+  },
   // a knock-knock-knock on a door
   plexKnock(pos) {
     if (!ok()) return;
@@ -895,10 +910,47 @@ export const sfx = {
       const notes = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047];
       notes.forEach((f, i) => tone({ freq: f, type: 'square', dur: 0.14, gain: 0.07, at: t + i * 0.25 }));
       notes.forEach((f, i) => { if (i % 2 === 0) tone({ freq: f / 4, type: 'triangle', dur: 0.2, gain: 0.12, at: t + i * 0.25 }); });
+    // ── the Shop's emotes (js/shop.js) ──
+    } else if (id === 'pizza') {
+      // three big bites (and "noice" is said by shop.js)
+      for (let i = 0; i < 3; i++) {
+        noise({ dur: 0.09, gain: 0.2, filter: 'bandpass', freq: 1300, q: 1.4, at: t + 0.45 + i * 0.75 });
+        noise({ dur: 0.16, gain: 0.1, filter: 'lowpass', freq: 600, at: t + 0.55 + i * 0.75 });
+      }
+    } else if (id === 'floss') {
+      const notes = [392, 392, 523, 392, 466, 392, 349, 392];
+      for (let r = 0; r < 3; r++) notes.forEach((f, i) => tone({ freq: f, type: 'square', dur: 0.1, gain: 0.07, at: t + r * 1.9 + i * 0.24 }));
+      for (let i = 0; i < 24; i++) if (i % 2 === 0) tone({ freq: 98, type: 'triangle', dur: 0.15, gain: 0.14, at: t + i * 0.24 });
+    } else if (id === 'robot') {
+      // beeps and boops, in time with the jerky moves
+      for (let i = 0; i < 22; i++) tone({ freq: [440, 660, 330, 880][i % 4], type: 'square', dur: 0.06, gain: 0.07, at: t + i * 0.25 });
+      for (let i = 0; i < 11; i++) noise({ dur: 0.05, gain: 0.06, filter: 'highpass', freq: 3000, at: t + i * 0.5 + 0.12 });
+    } else if (id === 'backflip') {
+      noise({ dur: 0.5, gain: 0.12, filter: 'bandpass', freq: 500, to: 2200, q: 0.9, at: t + 0.25 });
+      tone({ freq: 140, to: 60, type: 'sine', dur: 0.2, gain: 0.4, at: t + 1.25 });
+      tone({ freq: 660, to: 880, type: 'triangle', dur: 0.12, gain: 0.15, at: t + 1.4 });
+      tone({ freq: 990, type: 'triangle', dur: 0.2, gain: 0.12, at: t + 1.52 });
+    } else if (id === 'sleep') {
+      // snoring: a rumble in, a whistle out
+      for (let i = 0; i < 3; i++) {
+        const s = t + 0.9 + i * 2;
+        tone({ freq: 70, to: 90, type: 'sawtooth', dur: 0.9, gain: 0.12, at: s, attack: 0.3 });
+        noise({ dur: 0.8, gain: 0.05, filter: 'lowpass', freq: 500, at: s });
+        tone({ freq: 1400, to: 900, type: 'sine', dur: 0.6, gain: 0.04, at: s + 1.0, attack: 0.2 });
+      }
     } else {
       tone({ freq: 660, to: 880, type: 'triangle', dur: 0.12, gain: 0.15 });
       tone({ freq: 990, type: 'triangle', dur: 0.2, gain: 0.12, at: t + 0.12 });
     }
+  },
+
+  // The Shop's skateboard rolling along (js/shop.js), every few steps' worth.
+  skate(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 30);
+    if (!d) return;
+    noise({ dur: 0.34, gain: 0.09, filter: 'lowpass', freq: 380, dest: d });
+    noise({ dur: 0.05, gain: 0.05, filter: 'bandpass', freq: 2400, q: 2, dest: d });
   },
 
   // Super scary, as requested by the game's designer.
@@ -912,37 +964,54 @@ export const sfx = {
     tone({ freq: 90, to: 28, type: 'sine', dur: 0.8, gain: 0.8 });
   },
 
-  // The FNAF screech: a harsh electronic shriek, wobbling hard, with a crunch of noise and a
-  // thump underneath. (The old scream, above, is still used by the phantoms.)
-  fnafScream() {
+  // The FNAF screech: a harsh electronic shriek, wobbling hard and climbing as it goes, a
+  // second, higher shriek on top of it, a growl under it, a crunch of noise and a thump —
+  // long and loud (the designer: "louder, longer scream"). (The old scream, above, is still
+  // used by the phantoms.)
+  fnafScream(dur = 1.9) {
     if (!ok()) return;
-    const t = now(), dur = 1.2;
+    const t = now();
     const out = ctx.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(0.85, t + 0.02);
-    out.gain.setValueAtTime(0.85, t + dur - 0.3);
+    out.gain.exponentialRampToValueAtTime(1.0, t + 0.015);
+    out.gain.setValueAtTime(1.0, t + dur - 0.35);
     out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     const ws = ctx.createWaveShaper();
     ws.curve = distortion();
     out.connect(ws).connect(sfxGain);
-    for (const [f, type] of [[640, 'sawtooth'], [955, 'square'], [1270, 'sawtooth'], [470, 'sawtooth'], [1900, 'square']]) {
+    const voice = (f, type, gain, delay = 0, climb = 1.18, wobble = 24) => {
+      const s = t + delay;
       const o = ctx.createOscillator();
       o.type = type;
-      o.frequency.setValueAtTime(f * 0.6, t);
-      o.frequency.exponentialRampToValueAtTime(f, t + 0.09);
+      o.frequency.setValueAtTime(f * 0.55, s);
+      o.frequency.exponentialRampToValueAtTime(f, s + 0.08);
+      o.frequency.exponentialRampToValueAtTime(f * climb, t + dur);
       const lfo = ctx.createOscillator();
-      lfo.frequency.value = 24 + Math.random() * 14;
+      lfo.frequency.value = wobble + Math.random() * 14;
       const depth = ctx.createGain();
-      depth.gain.value = f * 0.14;
+      depth.gain.value = f * 0.16;
       lfo.connect(depth).connect(o.frequency);
       const g = ctx.createGain();
-      g.gain.value = f > 1500 ? 0.07 : 0.16;
+      g.gain.value = gain;
       o.connect(g).connect(out);
-      o.start(t); lfo.start(t);
+      o.start(s); lfo.start(s);
       o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    };
+    for (const [f, type] of [[640, 'sawtooth'], [955, 'square'], [1270, 'sawtooth'], [470, 'sawtooth'], [1900, 'square']]) {
+      voice(f, type, f > 1500 ? 0.07 : 0.16);
     }
-    noise({ at: t, dur, gain: 0.5, filter: 'bandpass', freq: 2600, q: 0.6 });
-    tone({ freq: 80, to: 30, type: 'sine', dur: 0.5, gain: 0.8, at: t });
+    // the second shriek, higher, a beat later, climbing harder
+    for (const [f, type] of [[1480, 'sawtooth'], [2210, 'square']]) voice(f, type, 0.06, 0.14, 1.3, 31);
+    // the growl underneath
+    voice(62, 'sawtooth', 0.22, 0, 1.4, 9);
+    noise({ at: t, dur, gain: 0.6, filter: 'bandpass', freq: 2200, to: 4200, q: 0.6 });
+    tone({ freq: 80, to: 30, type: 'sine', dur: 0.6, gain: 0.9, at: t });
+  },
+  // the bang as it jumps at you: a crack and a thump, the instant before the screech
+  scareBang() {
+    if (!ok()) return;
+    noise({ dur: 0.07, gain: 0.9, filter: 'highpass', freq: 1500, attack: 0.002 });
+    tone({ freq: 130, to: 28, type: 'sine', dur: 0.35, gain: 1.0, attack: 0.002 });
   },
   // the TV-static hiss after a jumpscare
   staticHiss(dur = 0.85) {
@@ -1126,11 +1195,13 @@ function clap(t) { noise({ dur: 0.12, gain: 0.18, filter: 'bandpass', freq: 1700
 function hat(t, g = 0.06, d = 0.04) { noise({ dur: d, gain: g, filter: 'highpass', freq: 7500, at: t, dest: musicGain }); }
 
 const TRACKS = {
-  // Upbeat daytime techno. Four chords, four-on-the-floor, an arpeggio that never sits still.
+  // Upbeat daytime techno. Four chords, four-on-the-floor, an arpeggio that never sits still —
+  // and Gus and the band singing over it: the song's 48 bars, then round again.
   day: {
     stepDur: 60 / 128 / 4,
-    length: 64,
+    length: 16 * SONG.form.length,
     play(s, t) {
+      if (s % 16 === 0 && SONG.form[s / 16] >= 0) singLine(SONG.form[s / 16], t);
       const bar = Math.floor(s / 16) % 4;
       const chord = [[C2, MAJ], [A1, MIN], [F1, MAJ], [G1, MAJ]][bar];
       const i = s % 16;
@@ -1233,11 +1304,19 @@ let currentTrack = null;
 let nextTime = 0;
 let musicStep = 0;
 
-export function playMusic(name) {
-  if (!audio.ready || currentTrack === name) return;
+// `words: false` plays the daytime song without the singing (the cutscenes talk over it).
+export function playMusic(name, { words = true } = {}) {
+  if (!audio.ready) return;
+  if (name === 'day') loadSong();
+  if (currentTrack === name) {
+    if (!words && songWords) hushSong();
+    songWords = words;
+    return;
+  }
   stopMusic();
   const track = TRACKS[name];
   if (!track) return;
+  songWords = words;
   currentTrack = name;
   musicStep = 0;
   nextTime = now() + 0.06;
@@ -1255,4 +1334,105 @@ export function stopMusic() {
   if (seqTimer) clearInterval(seqTimer);
   seqTimer = null;
   currentTrack = null;
+  hushSong();
 }
+
+// ── The daytime song ────────────────────────────────────────────────────
+//
+// Gus and the band sing over the daytime techno: the words and the tune are in song.js, and
+// every line is two bars long, starting on its bar of SONG.form. A line is sung by a real
+// person's recording when there is one (voice id song-<n>, made with dev/record.html), with
+// the robots singing along quietly under it — it's a band — and otherwise by the robots alone
+// (audio/song/line-<n>.m4a, made by dev/sing.py). Plain files next to the page, like the voices.
+
+const songBufs = [];      // per line: { robot, real, realEnv }
+let songLoading = null;
+let songWords = true;
+const singing = [];       // lines being sung right now: { i, t0, parts, env }
+
+function decodeFile(path) {
+  return fetch(new URL(path, import.meta.url)).then((r) => {
+    if (!r.ok) throw new Error(r.status);
+    return r.arrayBuffer();
+  }).then((b) => ctx.decodeAudioData(b));
+}
+
+// Resolves once every line that can be loaded has been.
+export function loadSong() {
+  if (songLoading || !ctx) return songLoading || Promise.resolve();
+  songLoading = import('./recorded.js').then(({ RECORDED }) => Promise.all(SONG.lines.map((_, i) => {
+    const b = songBufs[i] = {};
+    const id = `song-${i + 1}`;
+    return Promise.all([
+      decodeFile(`../audio/song/line-${i + 1}.m4a`).then((buf) => { b.robot = buf; }).catch(() => {}),
+      id in RECORDED && decodeFile(`../audio/voices/${id}.m4a`)
+        .then((buf) => { b.real = buf; b.realEnv = RECORDED[id]; }).catch(() => {}),
+    ]);
+  }))).catch(() => {});
+  return songLoading;
+}
+
+// Line i of the song, starting at time t (the first beat of its first bar), into `dest`.
+// `take` (an AudioBuffer) sings it instead of the recording or the robots.
+function singLine(i, t, { take = null, dest = vocalGain, force = false } = {}) {
+  const b = songBufs[i];
+  if (!b || (!songWords && !force)) return;
+  const lead = take || b.real;
+  const parts = [];
+  const play = (buf, gain) => {
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g).connect(dest);
+    src.start(Math.max(t, now()));
+    parts.push(src);
+  };
+  if (lead) play(lead, 0.8);
+  if (b.robot) play(b.robot, lead ? 0.3 : 1);
+  if (!parts.length) return;
+  const entry = { i, t0: t, parts, env: lead ? (take ? null : b.realEnv) : SONG.lines[i].env };
+  singing.push(entry);
+  parts[0].onended = () => { const k = singing.indexOf(entry); if (k >= 0) singing.splice(k, 1); };
+}
+
+function hushSong() {
+  for (const e of singing) for (const p of e.parts) { try { p.stop(); } catch {} }
+  singing.length = 0;
+}
+
+// The line being sung right now, and how loud (0–1): for the jaws and the ♪ captions.
+export function songNow() {
+  const t = now();
+  for (const e of singing) {
+    const k = Math.floor((t - e.t0) * 30);
+    if (k < 0) continue;
+    const c = e.env ? e.env[k] : '5';
+    if (c === undefined) continue;
+    return { line: e.i, text: SONG.lines[e.i].text, level: Number(c) / 9 };
+  }
+  return null;
+}
+
+// For dev/record.html: one bar counting in (4 clicks) from t0, then line i's two bars of the
+// daytime techno with the line sung over it — by `take` if given, else as in the game, or
+// nothing if `guide` is false. Returns when the line starts and ends, on audio.clock().
+export function playSongLine(i, t0, { take = null, guide = true } = {}) {
+  loadSong();
+  const track = TRACKS.day;
+  const bar = 16 * track.stepDur;
+  for (let k = 0; k < 4; k++) {
+    tone({ freq: k ? 1200 : 1800, type: 'square', dur: 0.03, gain: 0.12, at: t0 + k * bar / 4, dest: musicGain });
+  }
+  const start = t0 + bar;
+  const first = SONG.form.indexOf(i) * 16;
+  const words = songWords;
+  songWords = false;   // the backing alone; the line goes on below
+  for (let s = 0; s < SONG.lineSteps; s++) track.play(first + s, start + s * track.stepDur);
+  songWords = words;
+  if (take || guide) singLine(i, start, { take, force: true });
+  return { start, end: start + SONG.lineSteps * track.stepDur };
+}
+
+export const clock = () => now();
+export const audioContext = () => ctx;

@@ -6,7 +6,7 @@
 // Every rig works with poseRig, and `finish` works out where its face is for the jumpscare.
 import * as THREE from 'three';
 import {
-  buildPerson, buildAnimatronic, mat, fur, cloth, biped, part, group, eyes, addFur, MODEL_G as G, vmMat,
+  buildPerson, buildAnimatronic, mat, fur, cloth, biped, part, group, eyes, addFur, MODEL_G as G, vmMat, tailRoot,
 } from '../models.js';
 import { buildBabyGus } from '../escape/cast.js';
 import { REALISTIC, GLOW } from '../config.js';
@@ -98,8 +98,10 @@ export function buildRocco() {
   // a glowing record on a chain, and his ringed tail
   part(G.cyl, mat(0x111111, { rough: 0.2 }), rig.torso, { p: [0, 0.48, 0.3], s: [0.13, 0.015, 0.13], r: [Math.PI / 2, 0, 0] });
   part(G.cyl, neon, rig.torso, { p: [0, 0.48, 0.31], s: [0.04, 0.016, 0.04], r: [Math.PI / 2, 0, 0] });
+  // (from the small of his back, curving down and away)
+  const tail = tailRoot(rig);
   for (let i = 0; i < 6; i++) {
-    part(G.sphere, i % 2 ? black : grey, rig.hips, { p: [0, -0.05 - i * 0.07, -0.42 - i * 0.13], s: [0.12 - i * 0.008, 0.12 - i * 0.008, 0.1], r: [0.5, 0, 0] });
+    part(G.sphere, i % 2 ? black : grey, tail, { p: [0, -0.02 - i * i * 0.012, 0.03 - i * 0.11], s: [0.12 - i * 0.008, 0.12 - i * 0.008, 0.1], r: [-0.5, 0, 0] });
   }
   rig.headR = 0.29;
   rig.root.traverse((o) => { if (o.isMesh) o.userData.owner = 'rocco'; });
@@ -136,8 +138,10 @@ export function buildSparky() {
   // the collar and its lightning-bolt tag, and a lightning-bolt tail
   part(G.torus, mat(0xd8405a, { rough: 0.4 }), rig.neck, { p: [0, -0.02, 0], s: [0.22, 0.22, 0.3], r: [Math.PI / 2, 0, 0] });
   part(G.cone, yellow, rig.neck, { p: [0, -0.12, 0.2], s: [0.05, 0.1, 0.02], r: [0, 0, 0.5] });
+  // (sticking up out of the small of his back, zig-zag)
+  const tail = tailRoot(rig, { k: 0.5 });
   for (let i = 0; i < 3; i++) {
-    part(G.box, yellow, rig.hips, { p: [(i % 2 ? 0.06 : -0.06), -0.05 + i * 0.12, -0.36 - i * 0.05], s: [0.05, 0.16, 0.05], r: [0.4, 0, i % 2 ? -0.7 : 0.7] });
+    part(G.box, yellow, tail, { p: [(i % 2 ? 0.05 : -0.05), 0.04 + i * 0.12, -0.03 - i * 0.06], s: [0.05, 0.16, 0.05], r: [0.4, 0, i % 2 ? -0.7 : 0.7] });
   }
   rig.headR = 0.28;
   rig.root.traverse((o) => { if (o.isMesh) o.userData.owner = 'sparky'; });

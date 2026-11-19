@@ -135,17 +135,19 @@ export class EscapeMode {
     const click = (id, fn) => $(id).addEventListener('click', () => { sfx.ui(); fn(g.story); });
     click('btnFive', () => g.escape.showMenu());
     click('btnPlex', () => g.plex.showMenu());
-    click('btnEscBack', () => g.toTitle());
+    click('btnEscBack', () => g.toTitle('survival'));
     click('btnEscGo', (m) => m.begin(m.cardLevel));
     click('btnEscCardBack', (m) => m.showMenu());
     click('btnEscWinGo', (m) => m.afterWin());
-    click('btnEscWinMenu', () => g.toTitle());
+    click('btnEscWinMenu', () => g.toTitle(g.campaign.on ? 'story' : 'main'));
     click('btnEscSecret', (m) => m.playSecret(() => m.showMenu()));
   }
 
   // The level list: everything you've reached (everything, in debug mode), and Continue.
+  // (Story mode has no level list: "without chapters". Back from a card is back to its menu.)
   showMenu() {
     const g = this.game;
+    if (g.campaign.on) { g.toTitle('story'); return; }
     g.story = this;
     this.leave();
     g.setArea('playplace');
@@ -204,12 +206,14 @@ export class EscapeMode {
   showCard(n) {
     const g = this.game;
     const def = this.levels[n - 1];
+    g.story = this;
     this.cardLevel = n;
     g.setArea('playplace');
     g.lighting.set('title');
     const hero = def.hero && this.story.heroes ? this.story.heroes[def.hero] : null;
-    $('escCardEyebrow').textContent = `${this.story.eyebrow} · ${this.story.unit.toUpperCase()} ${n} OF ${this.total}` +
-      (hero ? ` · ${hero.icon} ${hero.name.toUpperCase()}, ${hero.age}` : '');
+    // (Story mode doesn't count chapters)
+    const where = g.campaign.on ? `📖 STORY · ${this.story.eyebrow}` : `${this.story.eyebrow} · ${this.story.unit.toUpperCase()} ${n} OF ${this.total}`;
+    $('escCardEyebrow').textContent = where + (hero ? ` · ${hero.icon} ${hero.name.toUpperCase()}, ${hero.age}` : '');
     $('escCardTitle').textContent = def.name;
     $('escCardStory').innerHTML = def.card.story;
     $('escCardGoal').innerHTML = def.card.goal;
@@ -274,7 +278,8 @@ export class EscapeMode {
     // the things that walk around in it (they need the building to stand in)
     const was = this.level;
     this.level = lv;
-    lv.enemies = def.enemies.map((e) => (e.kind === 'watcher' ? new Watcher(this, e) : new Stalker(this, e)));
+    // (`cls`: a story's own kind — Sushi's Pizzaplex has Gerald on strings, the riders, Moony)
+    lv.enemies = def.enemies.map((e) => (e.cls ? new e.cls(this, e) : e.kind === 'watcher' ? new Watcher(this, e) : new Stalker(this, e)));
     if (def.controller) lv.ctrl = new def.controller(this, lv);
     for (const e of lv.enemies) e.root.visible = false;
     this.level = was;
@@ -543,7 +548,8 @@ export class EscapeMode {
   remember(id) {
     const e = this.save;
     const list = e.quests[this.level.n] || (e.quests[this.level.n] = []);
-    if (!list.includes(id)) { list.push(id); this.game.save(); }
+    // (the first time a quest is ever done, it's worth a Gus token in the Shop)
+    if (!list.includes(id)) { list.push(id); this.game.shop.earn(1); this.game.save(); }
   }
 
   questTotals() {
@@ -1040,7 +1046,9 @@ export class EscapeMode {
       `⭐ Quests done here: ${lq} of ${def.quests.length}`;
     this.secretNow = this.allQuestsDone() && !e.secret;
     const unit = this.story.unit;
-    $('btnEscWinGo').textContent = next ? `On to ${unit} ${n + 1}: ${next.name}` : n < this.total ? `${unit} ${n + 1} is coming soon!` : 'The end ✨';
+    $('btnEscWinGo').textContent = g.campaign.on
+      ? (next ? `▶ Keep going: ${next.name}` : '▶ Keep going')
+      : next ? `On to ${unit} ${n + 1}: ${next.name}` : n < this.total ? `${unit} ${n + 1} is coming soon!` : 'The end ✨';
     this.wonLevel = n;
     g.showScreen('escWin');
   }
@@ -1056,16 +1064,23 @@ export class EscapeMode {
       else this.showCard(n + 1);
       return;
     }
-    // the story isn't finished yet: more chapters are on the way
-    if (n < this.total || !this.story.finale) { this.showMenu(); return; }
+    // the story isn't finished yet: more chapters are on the way (in Story mode: on to the next)
+    if (n < this.total || !this.story.finale) { if (this.game.campaign.on) this.finished(); else this.showMenu(); return; }
     // the very end: morning at the pizza place, and ten years later...
     const e = this.save;
     e.done = true;
     this.game.save();
     this.playCutscene(this.story.finale, n, () => {
-      if (secret) this.playSecret(() => { this.leave(); this.game.toTitle(); });
-      else { this.leave(); this.game.toTitle(); }
+      if (secret) this.playSecret(() => this.finished());
+      else this.finished();
     });
+  }
+
+  // The whole story's over: back to the title — or, in Story mode, on to the next story.
+  finished() {
+    this.leave();
+    if (this.game.campaign.on) this.game.campaign.partDone(this.story.key);
+    else this.game.toTitle();
   }
 
   // The secret ending, for doing every quest in every level: John's first day.

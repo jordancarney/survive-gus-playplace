@@ -203,6 +203,7 @@ export class Hud {
     const two = this.game.coop.on;
     $('btnCoop').innerHTML = two ? '👥&nbsp; 2 Players: ON' : '👥&nbsp; 2 Players';
     $('btnCoop').classList.toggle('on', two);
+    $('btnSolo').classList.toggle('hidden', !two);
   }
 
   // `all` opens every night (debug mode).

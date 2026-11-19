@@ -430,6 +430,23 @@ export class Building {
     }
   }
 
+  // Shut some doorways for a while (the Shop's Door Generator), the same way as the wing's
+  // boards: wall to walking, sight and pathfinding, with a collider in each.
+  setDoorsClosed(doors, closed) {
+    if (!this.shut) this.shut = new Map();
+    for (const d of doors) {
+      let c = this.shut.get(d);
+      if (!c) { c = this.addBlock(d.x0, d.z0, d.x1 + 1, d.z1 + 1, this.wallH, { nav: false }); this.shut.set(d, c); }
+      for (let z = d.z0; z <= d.z1; z++) for (let x = d.x0; x <= d.x1; x++) {
+        this.grid[z][x] = closed ? WALL : d.a;
+        this.walkable[z * this.w + x] = closed ? 0 : 1;
+      }
+      const i = this.colliders.indexOf(c);
+      if (!closed && i >= 0) this.colliders.splice(i, 1);
+      if (closed && i < 0) this.colliders.push(c);
+    }
+  }
+
   roomCenter(roomId) {
     const r = this.rooms[roomId];
     return this.P((r.x0 + r.x1 + 1) / 2, (r.z0 + r.z1 + 1) / 2);

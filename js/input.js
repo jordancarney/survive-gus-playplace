@@ -4,7 +4,7 @@
 // "was it pressed since the last frame?" (`pressed`). Raw key codes are tracked too, for the
 // arrow-key repair puzzles, the camera monitor and the 1-4 weapon slots. Look deltas
 // accumulate between frames and are drained by the player each update.
-import { KEYMAP, DEBUG } from './config.js';
+import { KEYMAP, DEBUG, PLAYER } from './config.js';
 
 // action name -> Set of key codes, built once from KEYMAP
 const ACTION_OF = new Map();
@@ -29,15 +29,22 @@ export const input = {
   locked: false,
   wheel: 0,
   enabled: true,
+  // The touch screen's own actions and keys, kept apart from the keyboard's so that with two
+  // playing they only ever reach player 1 (player 2 is on a controller).
+  touchHeld: new Set(),
+  touchPressed: new Set(),
+  touchKeys: new Set(),
 
-  down(action) { return this.enabled && this.held.has(action); },
-  pressed(action) { return this.enabled && this.justPressed.has(action); },
-  keyPressed(code) { return this.enabled && this.keysPressed.has(code); },
+  down(action) { return this.enabled && (this.held.has(action) || this.touchHeld.has(action)); },
+  pressed(action) { return this.enabled && (this.justPressed.has(action) || this.touchPressed.has(action)); },
+  keyPressed(code) { return this.enabled && (this.keysPressed.has(code) || this.touchKeys.has(code)); },
 
   // Called once per fixed step, after everything has read this frame's input.
   endFrame() {
     this.justPressed.clear();
     this.keysPressed.clear();
+    this.touchPressed.clear();
+    this.touchKeys.clear();
     this.firePressed = false;
     this.wheel = 0;
   },
@@ -51,13 +58,21 @@ export const input = {
   clear() {
     this.held.clear(); this.justPressed.clear();
     this.keysHeld.clear(); this.keysPressed.clear();
+    this.touchHeld.clear(); this.touchPressed.clear(); this.touchKeys.clear();
     this.fire = false; this.firePressed = false;
     this.dx = 0; this.dy = 0;
   },
 
-  // Touch buttons and the on-screen puzzle pads feed in through here.
-  tap(code) { this.keysPressed.add(code); },
-  tapAction(action) { this.justPressed.add(action); },
+  // Touch buttons feed in through here.
+  tap(code) { this.touchKeys.add(code); },
+  tapAction(action) { this.touchPressed.add(action); },
+  // A finger dragging to look, in screen pixels: stored as mouse units, so whoever reads the
+  // look (player 1, an emote's camera, the emote wheel) gets it the same way as the mouse.
+  touchLook(dx, dy) {
+    const k = PLAYER.touchLookSensitivity / PLAYER.mouseSensitivity;
+    this.dx += dx * k;
+    this.dy += dy * k;
+  },
 };
 
 let canvasEl = null;

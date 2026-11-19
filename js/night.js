@@ -42,6 +42,7 @@ export class NightDirector {
     this.blackouts = [];
     this.won = false;
     this.secondChance = this.game.diff.secondChance;
+    this.game.shop.startNight();
   }
 
   start(n, happiness) {
@@ -79,6 +80,7 @@ export class NightDirector {
     if (n === 2) g.timmy.setupNight(); else g.timmy.hide();
     g.junk.clear();
     this.clearCrates();
+    g.shop.startNight();
     g.lighting.set('night');
     stopMusic();
     startAmbience('night');
@@ -309,6 +311,7 @@ export class NightDirector {
     stopAmbience();
     stopMusicBox();
     this.clearCrates();
+    this.game.shop.endNight();
   }
 }
 

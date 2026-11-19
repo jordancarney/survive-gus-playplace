@@ -3,9 +3,29 @@
 //
 // It's a breather between nights and a reminder of what you're protecting. Walk around as
 // long as you like; clock in at the time clock in the office when you're ready.
+//
+// Gus and the band sing a song over the techno (song.js), and in the Show Stage its words
+// come up at the bottom of the screen as they sing them.
 import * as THREE from 'three';
 import { buildKid, poseRig } from './models.js';
-import { playMusic, sfx } from './audio.js';
+import { playMusic, sfx, songNow } from './audio.js';
+
+function songCaption() {
+  let el = document.getElementById('song-caption');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'song-caption';
+    Object.assign(el.style, {
+      position: 'absolute', left: '50%', bottom: 'calc(22px + env(safe-area-inset-bottom))',
+      transform: 'translateX(-50%)', maxWidth: '86vw', padding: '6px 18px', borderRadius: '999px',
+      background: 'rgba(16, 10, 32, 0.72)', border: '2px solid rgba(255, 210, 63, 0.45)',
+      color: '#ffd23f', font: '700 17px var(--hud-font, sans-serif)', textAlign: 'center',
+      opacity: '0', transition: 'opacity 0.35s', pointerEvents: 'none',
+    });
+    (document.getElementById('hud') || document.body).appendChild(el);
+  }
+  return el;
+}
 
 const KID_ROOMS = ['D', 'D', 'D', 'A', 'A', 'B', 'B', 'T', 'T', 'P', 'R', 'H', 'E'];
 const WING_KID_ROOMS = [...KID_ROOMS, 'C', 'C', 'W', 'M', 'G', 'L'];
@@ -49,10 +69,21 @@ export class Daytime {
 
   stop() {
     for (const k of this.kids) k.rig.root.visible = false;
+    songCaption().style.opacity = '0';
   }
 
   update(dt) {
     const place = this.game.place;
+    // the song's words, while you're in the Show Stage to hear them
+    const song = songNow();
+    const players = this.game.players || [this.game.player];
+    const atStage = players.some((p) => place.roomAt(p.pos.x, p.pos.z) === 'D');
+    const cap = songCaption();
+    if (song && atStage) {
+      const words = `♪ ${song.text} ♪`;
+      if (cap.textContent !== words) cap.textContent = words;
+      cap.style.opacity = '1';
+    } else cap.style.opacity = '0';
     for (const k of this.kids) {
       if (!k.rig.root.visible) continue;
       k.t += dt;

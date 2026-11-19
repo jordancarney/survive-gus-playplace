@@ -59,7 +59,7 @@ dark and quiet, and the music box means Gus is coming. But:
   bleeds, nothing breaks apart (except the Junk Monster, which was junk to begin with).
 - Getting caught is "GOTCHA!" and a retry of the same night, never a death screen.
 - Daytime is the opposite of night on purpose: bright, loud, full of kids, the five of them
-  dancing on stage.
+  dancing on stage and singing a happy song.
 
 ## The designer's decisions
 
@@ -116,7 +116,7 @@ After the fourth build, he asked for:
 - **Make the mouths move when they talk.**
 - **A crouch where the animatronics can't see you, except Gus — but you can't zap or
   carry.** Asked what happens if one walks right into you while you're crouching: **it walks
-  past.**
+  past.** (Changed later: **bumping into one while crouching gets you caught.**)
 - **Timmy has a bowl cut.**
 - **On Day 11 the place gets a lot bigger:** a **new wing** the manager built while Jonathan
   was home, with all four rooms offered — **laser tag, a go-kart track, a giant play maze and
@@ -144,7 +144,11 @@ After the fourth build, he asked for:
   Then: **"on Horror make it a little scarier."**
 
 Bugs he found and had fixed: on an iPad you always ran when you tried to walk; and an
-animatronic you'd zapped got back up behind the menu after you were caught.
+animatronic you'd zapped got back up behind the menu after you were caught. Later: **"the
+animatronic tails aren't aligned"** — they floated behind the legs, under the body. Every
+tail now grows out of the small of the back (`tailRoot` in [js/models.js](js/models.js)) and
+leans with the body: Gus, Moony and the baby Gus's, Chomper, Flipper (a tail with a fluke on
+the end now), the Junk Monster, DJ Rocco, Sparky, Pjork and Peter.
 - **On Easy: unlimited flashlight, taser zaps and running, and no power outages until
   Night 10.**
 - **Make the power go out more:** "once every night starting on night 2". Nights 2–4 now
@@ -171,6 +175,31 @@ After the fifth build, he asked for:
   head"; **you see yourself** while you do one; and you pick from an **emote wheel**. Then:
   **on point and scream, "make your mouth open so wide it covers your whole face and make a
   high pitched scream."**
+- **"Make emotes and 2 player work on mobile."** Asked how two people play on one phone or
+  iPad, he picked **"Screen + controller"**: Jonathan is the touch screen, and Jimmy has a
+  game controller (like the PS5 one). Emotes got a 😀 button.
+- **"Fix on mobile where gallery and settings can cover other options."** On a phone the
+  Gallery and Settings tabs sat on top of the title's buttons. Now they come after the
+  buttons, and the title scrolls.
+- **"Its hard to get out of 2 player."** Turning it off used to mean opening the 2 Players
+  screen and picking 1 Player. Now there's a one-tap **👤 Back to 1 player** beside **2
+  Players: ON** on the main menu, and in the pause menu while two are playing.
+- **"Make the daytime music have words like in FNAF."** Asked the rest, he chose: **Gus and
+  the band sing it, all five together on the stage**; the words are **just happy** (pizza,
+  games and fun, nothing creepy); **"robot now, real later"**: robots sing it straight away,
+  and a real person's recording takes over once someone sings it; and it plays **in the
+  daytime at the PlayPlace and on the jukebox at When Jonathan Was Five's pizza place**. See
+  [The daytime song](#the-daytime-song).
+- **"Add gus tokens where you get 1 per arcade machene and quests and make a shop to get stuff
+  like a gus mask and other things like a one use genorator."** The Shop is on the **main
+  menu** (a tab beside Gallery and Settings). Asked the rest, he chose: **every fixed game
+  counts**, not just the arcade ones; the Gus mask **fools everyone but Gus**, **15 seconds at
+  a time**, then you take it off to breathe; the generator comes in **different types**
+  (lights back on in a blackout, a full charge, the doors shut). He picked everything offered
+  for the rest of the Shop (a **balloon decoy**, an **extra life**, **hats**, **new emotes**)
+  plus **a skateboard and glow sticks**. The hats: **party hat, Gus cap, crown and propeller
+  beanie**. The emotes: **the floss, the robot, a backflip and falling asleep, plus "one where
+  you eat a piece of pizza and say noice."** See [Gus tokens and the Shop](#gus-tokens-and-the-shop).
 
 His original brief also fixed: Jonathan is 15 and found the job opening; five animatronics
 (Gus the platypus is the leader, Gerald the gorilla, Chomper the beaver, Cranker the penguin,
@@ -252,8 +281,11 @@ First person. Walks at 4.0 m/s, sprints at 6.6 with 5 s of stamina (run it dry a
 winded until it's half full). Dragging an animatronic slows you to 2.9; the ball pit to 60%.
 
 **Crouching** (C, or the ⤓ touch button) drops your eyes to 1 m and slows you to 2.0 with no
-sprinting. While crouched, no animatronic except Gus can see, hear or catch you — one that
-was chasing you loses you and goes searching, and one that walks right into you walks past.
+sprinting. While crouched, no animatronic except Gus can see or hear you — one that was
+chasing you loses you and goes searching. But **bump into one, or let one bump into you, and
+you're caught** (the designer, later: "if animatronics run into you or you run into them
+while crouching you get caught"), so keep out of their way. The Shop's Gus mask still fools
+the ones it fools, even up close.
 Gus still hunts and catches you, and so does the Junk Monster (it has Gus's head, and it
 never needed to see you). In exchange you can't use a weapon or drag anything, and you
 can't crouch while dragging. A tag at the bottom of the HUD says you're crouched. Timmy
@@ -439,6 +471,54 @@ newest take of a line wins.
 | junkRises  | Before Night 21 (first time)          | The pile pulls the five in; the Junk Monster rises; the old crew wakes up |
 | finale     | Junk Monster beaten                   | The five pop back out; Employee of the Month         |
 | oldJohn    | After the finale (first time)         | "One more thing...": Old John, the old night guard, tells the secret and gives Jonathan his badge |
+
+## The daytime song
+
+By day, Gus and the band sing over the techno: the same four chords (C, Am, F, G at 128 BPM),
+now a 48-bar song that goes round again. Every line is two bars, seven syllables on one
+rhythm (six eighth notes from beat 2, then a long note on the next downbeat).
+
+| Bars  | Part                                   |
+|-------|----------------------------------------|
+| 1–4   | Intro (the band plays)                 |
+| 5–12  | Verse: *Come on in, it's time to play! / Pizza, games and fun all day! / Grab your friends and grab a slice! / Gus's place is extra nice!* |
+| 13–20 | Chorus: *Hey, hey, hey, it's Gus's day! / Pizza, prizes, hip hooray! / Ball pit, slides and games galore! / Everybody wants some more!* |
+| 21–24 | Break                                  |
+| 25–32 | The band's verse: *Gerald's on the big bass drum! / Chomper's chewing bubble gum! / Cranker dances, Flipper sings! / Gus the platypus is king!* |
+| 33–40 | Chorus again                           |
+| 41–48 | Break                                  |
+
+The words say "Gus's", never "PlayPlace", because the same song plays on the jukebox at
+Gus's Giant Pizza Palace in When Jonathan Was Five (it plays for 30 seconds: the intro, the
+first verse and the start of the chorus). Cutscenes that use the day music get it without the singing
+(`playMusic('day', { words: false })`), so nobody sings over the talking.
+
+**Robot now, real later.** Until someone records it, robots sing it.
+[dev/sing.py](dev/sing.py) has macOS's built-in Fred, Ralph and Junior voices say every
+syllable, then re-sings each one with a channel vocoder: an 18-band envelope of the spoken
+syllable shapes a buzz at the note's pitch, with the consonants kept at speed and the vowel
+stretched to fill the note, so every word lands on the beat. Gus's lead is Fred an octave
+under the tune, the big voices are Ralph an octave under that, and on the chorus Junior
+sings it up high. (macOS's own singing input, `[[inpt TUNE]]`, is gone from its voices, which
+is why it's done this way.) It writes `audio/song/line-<n>.m4a`, each starting on its line's
+first bar, and [js/song.js](js/song.js): the words, the notes, the form and how loud the
+robots sing each line, 30 times a second. To change the words or the tune, edit the top of
+sing.py and run `python3 dev/sing.py` (about a minute and a half; nothing to install).
+
+In the game, `TRACKS.day` in [js/audio.js](js/audio.js) starts each line on its bar, on the
+audio clock, so it stays in time. A line that has a real recording (voice id `song-<n>`) is
+sung by that, with the robots quietly singing along under it (it's a band); the rest stay
+robots. On stage the five's jaws open and shut with the singing (`songNow()`), and while
+you're in the Show Stage the words come up at the bottom of the screen: ♪ like this ♪.
+
+**To record the real version:** open `dev/record.html`, put **headphones on**, and scroll to
+*The daytime song*. Each line has **🔊 Hear the robots** to learn the tune and **● Record**:
+four clicks count you in, the band plays the line's two bars (the robots singing along in
+your headphones, unless you untick that), you sing, and it stops by itself. The take is
+recorded on the game's own audio clock, allowing for the speakers' and microphone's delay,
+then lined up with the line's notes by its loudness, and kept exactly the line's length, so it
+lands on the beat. **▶ With the band** plays it back in the song. Save, then run
+`python3 dev/add_voices.py` like the other voices.
 
 ## Timmy
 
@@ -717,6 +797,11 @@ After playing the first five chapters, he asked for:
 - **Jumpscares like the real FNAF game** — everywhere in the game, not just here.
 - **Graphics like the original FNAF game** (Settings → FNAF look).
 
+Later, he asked for:
+
+- **A running animation in Max's chapters, like in the real FNAF 4.** Then: **"make the
+  footsteps slower."** (See *Max's chapters* below.)
+
 ### The night
 
 Gus's Pizzaplex has just opened, and its first Sleepover Night has kids camping out in
@@ -893,6 +978,15 @@ Max stands in the middle of the Sleepover Suite. **A / ←** walks to the left d
 the right door, **W / ↑** the closet, **S / ↓** turns round to the bed, and the opposite key
 goes back to the middle. At a door or the closet, **hold Space** (or the 🚪 button) to hold it
 shut, and **hold F** (or 🔦) to shine the flashlight.
+
+**Running, like FNAF 4** (`RUN` in [js/plex/bedroom.js](js/plex/bedroom.js)): to a door or
+the closet, Max turns to face it and runs — 0.6 s and three big strides, the view bouncing
+with each one, leaning in and rocking side to side, her feet thumping on the carpet
+(`sfx.plexDash`, soft and close so it's never mistaken for the footsteps in the halls). Coming
+back she backs away to the middle the same way (0.5 s, two strides). Turning round to the bed
+is a quick spin with no running (0.32 s). Re-tested with the slower run (Horror): doing
+nothing still gets you caught in under a minute, and going round the doors, closet and bed
+still makes it through Chapters 2, 17, 35, 41 and 47.
 
 - **The doors.** Something comes down each hall. Far away, at the end of the hall, it's in
   your flashlight — shine it and it backs off. When it's right outside, you don't see it:
@@ -1089,6 +1183,357 @@ With `?debug=1`, `__game.plex` is this story: `__game.plex.start(n)` jumps to a 
 `__game.plex.ctrl` is the bedroom or office: `ctrl.power = 1` nearly runs Jackson's power
 out, `ctrl.closet = 95` nearly lets the baby Gus out.
 
+## Sushi's Pizzaplex
+
+A fourth story, on its own title-screen button (🐧 Sushi's Pizzaplex), set four years before
+the PlayPlace ([js/sushi/](js/sushi/)). It's a free-roam escape like Security Breach, in the
+same engine as When Jonathan Was Five: four parts, a Gus Watch, save boxes and hiding spots.
+Its progress is saved beside the others (`profile.sushi`) and a New game of the main story
+leaves it alone. The designer drew both maps and wrote the rules on two more pages
+([gallery/sushi-map.jpg](gallery/sushi-map.jpg), [gallery/sushi-notes.jpg](gallery/sushi-notes.jpg),
+[gallery/daycare-map.jpg](gallery/daycare-map.jpg), [gallery/daycare-notes.jpg](gallery/daycare-notes.jpg)).
+
+### The designer's decisions
+
+From his maps and notes:
+
+- **Sushi's Pizzaplex**, about 200 ft across: **Laser Tag** (a maze, top left), the
+  **Entrance/Exit** with a **"See you soon"** sign, the **Gift Shop**, the **Main Area** with
+  **VIP Seating**, round tables, the **Show Stage** and a pizza counter, the **Go-Karts**, and a
+  **Play Area** with a **roller coaster** from "start" round the right and bottom edges to
+  "end". **Sushi the penguin** is drawn in the corner.
+- **"You can collect cards to enter locked places (like VIP seating). Hide in shelves, carts
+  etc. You collect plushes. You have to find your friends and you crawl through vents to
+  escape the very old pizzeria. Vents can go above and below the pizza[ria]."**
+- **Gerald's Daycare:** the Bathroom, Gerald's Stage, the Daycare Exit (with bars), the
+  Security Desk, the Generator, a big winding Ball Pit, a climbing frame, the Pool, a
+  **Distraction** by the pool, and ropes to reach fuses. Its way out leads to Sushi's
+  Pizzaplex. **"Gerald has strings and tries to eat you. You have to collect all five fuses
+  to make Gerald good, then you get the security badge to escape."**
+
+Asked directly, he chose:
+
+- **You play Tom, 12, with a perm** — and then **"delete his hat."** A brand-new kid.
+- His friends are **Bob, 11, Billy, 13, and Tim, 9½**. They **snuck in on a dare**.
+- **"You do some of the Pizzaplex, then when trying to upgrade your card you get a daycare
+  card."** Cards upgrade **a mix of all three ways**: some are hidden, your friends give you
+  some, and some come from doing jobs.
+- **Sushi's Pizzaplex is the very old pizzeria** — the whole place is old, dusty and falling
+  apart.
+- **Sushi is a bad guy** who walks around and tries to catch you. Also there: **"Chomper who
+  runs you over with a roller coaster cart, and Flipper who runs you over with a go-kart, and
+  Moony who is in the laser tag."**
+- **Gerald hangs from the ceiling on strings like a puppet and swoops down to grab you — and
+  somebody else is pulling his strings.** That's the secret: **Peter, who is 27 and is in a
+  springlock suit.** The suit is **an otter: "he was the original Gus"**, and **Peter is the
+  bad guy behind everything** — behind **all the stories**, not just this one. What he did:
+  **he controls them without strings, he wound the music box, he made the blackout, he built
+  Moony, and he controls them all.** At the end, **he gets away**.
+- **The roller coaster is broken** and one of your friends is stuck at the end of it: **you
+  fix it to save him.**
+- The plushies are for **all three**: a shelf of the ones you've found, trading them at the
+  Gift Shop for better cards or gear, and a secret ending for finding them all.
+- **Tom has just a flashlight** — no weapons. Hide, sneak and run.
+- The Distraction is **"like in Security Breach"**: something that makes a noise so the
+  animatronic goes to look while you sneak past.
+- Where each friend is stuck, he left to us ("you pick"): **Bob in Laser Tag, Billy at the
+  Go-Karts, Tim on the roller coaster** — made up for this build, his to change.
+
+### The story
+
+Sushi's Pizzaplex has been closed for years: the old pizza place across town with go-karts,
+laser tag and a roller coaster, boarded up after things kept going wrong at night. Billy dares
+the others to spend one night inside. They squeeze in through the front doors under the
+"See you soon" sign — the doors slam, the chains rattle, an old music box tune starts up
+somewhere, and in the dark Sushi the penguin opens his eyes. The four of them scatter.
+
+Tom finds his way through the Pizzaplex with Billy's walkie-talkies, a card at a time: Bob in
+Laser Tag, then the card machine that should have given him a better card and printed a
+DAYCARE card instead. Behind the daycare door, Gerald the gorilla dangles from his strings
+above the ball pit. Five fuses into the generator, and the strings go slack: Gerald was never
+bad. Somebody was making him do it. He gives Tom the Security Badge. With it Tom opens the
+Go-Karts (Billy, and Flipper's kart going round and round) and the Play Area, where Tim is
+stuck at the end of the broken roller coaster and Chomper rides a runaway cart up and down
+the track. Fixed, the coaster brings Tim down. The front doors are still chained — so the
+four of them climb into the vents.
+
+Up in the vents above the stage there's a room nobody was meant to find, with monitors on
+every camera, a workbench and an old otter costume slumped in a chair. It isn't empty. It's
+**Peter**.
+
+### Peter, and what he did
+
+Peter tells the secret behind every story, and it fits what everyone else found:
+
+- **The very first Gus was an otter**, a springlock suit — half costume, half animatronic,
+  with spring latches that snap the robot parts open so a person can fit inside. Peter, a
+  teenager working for the Toymaker, wore it at the Pizza Shack's first birthday parties. The
+  springlocks were too dangerous, so the Toymaker built a robot platypus instead — a Gus that
+  didn't need anyone inside — and the otter suit went into a cupboard. Peter wanted to be Gus
+  forever.
+- **He wound the music box.** The night the Toymaker brought Gus's music box to the Shack
+  ("so you'll never stop singing" — Lost in the Pizzaplex, Chapter 10), it was Peter who wound
+  it up. When the Toymaker locked the key in his desk (Chapter 38), nobody could ever stop it.
+- **He made the blackout.** The stormy night at the Shack (Chapter 32), the lights didn't go
+  out on their own: Peter pulled the fuses, and the lightning hit the sign while the music box
+  was playing. That's Old John's secret, and Old John never knew the blackout had a reason.
+- **He built Moony**, out of Gus's old parts from the junk pile, and the rest of Sushi's
+  animatronics — Sushi, Gerald the puppet, and this place's Chomper and Flipper.
+- **He controls them all without strings**: the music box's tune is how. Gerald's strings were
+  just for show. (Sunny? Even Peter doesn't know where she came from.)
+
+Then the fan stops, the kids drop down the shaft into the vents under the floor, too tight for
+the suit, and crawl out a drain grate into the moonlight. When they look back, the otter is
+standing under the "See you soon" sign. In the morning Sushi's Pizzaplex is empty; its
+animatronics are sold off (Moony goes to Gus's PlayPlace, for the new wing). **Peter got away.**
+
+The timeline this fixes: Peter is 27 here, four years before the PlayPlace. He was 17 in the
+otter suit at the Shack (fourteen years before the PlayPlace), 19 the night of the storm,
+21 the night Jonathan was five, 25 at Gus's Pizzaplex and 31 when the PlayPlace's wing opens.
+
+### The parts
+
+Each part is a Building on the grid like the escape levels, parked further east; the
+Pizzaplex is one floor plan ([js/sushi/maps/pizzaplex.js](js/sushi/maps/pizzaplex.js)) built
+again for parts 1 and 3.
+
+| # | Part | Find / do | Watch out for |
+|---|------|-----------|---------------|
+| 1 | The Dare | The 🟦 blue card (hidden) → Laser Tag → find Bob (he gives you the 🟩 green card) → the card machine (it prints a 🟪 DAYCARE card) → the Daycare door | Sushi (Entrance, Main Area, Gift Shop); Moony in Laser Tag (he blinks from place to place) |
+| 2 | Gerald's Daycare | 5 fuses (Bathroom, Ball Pit, top of the climbing frame, the Pool, the cubby tower) → the generator → talk to Gerald → the 🟨 Security Badge → the barred Daycare Exit | Gerald on his strings, everywhere at once from the ceiling. The noisy toys pull him away |
+| 3 | The Badge | Billy at the Go-Karts → 3 coaster parts → fix the coaster at its control booth → get Tim at the End station → everyone to the Back Room's vent | Sushi; Flipper's go-kart on its track; Chomper's runaway coaster cart |
+| 4 | The Vents | Crawl through the upper vents → Peter's room: 3 clues → Peter wakes → turn off the big fan → drop down the shaft → crawl out the under-floor vents | Peter, in the upper vents |
+
+### How it plays
+
+- **Tom** is 12: eye height 1.36 m, walk 4.0, run 6.6. A flashlight and the Gus Watch (a
+  cheap one from the Gift Shop's old stock — Billy's idea), and **no weapons**.
+- **Cards** open the coloured doors: walk up to one with the right card and it beeps open;
+  without it, the door says which card it needs. Blue opens the Gift Shop and Laser Tag; the
+  DAYCARE card opens the daycare; the Security Badge opens everything with a staff lock (the
+  Go-Karts, the Play Area and the vent grates); the 💗 VIP card opens VIP Seating. The card
+  you're carrying shows at the top of the screen.
+- **Vents** go above (along the top of the building) and below (under the floor, the stage
+  end): too low to stand up in, so you crawl, and nothing that walks fits in them. In parts 1
+  and 3 they're shortcuts; part 4 is all vents.
+- **Hiding** in shelves, carts, lockers and boxes works like the other stories: anything that
+  saw you get in pulls you out.
+- **Riders** (Flipper's kart, Chomper's cart) stay on their track and run you over if you're on
+  it when they come by; when they spot you near the track they speed up. Cross behind them.
+- **Gerald** rides the ceiling on his strings, straight over the ball pit and the pool, with
+  his feet dangling a metre off the floor. When he sees you he swoops down. The noisy toys
+  (E to wind one up) play for 10 seconds and he swings over to look.
+- **Moony** blinks: when you aren't looking, he can vanish and turn up somewhere else in
+  Laser Tag. He never leaves it.
+- **Peter** is slow, with his springlocks clicking as he crawls, and he never stops coming.
+  He can't fit in the vents under the floor.
+
+### The plushies
+
+Twelve plushies, three in each part, of everyone in the story. Picked up, they go in your
+backpack; at the Gift Shop's trade counter (parts 1 and 3) they go up on its shelf, where the
+ones you've traded stand in a row — and the shelf pays out as it fills: 2 on the shelf for
+🧦 sneaky socks (nothing hears you run), 4 for the 💗 VIP card, 6 for 👟 running shoes, 8 for
+the 🔦 super flashlight and 10 for a 🍀 lucky coin (get away once per part). Find all twelve
+and the secret ending plays: back at Sushi's in the morning, behind the shelf, Peter's old
+locker — and a photo of a teenager in an otter suit with a man in a toymaker's apron, both
+smiling, at the Pizza Shack's opening day. On the back, in pencil: *"Gus forever."*
+
+### Debug handles
+
+With `?debug=1`, `__game.sushi` is this story: `__game.sushi.start(n)` jumps to a part,
+`__game.sushi.skip()` finishes every quest but the last, `__game.sushi.giveCard('badge')`
+hands you a card, and `__game.sushi.allPlushies()` puts every plushie on the shelf. Debug mode
+(Settings) opens every part.
+
+## In the Closets
+
+A fifth story, after Gus's PlayPlace, on its own Survival button (🚪 In the Closets) and the
+last part of Story mode ([js/closets/](js/closets/)). Timmy's house, ten nights, and every
+animatronic hiding in the closets. It runs on When Jonathan Was Five's engine (free roam, story
+cards, the Gus Watch, getting caught, a clock to 6 AM) with its own closets, mirrors and Gus.
+Its progress is saved beside the others (`profile.closets`), and a New game of the main story
+leaves it alone.
+
+### The designer's decisions
+
+- **"Make after Gus's PlayPlace in the closets, where you check closets, and to find Gus you
+  look in the mirror, and to stop them you spam a button to keep the closet closed, and make
+  10 levels that get harder and harder, and add it to Story mode also."** Its name: **"in the
+  closets."**
+- It's at **Timmy's house**, and **you play Timmy**. You **walk around** (like Security Breach),
+  not jump between spots.
+- **"5 per floor and more per level"**: five closets on every floor, and floors open up as the
+  levels go, **up to 4 floors** by Level 10 (the basement, downstairs, upstairs, the attic).
+- Who's in the closets: **"All of them."**
+- Stopping them: **"close the closet until breathing stops"** — spam the button.
+- **"Make animatronics have big teeth like in FNAF 4"** — and **"also add teeth for Max's
+  chapters"** (`addBigTeeth` in [js/models.js](js/models.js), on everything in this story and
+  in the Sleepover Suite).
+- The mirror, **"Both"**: it shows **which closet Gus is hiding in**, and if he gets out, **him
+  behind you**.
+- If Gus gets out and he's behind you: **"Hide in a closet"** — an empty one.
+- Level 10: **"Gramma comes home."**
+
+The story around it is made up for this build, his to change: after everything at the
+PlayPlace, Timmy (eight now) lives with his Gramma, who's working the night shift at the
+bakery for a week and a half. On Night 5 a note on the basement door says **"GUS FOREVER."**:
+Peter got away from Sushi's Pizzaplex, and now he knows where Timmy lives. On the last night
+Gramma comes straight home at six, every light goes on, every closet swings open — empty — and
+in the hall mirror, for a second, two orange eyes.
+
+### The house
+
+[js/closets/house.js](js/closets/house.js). The grid is flat, so each floor is its own strip of
+one Building, side by side, with the stairs as the way between them. Every floor has the same
+plan with different rooms: three rooms along the north (A, B, C), a long hall, two rooms along
+the south (D, E), a door from each room to the hall, and **a closet against the far wall of
+every room** — five a floor.
+
+| Floor | Rooms (A B C / D E) | Closets |
+|-------|---------------------|---------|
+| Basement | Boiler Room, Storage Room, Workshop / Old Laundry, Fruit Cellar | boiler cupboard, storage closet, tool closet, old wardrobe, cellar closet |
+| Downstairs | Kitchen, Living Room, Front Hall / Dining Room, Laundry Room | pantry, TV closet, coat closet, china cupboard, laundry closet |
+| Upstairs | Timmy's Room, Bathroom, Gramma's Room / Toy Room, Guest Room | Timmy's closet, bathroom cupboard, Gramma's wardrobe, toy closet, guest closet |
+| Attic | West Attic, Trunk Corner, East Attic / Old Bedroom, The Rafters | five old wardrobes and closets |
+
+The **stairs** are in the middle of every hall, against its south wall: ⬆ on the left, ⬇ on
+the right, with a sign over each (E to take them). A **mirror** hangs on the wall at the east
+end of every hall. Signs over the doors name the rooms; another names the floor. Furniture is
+kept clear of every door and closet (tested: every closet's front can be reached from every
+other on its floor, and from the stairs).
+
+### How it plays
+
+- **Breathing.** Every closet with something in it waits a while (`quiet`), then starts
+  **breathing** and its door starts creaking open. The top of the screen says what and where
+  (**👂 BREATHING ▮▮▯▯▯ THE PANTRY · Kitchen (Downstairs)**), with a bar for how far the door's
+  open, and the breathing is louder the closer you are. As the door opens you see two eyes in
+  the crack, then the whole animatronic in the dark, its jaw opening wider and wider on its big
+  teeth.
+- **Spam it shut.** At a breathing closet: **SPAM E** (or Space, the touch E button, A on a
+  controller). Every push shoves the door back a little and slows it down; enough pushes in a
+  row (`taps`) and the breathing stops. Too slow — or nowhere near — and it bursts out and gets
+  you, wherever you are in the house. Held shut, it goes quiet again, and on the later levels
+  it may creep off to a different closet (`move`).
+- **Gus** is in a closet too, and breathes like the others, but you can't see him: the screen
+  only says **"...but WHERE? Look in a mirror 🪞"**. Look at any mirror and it shows **his
+  closet**, his orange eyes peeking out of the door (and says which one). Hold it shut and he
+  creeps off to another closet.
+- **Gus gets out:** the music box plays, and he's **right behind you**, following wherever you
+  go — invisible, except in a mirror, where you see him standing at your back. **Hide in an
+  empty closet** (E, any closet with nothing in it; one with something in it won't open) and
+  stay in until he gives up (`gusHide` seconds); take too long (`gusOut`) and he gets you.
+  While he's out he counts as one of the closets breathing, so fewer others start.
+- **6 AM** is the end of every night: they all go quiet, Gramma's key turns in the lock, and
+  on Level 10 she comes home for good (the ending cutscene).
+
+**The mirrors** ([js/closets/mode.js](js/closets/mode.js), `renderExtras`, called from
+`game.render`): Gus's meshes (and his eyes at a closet door) are on Three.js layer 1, which
+the game's cameras don't draw. When you're on a floor and looking toward its mirror, the
+mirror's camera (layers 0 and 1) draws into a small render target, 20 times a second: from
+in front of Gus's closet while he's in one, or your own view reflected through the glass
+(with the near plane at the glass) when he's out. A lamp that's only on during that render,
+and the cameras' brightening, light what's in it. The mirror itself is hidden while it draws,
+so it's never in its own reflection.
+
+### The levels
+
+[js/closets/levels.js](js/closets/levels.js), one row each. Gus is in from Level 3.
+
+| # | Level | Floors | In the closets | Door opens in | Taps | At once | Moves |
+|---|-------|--------|----------------|---------------|------|---------|-------|
+| 1 | Home Alone | downstairs | Chomper, Cranker | 15 s | 6 | 1 | — |
+| 2 | Creaks in the Night | downstairs | + Gerald | 14 s | 7 | 1 | — |
+| 3 | Eyes in the Mirror | + upstairs | + Flipper, **Gus** | 15 s | 7 | 2 | — |
+| 4 | Upstairs, Downstairs | 2 | + Sunny | 14.5 s | 8 | 2 | 15% |
+| 5 | The Basement Door | + basement | + Moony | 14.5 s | 8 | 2 | 20% |
+| 6 | Down in the Dark | 3 | + DJ Rocco | 14 s | 9 | 2 | 30% |
+| 7 | They Move | 3 | + Sparky | 14.5 s | 10 | 2 | 50% |
+| 8 | The Attic | + attic | + Sushi | 15 s | 10 | 2 | 50% |
+| 9 | Every Floor | 4 | + Old Gerald | 15 s | 11 | 2 | 60% |
+| 10 | Gramma Comes Home | 4 | + Old Chomper (11 and Gus) | 15.5 s | 12 | 2 | 70% |
+
+The nights run 2½ minutes (Level 1) to 5 (Level 10). Each row also has how long a closet stays
+quiet (`quiet`, longer on the later levels because there are so many more of them), the
+fewest seconds between two starting (`gap`), and Gus's `gusOut` (14 s down to 10) and `gusHide`
+(6 s up to 8). Spooky (difficulty) slows it all down and gives you the second chance.
+
+Tested (Horror) with a bot that walks the real paths at a kid's running pace, spams 5 taps a
+second, finishes one closet before picking the next (the one with the least time to spare),
+waits 3 s to "check the mirror" before going to Gus's closet, and hides when Gus is out:
+doing nothing gets you caught in under a minute on every level (27–45 s on Level 1, 26–35 s on
+Level 3, 34–36 s on Level 10); the bot
+gets through Levels 1–6 every time (3 of 3), Level 7 3 of 3, Level 8 2 of 3, Level 9 3 of 4 and
+Level 10 2 of 5 — the last one's meant to be the hardest. (Three breathing at once on four
+floors was tried for 9 and 10 and couldn't be done, even by the bot.)
+
+### Debug handles
+
+With `?debug=1`, `__game.closets` is this story: `__game.closets.start(n)` jumps to a level
+(after `__game.closets.showMenu()`), `__game.closets.breathe(i)` starts the i-th one breathing
+now (`breathe('gus')` for Gus), `__game.closets.occ` is who's in which closet, and
+`__game.closets.clock.t = __game.closets.clock.len - 5` is five seconds from 6 AM.
+
+## Story mode
+
+Every story in one go ([js/campaign.js](js/campaign.js)). The title screen's first page is
+just **▶ Play** (and 👥 2 Players); Play leads to **📖 Story** or **🌙 Survival**. Survival is
+the title as it always was: the nights, Pick a night, and each story on its own button.
+
+### The designer's decisions
+
+- **"Make story mode where you go Sushi's Pizzaplex, daycare, Lost in the Pizzaplex, then the
+  PlayPlace, without chapters: you press Continue or New game."**
+- **"Make a main menu that says Play, and it leads you to a screen that says Story or
+  Survival, and Survival is how it is now."**
+- Asked where When Jonathan Was Five goes: **"put it third."** Lost in the Pizzaplex: **all 50
+  chapters in a row**. Survival keeps **all of the games** to pick from. **2 Players can play
+  Story too.**
+- After the PlayPlace: **In the Closets** ("add it to story mode also"), the fifth part.
+
+### How it goes
+
+| # | Story | Where it ends |
+|---|-------|---------------|
+| 1 | 🐧 Sushi's Pizzaplex, all four parts (the Daycare is Part 2) | the vents, and Peter getting away |
+| 2 | 🧸 When Jonathan Was Five, all eight levels | 6 AM at the pizza place |
+| 3 | 🍕 Lost in the Pizzaplex, all fifty chapters | the Great Escape |
+| 4 | 🔦 Gus's PlayPlace, from getting the job to Night 21 | Old John and his badge |
+| 5 | 🚪 In the Closets, all ten levels | Gramma comes home |
+
+There's no level list: **Continue** picks up the story you're on at the furthest level you've
+reached (from your save box, if you touched one), and **New game** starts from Sushi's
+Pizzaplex again (it asks first, and says Survival keeps its progress). Each level still has
+its card, saying what's happening and what to do, but with **📖 STORY · SUSHI'S PIZZAPLEX** in
+place of "PART 2 OF 4", and the win screen's button says **▶ Keep going**. When a story's last
+level is won and its ending has played, a card says what's next (**📖 STORY · 2 OF 4**, its
+name and what it's about, **▶ Keep going** or Main menu). After Night 20 the story goes straight
+on to Night 21, and after Old John, **THE END**. Back from a card, or Main menu from any screen,
+goes back to the Story menu, which says where you're up to ("🍕 Lost in the Pizzaplex — The
+Music Box").
+
+**Its own save.** Story mode plays on a profile of its own (`survive_gus_story_v1`, see *Save
+data*), the same shape as Survival's, plus `campaign`: `{ key, done }`, the story you're on.
+Going into Story swaps it in and Survival's is untouched; going back to the title swaps
+Survival's back. So the stories' own saves (levels, quests, plushies, Gus Watch upgrades,
+Timmy, the wing) all work as they always did, separately for each. The Shop's tokens are
+shared: they're in their own save already.
+
+**How it's built.** `STORY_PARTS` lists the parts in order; a part is a story mode on the game
+(`game.sushi`, `game.escape`, `game.plex`, and later `game.closets`) or `'nights'`, the
+PlayPlace itself. Parts the game doesn't have are skipped, so adding one is one line. The
+story modes call `finished()` (escape/mode.js) when their ending is over, which in Story mode
+is `campaign.partDone(key)`; the PlayPlace's `finishBoss` does the same after Old John.
+
+Tested (Story save in a separate origin): New game opens Sushi's Part 1 card; winning a
+middle level goes straight to the next card; winning each story's last level shows the next
+story's card, in order, through the PlayPlace's intro; quitting goes back to Survival's save
+(unchanged), and Continue picks up where you were; Gus → Night 21, the Junk Monster → Old John →
+THE END, and then the Story menu offers only New game; a fifth story turns up as 5 OF 5; and
+2 Players → 📖 Story opens the Story menu with Jimmy on. On a phone the menu pages scroll with
+the tabs after them.
+
 ## 2 Players
 
 The **👥 2 Players** button on the title screen opens its own screen
@@ -1096,6 +1541,10 @@ The **👥 2 Players** button on the title screen opens its own screen
 side or top and bottom, both players' keys, whether a controller is plugged in, and the three
 games to play together. It's saved in `localStorage` under `survive_gus_coop`, apart from the
 progress, so it stays on until you turn it off (the title button says **2 Players: ON**).
+**👤 Back to 1 player** turns it off in one tap. On the main menu it sits beside 2 Players:
+ON. In the pause menu it shows while two are playing, and Jonathan carries on right where he
+is (`goSolo` puts down whatever Jimmy was doing first: the cameras, a repair, dragging one, an
+emote). On a short screen the pause menu's buttons come before its list of keys.
 
 **Who.** Player 1 is Jonathan — at fifteen, at five in When Jonathan Was Five, and in the
 Pizzaplex whoever the chapter is about. Player 2 is always **Jimmy**, Jonathan's five-year-old
@@ -1153,6 +1602,19 @@ you has your own place in the room and your own half of the screen — A/D/W/S o
 move between the doors, the closet, the middle and the bed — and a door's held shut if either
 of you is holding it; a hall's light is on if either of you shines it.
 
+**On a phone or iPad** (the designer's call: "Screen + controller"), Jonathan is the touch
+screen and Jimmy has a controller; the first one connected is his. The 2 Players screen says
+so: it lists the touch buttons and the controller buttons, and it says "Jimmy needs a
+controller!" until one shows up. The touch controls cover only Jonathan's half (CSS shrinks
+`#touchLayer` to it). Touches in Jimmy's half do nothing, and the buttons get smaller in a
+short half (`--tk`). Everything the touch screen presses goes through `input`'s own touch
+channel (`touchHeld`, `touchPressed`, `touchKeys`, and `touchLook` for looking), which only
+Jonathan's `Controls` read, so a tap can never move Jimmy. Once Jonathan's caught, only ❚❚
+still works until morning. In his half, his weapon moves up above his bars and his prompts
+above the crosshair, out from under his buttons (the top row has the Shop's buttons at
+night). In Max's bedroom his door and
+closet buttons come back, smaller, in his half.
+
 ## Emotes
 
 Hold **T** (player 2: **K**; a controller: **up on the d-pad**) and the emote wheel pops up
@@ -1168,11 +1630,68 @@ wobbles. Each has its sound (a shrill, high-pitched, wobbling AAAAAH!, a
 bawk-bawk, a little tune to dance to). Two playing, the other one sees it too. You can't emote
 while dragging one, and nothing stops the animatronics while you do.
 
+On a touch screen it's the **😀** button (next to ❚❚). Hold it and slide toward one, then let
+go. Or tap it, and the wheel stays open until you tap the one you want (or tap 😀 or
+anywhere else to close it). Tap 😀 again during an emote to stop it ([js/touch.js](js/touch.js)).
+
+Five more come from the Shop and go on the end of the wheel once they're yours (`SHOP_EMOTES`
+in [js/shop.js](js/shop.js); the wheel grows to fit them): 🍕 **Noice** (three bites of a slice
+of pizza, a thumbs up and "noice." in the device's voice), 💃 **the floss**, 🤖 **the robot**
+(snapping from pose to pose), 🤸 **a backflip** (up, over backwards round the middle of the
+body, and down on your feet) and 😴 **fall asleep** (flat on your back, snoring, with Zs
+floating up). shop.js holds the pizza slice and does the flip and the lying down
+(`Shop.dress`); the poses are in `poseRig` with the others.
+
+## Gus tokens and the Shop
+
+**Gus tokens 🪙.** One for every kid game you fix at night at the PlayPlace (not the fuse
+boxes: `Machines.fix`), and one for every story quest, the first time it's ever done (When
+Jonathan Was Five and Lost in the Pizzaplex, and any story built on their engine:
+`EscapeMode.remember`). A little 🪙 +1 floats up under the clock. It's one wallet for every
+story, kept apart from the save, so a New game keeps it and getting caught never takes tokens
+back. The first time the Shop is opened, it gives you a token for everything you'd already
+done (every game fixed in `stats.fixed`, every quest in the stories). The Gus tokens you pick
+up inside a level (for the claw machines at the pizza place and the Pizza Palace) belong to that
+level and stay there; finishing the quest to collect them still pays a Shop token.
+
+**The Shop** is the **🪙 Shop** tab on the title screen, beside Gallery and Settings
+([js/shop.js](js/shop.js), `SHOP_ITEMS`). Four tabs: Gear, Power-ups, Hats and Emotes.
+
+| Thing | Price | What it does |
+|-------|-------|--------------|
+| 🎭 Gus Mask | 20 | Yours to keep. **R** (player 2: **M**) puts it on. Everyone but Gus walks right past you, like crouching but standing up: Gus, Moony (a possessed Gus) and the Junk Monster (Gus's head) see straight through it. **15 seconds** of air, then it comes off with a gasp and needs 6 s; take it off sooner and it's ready sooner. No zapping, running, grabbing, riding or pressing E with it on. You look out through two eye holes in purple fur, with Gus's yellow bill at the bottom and an AIR bar |
+| 🛹 Skateboard | 25 | Yours to keep, in your pocket. Ride at 1.75× walking speed and never get tired, but it's loud: they hear you rolling like running, from 1.4× as far, through walls. Crouching, the mask or dragging one gets you off |
+| ⚡ Power Generator | 6 | One use. In a blackout, the lights come back on and Gus goes back to the stage. Not on Night 20 (Gus fried the fuse boxes) |
+| 🔋 Charger Generator | 4 | One use. Fills your flashlight, taser and running |
+| 🚪 Door Generator | 5 | One use, inside the Security Office: metal shutters (grey slats, yellow and black stripes) slam down over both its doors for **20 s**. They're wall to walking, sight and paths (`setDoorsClosed` in map.js), so nothing gets in, and you can't get out |
+| 🎈 Balloon Decoy | 2 | One use. Thrown like a baseball; where it lands, a balloon on a little weight bobs up. Everything it fools (not Gus, Moony or the Junk Monster) that's awake and within 30 m goes to look, and can't see you for 9 s. It pops after 14 s |
+| ❤️ Extra Life | 8 | One use, by itself: the next time you're caught at night, you get away like Spooky's second chance (that's used first, if you have one) |
+| 🟢 Glow Sticks ×3 | 2 | Dropped at your feet, they glow for the rest of the night. The newest three light the room (three pooled lights, so there's never a new light to compile mid-night) |
+| 🎉 🧢 🚁 👑 Hats | 8–15 | Party hat, Gus cap, propeller beanie (it spins faster when you move) and crown. Pick who wears each, Jonathan or Jimmy. You see them when you emote, and on each other in 2 Players |
+| Emotes | 10–12 | See [Emotes](#emotes) |
+
+You can carry up to nine of each one-use thing. **Your pocket** shows at the bottom left at
+night (in your own half, two playing): the thing you've picked, how many, its keys, the mask,
+your extra lives and the shutters' countdown. **X** (player 2: **J**) picks the next thing,
+**V** (player 2: **N**) uses it. Things from the Shop work at night at the PlayPlace and in the
+house; hats, emotes and tokens work everywhere.
+
+**On a controller** the rest of the d-pad does it: **←** the mask, **↓** uses the thing in your
+pocket, **→** picks the next one (`PAD_ACTIONS` in [js/coop.js](js/coop.js); the d-pad is still
+the arrows in the repair puzzles and on the cameras). **On a touch screen** three more round
+buttons join the top row, left of 😀, only at night and only once there's something to use:
+the pocket button (it shows the thing it'll use, and lights up while you're riding), **↻** for
+the next one (once there are two), and **🎭** (once you own the mask; lit while it's on)
+([js/touch.js](js/touch.js), `shopButtons`). The pocket moves up under the kids' happiness,
+clear of 🏃 and ⤓, and its key names follow whatever you play with.
+
 ## Settings and difficulty
 
 The **⚙️ Settings** tab hangs off the bottom middle of the title screen, beside the **📷
 Gallery** tab (pictures taken while making the game, in `gallery/`, listed with captions in
-`GALLERY` in [js/config.js](js/config.js); tap one to see it big). Settings holds the graphics
+`GALLERY` in [js/config.js](js/config.js); tap one to see it big). The tabs are the last thing
+in the title's column, not pinned over it, so on a phone the title scrolls and they come
+after the buttons instead of covering them. Settings holds the graphics
 look, the difficulty and How to Play. Settings live in `localStorage` beside the save, not in
 it, so a new game keeps them; difficulty is under `survive_gus_difficulty`.
 
@@ -1238,6 +1757,25 @@ it's glitching, lit up so you see every bit of it, with an electronic screech; t
 picture cuts to TV static for a moment before the GOTCHA screen. Nightmare holds the face
 longer and screams twice.
 
+Then he asked for them to be **"x99999999999999999999999999 scarier"**, and picked
+everything offered: **"just make it super scary like fnaf, louder, longer scream, face right
+in yours, screen goes crazy, creepy eyes."** So now:
+
+- **The lunge** is faster (0.1 s, from over two metres) and starts with a **bang**
+  (`sfx.scareBang`), and once it's in your face it **keeps lunging at you** in spasms.
+- **All teeth:** every animatronic bares two rows of big FNAF 4 teeth for the scare
+  (`scareTeeth`, the same teeth as `addBigTeeth`), hidden again afterwards unless it always
+  has them (In the Closets, Max's chapters). The mouth opens all the way.
+- **Creepy eyes** (`creepyEyes` in models.js): for the first 0.3 s the eyes go pitch black
+  with a tiny white dot in each, then the dots blaze up big and red.
+- **The screen goes crazy** (`#scareFx`, `body.scaring` in style.css): playing alone the whole
+  picture shakes and flickers between harsh, red and negative, and over it red flashes pulse
+  and glitch bars tear across (in just your half, with two playing). Turned down if the device
+  asks for reduced motion.
+- **The scream** (`sfx.fnafScream`) is louder and longer (1.9 s), climbing as it goes, with a
+  second, higher shriek on top and a growl underneath. The face holds for 1.7 s (Nightmare
+  2.3 s) before the static.
+
 ## Graphics
 
 **FNAF look** (Settings; the designer asked for graphics like the original FNAF game):
@@ -1289,8 +1827,10 @@ control lists in the pause menu and How to Play, which render from the same tabl
 Movement is WASD only — the arrow keys belong to the repair puzzles and the camera monitor.
 E uses whatever you're looking at (cameras, a broken game, a fuse box, a powered-down
 animatronic, the junk pile, the time clock). Click uses your weapon; 1–4, Q or the wheel
-switch. Losing the mouse (Escape) pauses the game. Touch: a floating stick on the left, look
-on the right, buttons for weapon, E, flashlight, swap, run, crouch and pause. The stick only
+switch. R is the Shop's Gus mask, X picks a thing in your pocket and V uses it. Losing the
+mouse (Escape) pauses the game. Touch: a floating stick on the left, look
+on the right, buttons for weapon, E, flashlight, swap, run, crouch, 😀 emotes and pause, and at night the Shop's
+pocket, ↻ and 🎭 once you have them. The stick only
 walks; 🏃 toggles running (it lights up, and switches off after two seconds standing still); the monitor and
 puzzles have their own on-screen buttons.
 
@@ -1315,7 +1855,8 @@ js/player.js      Jonathan: movement, stamina, flashlight, camera
 js/weapons.js     Taser, baseballs, knife, Magnum
 js/animatronics.js  The five's AI, Gus's hunts, the friends, the Junk Monster
 js/night.js       The clock, wake-ups, breakages, blackouts, bosses, the 6 AM report
-js/day.js         Daytime: kids, music, the show
+js/day.js         Daytime: kids, music, the show, the song's words on screen
+js/song.js        The daytime song: words, tune, form, the robots' loudness (written by dev/sing.py)
 js/house.js       Jonathan's house: its floor plan, furniture and the van
 js/cutscene.js    The cutscene player
 js/story.js       Every cutscene script
@@ -1323,6 +1864,7 @@ js/voices.js      Plays Jonathan's and Timmy's recorded lines
 js/recorded.js    Which lines have a recording, and how loud they are (written by dev/add_voices.py)
 js/timmy.js       Timmy: crying in the ball pit, then following Jonathan
 js/phone.js       The office phone's keypad
+js/shop.js        Gus tokens, the Shop screen, and what you buy: the mask, pocket, shutters, balloons, hats, emotes
 js/machines.js    Broken/fixed state and looks for games and fuse boxes
 js/repair.js      The three repair puzzles
 js/cameras.js     The security monitor and office monitor feeds
@@ -1330,8 +1872,9 @@ js/hud.js         HUD updates and screen contents
 js/touch.js       Phone and tablet controls
 js/coop.js        2 Players: each player's keys and controller (Controls), and their half of the HUD (PaneHud)
 js/physics.js     Circle-vs-box sliding collision
-js/audio.js       Synthesized sound, ambience, Gus's music box, and the music
-js/save.js        localStorage profile, and the graphics and difficulty settings
+js/audio.js       Synthesized sound, ambience, Gus's music box, the music, and the band's singing
+js/save.js        localStorage profiles (Survival's and Story mode's), and the graphics and difficulty settings
+js/campaign.js    Story mode: every story in a row, Continue / New game, the cards between stories
 js/escape/mode.js When Jonathan Was Five: levels, quests, save boxes, hiding, the box, caught, escaped
 js/escape/levels/ Its eight levels, one file each (index.js lists them in order)
 js/escape/decor.js  Its furniture: save boxes, hiding spots, things to find, exits, bookcases...
@@ -1352,6 +1895,17 @@ js/plex/chapters/<name>.js  Each character's chapters after the first five (jona
 js/plex/maps/     Jonathan's maps beyond the main floor (backstage, the Fun Zone, the Main Entrance...)
 js/plex/tunnels/  Jack's tunnels: P.A.L.'s jobs and maps
 js/plex/pit/      Thomas's ball pit: the eras he falls into
+js/sushi/mode.js  Sushi's Pizzaplex: the same engine again, plus cards and card doors, vents, plushies and the shelf, friends
+js/sushi/parts.js Its four parts: quests, who's where, and what happens when
+js/sushi/cast.js  Tom and his friends, Sushi, Gerald on strings, the cart and kart riders, Peter's otter suit
+js/sushi/enemies.js  Puppet (Gerald), Rider (Chomper, Flipper), Blinker (Moony), Springer (Peter)
+js/sushi/kit.js   Cards, card doors, vents, plushies, the shelf, noisy toys, ropes, walkie-talkie lines
+js/sushi/maps/    The Pizzaplex (parts 1 and 3), Gerald's Daycare, the vents and the way out
+js/sushi/story.js Its cutscenes
+js/closets/mode.js   In the Closets: the closets (breathing, spamming them shut, hiding), Gus, the mirrors
+js/closets/house.js  Timmy's house: four floors of five rooms, a closet in each, the stairs, the mirrors
+js/closets/levels.js Its ten levels, one row of numbers each, and their cards
+js/closets/story.js  Its cutscenes: Gramma off to the night shift, and Gramma coming home
 js/plex/timmy/tubes.js  Timmy's play tubes and play houses: crawling, hiding where nothing else fits
 js/plex/followers.js    Friends walking along behind you (Chapter 50)
 js/jumpscare.js   The FNAF-style jumpscare every scare in the game uses: lunge, scream, static
@@ -1359,9 +1913,11 @@ js/updates.js     Detects new deploys and refreshes stale sessions
 js/version.js     Build version — bump on every deploy
 dev/preview.html  Art preview: framed day/night shots of rooms and characters
 gallery/          The pictures in the title screen's Gallery (GALLERY in config.js)
-dev/record.html   Voice recorder for Jonathan's and Timmy's lines
+dev/record.html   Voice recorder for Jonathan's and Timmy's lines, and the daytime song
 dev/add_voices.py Turns recorded takes into audio/voices/*.m4a and updates js/recorded.js
+dev/sing.py       Sings the daytime song with the robot band: audio/song/*.m4a and js/song.js
 audio/voices/     The recorded voice lines
+audio/song/       The robot band singing each line of the daytime song
 ```
 
 ## Debug handles
@@ -1383,6 +1939,7 @@ __game.machines.breakRandom();               // break a game
 __game.bot('cranker').powerDown();           // zap one from the console
 __game.profile.night = 20; __game.profile.best = 20;  // unlock the Gus fight
 __game.setCoop(true);                        // 2 Players on (__game.p2 is Jimmy)
+__game.shop.earn(100);                       // Gus tokens to spend (saved, unless in debug mode)
 __game.withPlayer(__game.p2, () => __game.caught(__game.bot('cranker')));  // catch Jimmy
 ```
 
@@ -1396,7 +1953,19 @@ whether the intro has been seen, whether the house level is done, whether Timmy 
 have played (and whether you've read the old guard's note), the two boss wins, the furthest night reached, which nights have a Nightmare ⭐, whether you have Old John's badge, and lifetime stats. It's merged over a fresh profile on load, so a save written by an older build never
 arrives missing a field newer code reads, and it only changes at 6 AM (or a boss win).
 
-The two story modes keep their progress inside it, each the same shape: `escape` (When
-Jonathan Was Five) and `plex` (Lost in the Pizzaplex) — the furthest level or chapter reached,
-which cutscenes have played, golden plushies, ⭐s, every quest ever done, and the last save
-box touched. A New game of the main story leaves both alone.
+The story modes keep their progress inside it, each the same shape: `escape` (When
+Jonathan Was Five), `plex` (Lost in the Pizzaplex), `sushi` (Sushi's Pizzaplex, plus its
+plushies) and `closets` (In the Closets) — the furthest level or chapter reached, which
+cutscenes have played, golden plushies, ⭐s, every quest ever done, and the last save box
+touched. A New game of the main story leaves them all alone.
+
+Story mode has a second profile of the same shape, under `survive_gus_story_v1`, with
+`campaign: { key, done }` (the story you're on). `save.js`'s `setSlot('main' | 'story')`
+picks which one `loadProfile` and `saveProfile` use: Story mode switches to it, and the title
+screen switches back.
+
+The Shop keeps its own save beside the profile, under `survive_gus_shop`: your tokens, how
+many you've earned in all, what you own, how many of each one-use thing you have, and who's
+wearing which hat. It's saved the moment it changes, so it never goes back when a night
+restarts, and a New game leaves it alone. In debug mode the Shop works on a copy with 999
+tokens, and nothing is saved.

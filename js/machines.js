@@ -74,7 +74,9 @@ export class Machines {
     this.game.profile.stats.fixed++;
     this.game.night.fixed++;
     sfx.fixed();
-    this.game.hud.toast(by ? `${by} fixed the ${m.name}! Kids +${HAPPINESS.fix}` : `Fixed the ${m.name}! Kids +${HAPPINESS.fix} 😀`);
+    // a Gus token for every game you fix (the Shop's money)
+    this.game.shop.earn(1);
+    this.game.hud.toast(by ? `${by} fixed the ${m.name}! Kids +${HAPPINESS.fix} · 🪙 +1` : `Fixed the ${m.name}! Kids +${HAPPINESS.fix} 😀 · 🪙 +1`);
   }
 
   tripFuse(f) {
