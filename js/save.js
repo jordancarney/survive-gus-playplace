@@ -40,6 +40,8 @@ export const freshProfile = () => ({
   sushi: { ...freshEscape(), plush: {} },
   // In the Closets (js/closets/), after the PlayPlace: the same shape again.
   closets: freshEscape(),
+  // 10 Nights at Culac's Daycare (js/culac/), Jimmy's story: the same shape again.
+  culac: freshEscape(),
 });
 
 export const freshEscape = () => ({
@@ -70,9 +72,11 @@ export function loadProfile(which = slot) {
       plex: { ...freshEscape(), ...(saved.plex || {}) },
       sushi: { ...freshEscape(), plush: {}, ...(saved.sushi || {}) },
       closets: { ...freshEscape(), ...(saved.closets || {}) },
+      culac: { ...freshEscape(), ...(saved.culac || {}) },
     };
     for (const k of ['seen', 'plushies', 'stars', 'quests']) p.plex[k] = { ...(p.plex[k] || {}) };
     for (const k of ['seen', 'plushies', 'stars', 'quests']) p.closets[k] = { ...(p.closets[k] || {}) };
+    for (const k of ['seen', 'plushies', 'stars', 'quests']) p.culac[k] = { ...(p.culac[k] || {}) };
     for (const k of ['seen', 'plushies', 'stars', 'quests', 'plush']) p.sushi[k] = { ...(p.sushi[k] || {}) };
     p.escape.seen = { ...(p.escape.seen || {}) };
     p.escape.plushies = { ...(p.escape.plushies || {}) };

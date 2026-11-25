@@ -19,7 +19,8 @@ means starting the night over.
 
 - **▶ Play → 📖 Story or 🌙 Survival.** Story plays every story in a row: Sushi's Pizzaplex,
   When Jonathan Was Five, all fifty chapters of Lost in the Pizzaplex, the nights at Gus's
-  PlayPlace, then In the Closets, with just Continue or New game and a save of its own.
+  PlayPlace, In the Closets, then 10 Nights at Culac's Daycare, with just Continue or New game
+  and a save of its own.
   Survival is everything to pick from, one at a time
 - Gus's PlayPlace in 3D: a show stage, dining hall, arcade, ball pit, slide tower, party room,
   prize counter, kitchen and the dreaded Parts & Service room. By day it's full of kids and
@@ -100,6 +101,15 @@ means starting the night over.
   in — and when he gets out, him standing right behind you, so hide in an empty closet until
   he's gone. Ten levels, each harder, and they all have big teeth now. On Level 10, Gramma
   comes home
+- **🛏️ 10 Nights at Culac's Daycare**, a sixth story, from the designer's own map: Jimmy, five,
+  sleeps at the biggest daycare in the world — it takes **9.57 minutes to walk across** — and
+  the animatronics from Gus's PlayPlace sneak over at night. Every night the way out is
+  somewhere different: find what opens it, or hide until 6 AM and run for it. Keep them away
+  from the **sleeping kids**; if one gets taken, go and get them back. Four new ones: **Mean
+  Baby** cries for the others, **Roglego**'s wires go through walls, **Ouchie** the owl flies
+  over everything, and **Gokupug** does a super jump. **Officer Grumble** watches the cameras
+  and walks his rounds with a huge flashlight. On Night 10, wake every kid and lead them all
+  out the front doors. In 2 Players, player 2 is **Leo**, in dinosaur pajamas
 - **👥 2 Players**, split screen, in everything: Jonathan on WASD and the trackpad, his
   little brother **Jimmy** 🚀 (five, in an astronaut suit) on the arrow keys or a game
   controller. Side by side or top and bottom. Same team — get caught and you're out until
@@ -194,5 +204,6 @@ title screen.
 
 See [DESIGN.md](DESIGN.md) for the full design document — the PlayPlace, the animatronics,
 the twenty-one nights, When Jonathan Was Five and its eight levels, Lost in the Pizzaplex and
-its chapters, Sushi's Pizzaplex and its four parts, In the Closets and its ten levels, balance
+its chapters, Sushi's Pizzaplex and its four parts, In the Closets and its ten levels, Culac's
+Daycare and its ten nights, balance
 tables, and the file map.

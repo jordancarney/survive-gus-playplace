@@ -45,6 +45,7 @@ import { signTex } from './textures.js';
 import { EscapeMode, STORY } from './escape/mode.js';
 import { PlexMode, PLEX_STORY } from './plex/mode.js';
 import { SushiMode, SUSHI_STORY } from './sushi/mode.js';
+import { CulacMode, CULAC_STORY } from './culac/mode.js';
 import { ClosetsMode, CLOSETS_STORY } from './closets/mode.js';
 import { Campaign } from './campaign.js';
 import { VERSION } from './version.js';
@@ -167,6 +168,9 @@ export class Game {
     // In the Closets: the fifth story, after the PlayPlace, the same engine (js/closets/).
     Object.assign(SCRIPTS, CLOSETS_STORY);
     this.closets = new ClosetsMode(this);
+    // 10 Nights at Culac's Daycare: the sixth story, Jimmy's, the same engine (js/culac/).
+    Object.assign(SCRIPTS, CULAC_STORY);
+    this.culac = new CulacMode(this);
     this.story = this.escape;     // whichever story mode is open
     this.setArea('playplace');
     graphics.prepare(this.scene);
@@ -829,11 +833,13 @@ export class Game {
       const plex = this.profile.plex;     // (and so is Lost in the Pizzaplex)
       const sushi = this.profile.sushi;   // (and Sushi's Pizzaplex)
       const closets = this.profile.closets;   // (and In the Closets)
+      const culac = this.profile.culac;   // (and Culac's Daycare)
       this.profile = freshProfile();
       this.profile.escape = five;
       this.profile.plex = plex;
       this.profile.sushi = sushi;
       this.profile.closets = closets;
+      this.profile.culac = culac;
       this.save();
       this.updatePhoto();
       this.continueGame();
@@ -873,6 +879,8 @@ export class Game {
     click('btnSushi', () => this.sushi.showMenu());
     click('btnClosets', () => this.closets.showMenu());
     click('btnCoopClosets', () => { this.setCoop(true); this.closets.showMenu(); });
+    click('btnCulac', () => this.culac.showMenu());
+    click('btnCoopCulac', () => { this.setCoop(true); this.culac.showMenu(); });
     // The title's pages: Play, then Story or Survival (titlePage).
     click('btnMainPlay', () => this.titlePage('play'));
     click('btnStory', () => this.titlePage('story'));
@@ -1046,6 +1054,7 @@ export class Game {
     this.plex.leave();
     this.sushi.leave();
     this.closets.leave();
+    this.culac.leave();
     this.campaign.leave();    // (out of Story mode: Survival's save again)
     this.story = this.escape;
     this.viewCam = null;
@@ -1068,6 +1077,7 @@ export class Game {
     this.plex.titleBadge();
     this.sushi.titleBadge();
     this.closets.titleBadge();
+    this.culac.titleBadge();
     this.titlePage(page);
     this.showScreen('title');
     playMusic(this.nightmare ? 'nightmare' : 'title');
@@ -1629,7 +1639,9 @@ export class Game {
     this.effects.update(dt);
     // Fog rolls in wherever the camera is in the Play Maze — you, or a cutscene.
     const cp = this.camera.position;
-    this.lighting.foggy = this.place === this.playplace && this.place.roomAt(cp.x, cp.z) === 'M';
+    // (a story's map can have foggy rooms of its own: Culac's Daycare's giant maze)
+    const fogRoom = this.place.roomAt(cp.x, cp.z);
+    this.lighting.foggy = this.place === this.playplace ? fogRoom === 'M' : !!(fogRoom && this.place.rooms[fogRoom]?.foggy);
     this.lighting.update(dt);
     this.decor.update(dt, this.t, (id) => this.machines.isBroken(id));
     const ear = this.lead;

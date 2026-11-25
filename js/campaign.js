@@ -20,6 +20,8 @@ export const STORY_PARTS = [
     brief: 'Jonathan is fifteen and needs a job. <b>Gus\'s PlayPlace</b> needs a night guard, and the manager says nothing EVER happens there. Watch the cameras, fix the games, and survive the nights.' },
   // After the PlayPlace: In the Closets (js/closets/, game.closets), Timmy's house.
   { key: 'closets', icon: '🚪', name: 'In the Closets' },
+  // Jimmy's ten nights at Culac's Daycare (js/culac/, game.culac).
+  { key: 'culac', icon: '🛏️', name: "10 Nights at Culac's Daycare" },
 ];
 
 const $ = (id) => document.getElementById(id);

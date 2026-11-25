@@ -4,7 +4,9 @@
 Usage: python3 dev_server.py [port]   (default 8642)
 """
 import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+# (threaded: the game loads about a hundred modules at once, and a one-at-a-time server
+# sometimes drops one, so the page never starts)
+from http.server import ThreadingHTTPServer as HTTPServer, SimpleHTTPRequestHandler
 
 
 class NoCacheHandler(SimpleHTTPRequestHandler):

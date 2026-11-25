@@ -534,6 +534,8 @@ export const GALLERY = [
   { file: 'sushi-notes.jpg', caption: 'Cards, plushies, friends and vents: the rules, in his words' },
   { file: 'daycare-map.jpg', caption: "Gerald's Daycare: the designer's map" },
   { file: 'daycare-notes.jpg', caption: 'Gerald has strings...' },
+  // 10 Nights at Culac's Daycare
+  { file: 'culacs-daycare-map.jpg', caption: "10 Nights at Culac's Daycare: the designer's map" },
 ];
 
 // ── Input ───────────────────────────────────────────────────────────────

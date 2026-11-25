@@ -22,6 +22,7 @@ const SPEAKER_COLORS = {
   Jack: '#ff6b6b', 'Miss Penny': '#9fffb0', Mom: '#ffb3d9', 'Baby Gus': '#ffb02a', John: '#cfd6e0',
   Max: '#c98aff', Thomas: '#ffe08a', Jackson: '#ffd23f', 'P.A.L.': '#2de2e6', 'DJ Rocco': '#ff3fa4',
   Tom: '#ff9a3a', Bob: '#5aa8ff', Billy: '#c8ccd8', Tim: '#7cff6b', Sushi: '#3a9aff', Peter: '#d9a85a',
+  Jimmy: '#9fd8ff', Leo: '#7ad151', 'Officer Grumble': '#ff6a5a',
 };
 
 export class Cutscene {

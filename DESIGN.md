@@ -1475,6 +1475,204 @@ With `?debug=1`, `__game.closets` is this story: `__game.closets.start(n)` jumps
 now (`breathe('gus')` for Gus), `__game.closets.occ` is who's in which closet, and
 `__game.closets.clock.t = __game.closets.clock.len - 5` is five seconds from 6 AM.
 
+## 10 Nights at Culac's Daycare
+
+A sixth story, on its own title-screen button (🛏️ 10 Nights at Culac's Daycare), set while
+Jonathan is working his nights at the PlayPlace ([js/culac/](js/culac/)). You play **Jimmy**,
+five, escaping the biggest daycare in the world, ten nights running. It runs on When Jonathan
+Was Five's engine (save boxes, hiding, the Gus Watch, the clock to 6 AM), its progress is saved
+beside the others (`profile.culac`), it's the last part of Story mode, and two can play it.
+The designer drew the map ([gallery/culacs-daycare-map.jpg](gallery/culacs-daycare-map.jpg)) and
+answered the rest.
+
+### From his map
+
+- **10 Nights at Culac's Daycare**, **10 miles by 10 miles**: a 7-mile-wide building on the
+  left and a 3-mile-wide strip on the right.
+- **The building, top row:** the **Pool**, with a **Deep Zone** and a swim area (**Flipper
+  starts here**); the **Beds**; and the **Owl's Café** (**Ouchie starts here**).
+- **The middle:** the **Arcade** under the pool (**Moony starts here**), the big **Play
+  Structure** (**Roglego starts here**), and the **Pet Zone** (**Sparky starts here**). A
+  narrow strip between the pool and the play structure is a measurement (below).
+- **The bottom:** the **Maze** (**Sunny starts here**), the **Meal Zone**, the **Baby Zone**
+  (**Mean Baby starts here**, and **Gokupug** has an arrow into it), the **Bathroom**, and the
+  **Security Office** (**the security guard starts here**).
+- **The right strip:** the **Forest Area, with a trail and animatronics**, and a **Play Area**
+  (**Gerald starts here**), then the **Slides, into the pit**, and the **Ball Pit** (**Chomper
+  starts here**).
+- Drawn across the top: **Roglego**, **Ouchie**, and **Gokupug**, a pug.
+- The strip by the pool is a measurement: **"the pool is 10 feet long."**
+
+### The designer's decisions
+
+Asked directly, he chose:
+
+- **Culac is the owner.** He isn't in the story.
+- **You play Jimmy**, and **you escape as Jimmy at night.**
+- **Mean Baby** is **a cursed baby**. **Roglego** is **a bunch of wires and a face**. **Ouchie**
+  is **an owl**. **Gokupug** is a fighter **in the shape of a pug, with tiny legs**.
+- **It takes Jimmy 9.57 minutes to walk up, down or across.** At his walking speed (3.8 m/s)
+  that's 2,182 m each way.
+- **There are kids asleep in the Beds** that Jimmy has to protect: he **keeps the
+  animatronics away from the beds.**
+- **Every night the way out is somewhere different.** Some nights you **find things to open
+  the exit**, some you **survive until 6 AM and then run for it**, and **the last night you
+  wake the kids and bring them all out with you.**
+- **The security guard is a bad guy** who chases Jimmy too.
+- **The pool really is 10 feet long, about as long as a couch.** The rest of that corner is the
+  Deep Zone and the swim area.
+- **Mean Baby cries when it sees Jimmy, and the others all come running.**
+- **Roglego crawls through walls**: its wires go through the vents and walls to reach you.
+- **Ouchie flies over everything** and swoops down to grab Jimmy.
+- **Gokupug does a super jump**: really high, and he lands right next to you. He's his own
+  super-fighter pug (not a copy of anyone from another show): **spiky blue hair and a black
+  karate suit with a lightning bolt on it.**
+- **The guard** does both: he **watches the cameras and tells the animatronics where you
+  are**, and he **walks around shining a huge flashlight; if it lands on you, he chases you.**
+- **Jimmy has just a flashlight.** Hide, sneak and run.
+- **In 2 Players, player 2 is a kid from the beds**, a new friend who wakes up and escapes with
+  Jimmy.
+- **Peter is behind it**, like he's behind all the stories.
+- **Flipper, Moony, Sunny, Gerald, Chomper and Sparky are the same ones from Gus's
+  PlayPlace**: they sneak over at night.
+- **Player 2 is Leo**, a 6-year-old in **green dinosaur pajamas**.
+- **The guard is Officer Grumble**: tall and skinny, and he never smiles.
+- **The hide-until-6-AM nights take 25 minutes**, then you run for the exit.
+- **If an animatronic gets to the sleeping kids, it takes one**, and you have to go and
+  rescue them.
+
+Not his — made up for this build, and his to change: why Jimmy's there (Mom and Jonathan
+both work nights), the other kids' names (Mia, Sam, Ava, Noah, Lily, Ben, Zara and Theo, with
+Leo in the bed next to Jimmy's), what each night asks you to find, which animatronics come in
+on which night, the giant slide you can ride into the Ball Pit, Ouchie's tree in the middle of
+the café, the old animatronic animals along the Forest trail, and how Peter fits: Officer
+Grumble works for him, and he's in the finale.
+
+### The story
+
+Jimmy's mom works nights, and so does his big brother: Jonathan is the new night guard at
+Gus's PlayPlace. So on school nights Jimmy sleeps at **Culac's Daycare**, the biggest daycare in
+the world — it takes ten minutes just to walk across. Nobody has ever met Mr. Culac. The
+night guard is **Officer Grumble**, tall and skinny, who never smiles and watches the cameras
+all night. Jimmy's bed is next to **Leo**'s, who has dinosaur pajamas and a cousin who says the
+animatronics from Gus's PlayPlace sneak over at night.
+
+They do. Every night something wakes Jimmy, and every night he gets out a different way. The
+animatronics keep coming, a few more each night — Sparky and **Mean Baby**, then **Roglego**,
+then Flipper and Chomper, **Ouchie** and Gerald, **Gokupug** and Moony, then Sunny — and some of
+them go for the kids asleep in the Beds. Officer Grumble's radio keeps crackling to someone he
+calls "boss", and on Night 7 the face in the Security Office window isn't his.
+
+On Night 10 Jimmy takes Grumble's key card off his desk while he's out on his rounds, wakes up
+every kid, and leads them all out the front doors at six in the morning. Mom says no more
+Culac's. And in the Security Office, Grumble radios his boss: they all got out. **Peter**, in the
+old otter suit, standing behind the camera screens, says that's alright. There's always
+another night.
+
+### The size
+
+The designer wanted 9.57 minutes across, and every other map in the game is under 120 m. The
+daycare is the same 1 m grid as every other building, 2,184 cells a side, but drawn and
+searched differently ([js/culac/place.js](js/culac/place.js)):
+
+- **Paths** reuse one set of buffers instead of a fresh grid-sized one each time, give up
+  after 45–70 thousand cells and walk toward the closest they got (they path again when they
+  get there), and string-pull forwards in steps of at most 40 m. A path right across the
+  daycare takes about 10 ms.
+- **Collisions** look only at the colliders near you: the list keeps a 16 m grid of them, and
+  `resolveCircle` (physics.js) asks a list for `near` when it has one. There are about 96,000.
+- **Floors, walls and paint** are merged into rectangles and batched a chunk (96 m) at a time;
+  **furniture** ([js/culac/world.js](js/culac/world.js)) is instanced the same way — 275,000
+  beds, tables, cabinets, cribs, stalls and trees in a few thousand batches — so the camera
+  only draws what's near you. The cameras draw 90 m out; the fog has gone black long before.
+- **Lights**: 2,000 lamps, each a glowing bulb, and ten real lights moved to the ones nearest
+  you every quarter of a second (the number of lights never changes, so nothing recompiles).
+- **The ball pit** is a texture of balls everywhere, with real balls in 3 m tiles round you.
+- **The roof** is at 13 m and the rooms' walls only 6.5 m, which is how Ouchie flies over them.
+
+Building it all takes about a second, the first time you open a night.
+
+### The daycare
+
+From the map, a 10-mile square: on the left (7 of the 10) the **Pool**, **Beds**, **Owl's Café**,
+**Play Structure**, **Pet Zone**, **Arcade**, **Meal Zone**, **Baby Zone**, **Bathroom**, **Security
+Office** and **Maze**, as walled rooms in one huge carpeted hallway with pillars holding up the
+roof; on the right (3 of the 10) the **Forest Area** (a winding trail, trees, and old
+animatronic animals along it with glowing eyes) beside the **Play Area** (swings, slides,
+sandboxes, see-saws), then the **Slides** (towers, and a giant slide you can ride down into the
+pit) and the **Ball Pit** (paths round the edge and across the middle; balls everywhere else,
+and they slow you down). The Pool has a railed-off **Deep Zone**, a shallow **swim area** you
+wade through, and the 10-foot pool. The Maze is a real one: 10 m cells, foggy, with Sunny's
+clearing in the middle. Everyone starts where the map says.
+
+Save boxes are all over the hallway and in every room (the Gus Watch map shows the ones
+within 260 m); hiding spots are in every room and along the hallway; 19 security cameras watch
+the doors.
+
+### How it plays
+
+- **The kids.** Nine of them asleep round Jimmy's bed (Leo's is right next to his; in 2
+  Players, Leo's the one playing). From Night 2, now and then one of the animatronics heads for
+  the Beds for a kid: the watch toasts who and for whom. If it sees you on the way it forgets
+  the kid and comes for you instead — that's how you keep them away. If it gets there it
+  carries the kid off to its own room and leaves them there, crying. Go and press E on them and
+  they run back to bed. **The exit won't open while anyone's missing.** The Gus Watch's
+  tracker lists every kid and where they are.
+- **The cameras.** While Officer Grumble's at his desk, a camera that sees you (its light goes
+  bright red) gets you radioed in, and the two closest animatronics come to look.
+- **Grumble's rounds.** Every minute or so he gets up and walks four legs of a patrol with his
+  flashlight, then goes back to his desk. If the beam lands on you, he chases you.
+- **Survive nights** are 25 minutes (6 hours at 4 minutes 10 seconds each). At 6 AM the exit
+  unlocks and you run for it.
+- **Night 10.** Take the key card while Grumble's away from his desk, wake each kid (E at their
+  bed), and they follow you, all nine, out the front doors.
+
+### Who's after you
+
+| Who | Home | What they do | Night |
+| --- | --- | --- | --- |
+| 🐶 Sparky | Pet Zone | The robot dog: fast, barks, raids the beds | 1 (wakes when you take the key) |
+| 😭 Mean Baby | Baby Zone | Slow; when it sees you it **cries**, and everything within 220 m comes to look | 1 |
+| 🧶 Roglego | Play Structure | Once it's after you its wires go **straight through the walls**; it feels you walking within 9 m (crouch) | 2 |
+| 👮 Officer Grumble | Security Office | The **cameras**, and his **flashlight beam**; he can catch you | 2 (asleep on Night 1) |
+| 🐬 Flipper | Pool | Roams the Pool and Arcade, raids the beds | 3 |
+| 🦫 Chomper | Ball Pit | Isn't slowed by the balls, raids the beds | 3 |
+| 🦉 Ouchie | Owl's Café | **Flies over everything** at 9.5 m; screeches, then **swoops** at 6 m/s. Can't get into a hiding spot | 4 (asleep in his tree before) |
+| 🦍 Gerald | Forest | Guards the Forest and Play Area | 4 |
+| ⚡ Gokupug | Baby Zone | **Super jump**: crouches, yells, leaps 5 m into the air and lands 1.3 m from where you were. Then he needs a second | 5 |
+| 🌙 Moony | Arcade | Never leaves the Arcade; blinks from place to place in it | 5 |
+| ☀️ Sunny | Maze | Made of fog — only your flashlight shows her — and drifts through the maze's walls | 6 |
+
+Everyone's faster on Night 9.
+
+### The nights
+
+[js/culac/nights.js](js/culac/nights.js).
+
+| # | Night | What to do | The way out |
+| --- | --- | --- | --- |
+| 1 | Wake Up, Jimmy | The fire door key (Owl's Café), switch off the alarm (Pet Zone) | FIRE EXIT, top of the Beds |
+| 2 | Officer Grumble | Three padlock keys: Play Structure, the Arcade's prize counter, under a lifeguard chair | POOL DOOR |
+| 3 | Hide Until Six | Survive until 6 AM | the Arcade's PRIZE DOOR |
+| 4 | The Trail | Four batteries (Pet Zone, Play Area, Slides, Forest), the gate's lock | the Forest's TRAIL GATE |
+| 5 | Super Jump | Survive until 6 AM | the SLIDE EXIT |
+| 6 | Into the Maze | The maze key, in Sunny's clearing | the Maze's SECRET DOOR |
+| 7 | Lights Out | Survive until 6 AM, darker | the Bathroom WINDOW |
+| 8 | Five Fuses | Five fuses (Meal Zone, Baby Zone, Bathroom, the bottom of the giant slide, Security Office), the generator | the Ball Pit's BACK DOOR |
+| 9 | The Longest Night | Survive until 6 AM, everyone faster | the PLAY GATE |
+| 10 | Everybody Out | Grumble's key card, wake the kids | the FRONT DOORS, then the finale |
+
+Night 1 opens with a cutscene (`culacIntro`: Mom dropping Jimmy off, lights out next to Leo,
+Sparky walking past the door); Night 10 ends with one (`culacFinale`) — both in
+[js/culac/story.js](js/culac/story.js).
+
+### Debug handles
+
+With `?debug=1`, `__game.culac` is this story: `__game.culac.start(n)` jumps to a night (after
+`__game.culac.showMenu()`), `.skip()` finishes the night's quests, `.raid()` sends one of them
+for the beds now, `.tp(x, z)` puts you at a plan point (the map's metres), and
+`.kids` / `.raider` are the kids and whoever's on a raid.
+
 ## Story mode
 
 Every story in one go ([js/campaign.js](js/campaign.js)). The title screen's first page is
@@ -1491,6 +1689,8 @@ the title as it always was: the nights, Pick a night, and each story on its own 
   chapters in a row**. Survival keeps **all of the games** to pick from. **2 Players can play
   Story too.**
 - After the PlayPlace: **In the Closets** ("add it to story mode also"), the fifth part.
+- **10 Nights at Culac's Daycare** went on the end, sixth (not asked: it happens during
+  Jonathan's nights, so it could go earlier — his call).
 
 ### How it goes
 
@@ -1501,6 +1701,7 @@ the title as it always was: the nights, Pick a night, and each story on its own 
 | 3 | 🍕 Lost in the Pizzaplex, all fifty chapters | the Great Escape |
 | 4 | 🔦 Gus's PlayPlace, from getting the job to Night 21 | Old John and his badge |
 | 5 | 🚪 In the Closets, all ten levels | Gramma comes home |
+| 6 | 🛏️ 10 Nights at Culac's Daycare, all ten nights | everybody out the front doors, and Peter |
 
 There's no level list: **Continue** picks up the story you're on at the furthest level you've
 reached (from your save box, if you touched one), and **New game** starts from Sushi's
@@ -1906,6 +2107,14 @@ js/closets/mode.js   In the Closets: the closets (breathing, spamming them shut,
 js/closets/house.js  Timmy's house: four floors of five rooms, a closet in each, the stairs, the mirrors
 js/closets/levels.js Its ten levels, one row of numbers each, and their cards
 js/closets/story.js  Its cutscenes: Gramma off to the night shift, and Gramma coming home
+js/culac/mode.js     10 Nights at Culac's Daycare: the kids and the raids, the cameras, Leo, the lamps, the giant slide
+js/culac/place.js    The Building that can cope with 2.2 km: paths, colliders in a grid, everything batched in chunks
+js/culac/layout.js   The designer's map: every room, door, the giant maze, everyone's home, the ten exits
+js/culac/world.js    Everything in it, instanced: beds, tables, arcade machines, trees, the ball pit, lamps
+js/culac/cast.js     Leo, the kids, Officer Grumble, Mean Baby, Roglego, Ouchie and Gokupug
+js/culac/enemies.js  Raids, Mean Baby's cry, Roglego through walls, Ouchie flying, Gokupug's jump, Sunny, Grumble
+js/culac/nights.js   Its ten nights and their cards
+js/culac/story.js    Its cutscenes: Mom dropping Jimmy off, and everybody out the front doors
 js/plex/timmy/tubes.js  Timmy's play tubes and play houses: crawling, hiding where nothing else fits
 js/plex/followers.js    Friends walking along behind you (Chapter 50)
 js/jumpscare.js   The FNAF-style jumpscare every scare in the game uses: lunge, scream, static
@@ -1955,7 +2164,8 @@ arrives missing a field newer code reads, and it only changes at 6 AM (or a boss
 
 The story modes keep their progress inside it, each the same shape: `escape` (When
 Jonathan Was Five), `plex` (Lost in the Pizzaplex), `sushi` (Sushi's Pizzaplex, plus its
-plushies) and `closets` (In the Closets) — the furthest level or chapter reached, which
+plushies), `closets` (In the Closets) and `culac` (10 Nights at Culac's Daycare; its save
+boxes also remember any kid left somewhere, `flags.lost`) — the furthest level or chapter reached, which
 cutscenes have played, golden plushies, ⭐s, every quest ever done, and the last save box
 touched. A New game of the main story leaves them all alone.
 

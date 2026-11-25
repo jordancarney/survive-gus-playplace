@@ -542,6 +542,36 @@ export const sfx = {
     if (d) noise({ at, dur: 0.22, gain: 0.06, filter: 'highpass', freq: 2600, to: 5200, dest: d, attack: 0.08 });
     return at - start + 0.9;
   },
+  // Culac's Daycare: Mean Baby's cry (higher and longer than a kid's, and it carries a long
+  // way — that's how it calls the others), Ouchie's hoot, the crackle of Roglego's wires
+  // going through a wall, and Gokupug's super jump.
+  babyWail(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 70);
+    if (!d) return;
+    let at = now();
+    for (let i = 0; i < 3; i++) { wail(at, 0.75, 640 - i * 30, d); at += 0.9; }
+  },
+  hoot(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 50);
+    if (!d) return;
+    tone({ freq: 330, to: 300, type: 'sine', dur: 0.32, gain: 0.22, dest: d, attack: 0.04 });
+    tone({ freq: 340, to: 290, type: 'sine', dur: 0.55, gain: 0.22, delay: 0.42, dest: d, attack: 0.05 });
+  },
+  wires(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 24);
+    if (!d) return;
+    for (let k = 0; k < 4; k++) noise({ at: now() + k * 0.07, dur: 0.05, gain: 0.08, filter: 'bandpass', freq: 3200 + k * 400, q: 3, dest: d });
+  },
+  pugJump(pos) {
+    if (!ok()) return;
+    const d = spatial(pos, 45);
+    if (!d) return;
+    tone({ freq: 180, to: 720, type: 'sawtooth', dur: 0.5, gain: 0.12, dest: d });
+    noise({ dur: 0.6, gain: 0.1, filter: 'bandpass', freq: 900, to: 2400, dest: d, attack: 0.05 });
+  },
   // Phone keypad: the real two-tone beeps.
   dtmf(k) {
     if (!ok()) return;

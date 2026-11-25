@@ -837,6 +837,12 @@ body.nightmare #nmTitle { display: block; animation: nm-title-flicker 6.5s infin
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 .btn-closets:active { box-shadow: 0 1px 0 #1a0c06; }
+/* 10 Nights at Culac's Daycare (js/culac/): night-light navy, and Jimmy's space-suit blue */
+.btn-culac {
+  background: linear-gradient(180deg, #3a6ab8, #1a2450); color: #e9f2ff; box-shadow: 0 4px 0 #0c1230;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.btn-culac:active { box-shadow: 0 1px 0 #0c1230; }
 .screen-five.screen-plex {
   background:
     radial-gradient(ellipse at 50% 20%, rgba(192, 64, 255, 0.34), transparent 60%),

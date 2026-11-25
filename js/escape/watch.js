@@ -138,8 +138,15 @@ export class GusWatch {
     g.fillRect(0, 0, W, H);
     const here = place.roomAt(m.player.pos.x, m.player.pos.z);
     for (const [id, r] of Object.entries(place.rooms)) {
-      g.fillStyle = id === here ? '#4a2a7a' : '#2a1a4a';
+      // (a story can give a room its own colour on the map, and an outline — Culac's
+      // Daycare, where the rooms sit in one enormous hallway)
+      g.fillStyle = id === here ? '#4a2a7a' : r.mapColor || '#2a1a4a';
       g.fillRect(X(r.x0), Z(r.z0), (r.x1 - r.x0 + 1) * s, (r.z1 - r.z0 + 1) * s);
+      if (r.outline) {
+        g.strokeStyle = 'rgba(200, 170, 255, 0.45)';
+        g.lineWidth = 1;
+        g.strokeRect(X(r.x0) + 0.5, Z(r.z0) + 0.5, (r.x1 - r.x0 + 1) * s - 1, (r.z1 - r.z0 + 1) * s - 1);
+      }
     }
     for (const d of place.doors) {
       g.fillStyle = '#2a1a4a';
@@ -157,7 +164,7 @@ export class GusWatch {
       if (r.mapLabel === false) continue;
       // the room's name if it fits, its short name if that does, and nothing otherwise
       let label = r.name.toUpperCase();
-      if (g.measureText(label).width > w - 4) label = (r.short || '').toUpperCase();
+      if (g.measureText(label).width > w - 4) label = (r.mapShort || r.short || '').toUpperCase();
       if (!label || g.measureText(label).width > w - 4) continue;
       g.fillText(label, X((r.x0 + r.x1 + 1) / 2), Z(r.z0) + 11);
     }
@@ -166,8 +173,9 @@ export class GusWatch {
       g.fillStyle = color;
       g.beginPath(); g.arc(X(p.x), Z(p.z), r, 0, Math.PI * 2); g.fill();
     };
-    // the save boxes: little yellow smiles
+    // the save boxes: little yellow smiles (in a huge place, just the ones near you)
     for (const sp of m.decor.saves) {
+      if (m.mapSaveRange && Math.hypot(sp.pos.x - m.player.pos.x, sp.pos.z - m.player.pos.z) > m.mapSaveRange) continue;
       const p = plan(sp.pos);
       g.fillStyle = '#ffe9a0';
       g.fillRect(X(p.x) - 4, Z(p.z) - 4, 8, 8);

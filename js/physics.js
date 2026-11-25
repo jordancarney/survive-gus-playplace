@@ -6,6 +6,8 @@
 // Slide a circle of `radius` to (x, z), pushing out of any box it ends up inside. Two passes,
 // because sliding out of one box can push you into another.
 export function resolveCircle(colliders, x, z, radius, feetY, headY) {
+  // (a huge map keeps its colliders in a grid: only look at the ones nearby)
+  if (colliders.near) colliders = colliders.near(x, z, radius + 1.5);
   for (let pass = 0; pass < 2; pass++) {
     for (const c of colliders) {
       if (headY < c.minY || feetY > c.maxY) continue;   // stepped over it or under it
