@@ -276,6 +276,20 @@ export class CulacMode extends EscapeMode {
     super.playCutscene(id, n, done);
   }
 
+  // The first time, the daycare takes a second to build: Gus does cartwheels while it does.
+  begin(n) {
+    if (this.world) { super.begin(n); return; }
+    const g = this.game;
+    $('loadingText').textContent = "BUILDING CULAC'S DAYCARE…";
+    g.showScreen('loading');
+    // (two frames, so the loading screen is up before the page gets busy)
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      this.ensureWorld();
+      $('loadingText').textContent = 'UNLOCKING THE PLAYPLACE…';
+      super.begin(n);
+    }));
+  }
+
   // ── The lights ────────────────────────────────────────────────────────
 
   // The handful of real lights go to the lamps nearest whoever's playing (or the cutscene).

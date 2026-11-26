@@ -110,6 +110,10 @@ means starting the night over.
   over everything, and **Gokupug** does a super jump. **Officer Grumble** watches the cameras
   and walks his rounds with a huge flashlight. On Night 10, wake every kid and lead them all
   out the front doors. In 2 Players, player 2 is **Leo**, in dinosaur pajamas
+- **Shadows**: once in a thousand nights — anywhere, in any story — one of the animatronics
+  comes back as its shadow, pitch black with white eyes, and drifts through the walls at you.
+  Nothing can stop it. Most people will never see one
+- While it loads, Gus does cartwheels round a circle
 - **👥 2 Players**, split screen, in everything: Jonathan on WASD and the trackpad, his
   little brother **Jimmy** 🚀 (five, in an astronaut suit) on the arrow keys or a game
   controller. Side by side or top and bottom. Same team — get caught and you're out until

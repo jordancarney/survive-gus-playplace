@@ -46,6 +46,7 @@ import { EscapeMode, STORY } from './escape/mode.js';
 import { PlexMode, PLEX_STORY } from './plex/mode.js';
 import { SushiMode, SUSHI_STORY } from './sushi/mode.js';
 import { CulacMode, CULAC_STORY } from './culac/mode.js';
+import { Shadows } from './shadows.js';
 import { ClosetsMode, CLOSETS_STORY } from './closets/mode.js';
 import { Campaign } from './campaign.js';
 import { VERSION } from './version.js';
@@ -171,6 +172,8 @@ export class Game {
     // 10 Nights at Culac's Daycare: the sixth story, Jimmy's, the same engine (js/culac/).
     Object.assign(SCRIPTS, CULAC_STORY);
     this.culac = new CulacMode(this);
+    // The shadow animatronics: once in a thousand nights, anywhere (shadows.js).
+    this.shadows = new Shadows(this);
     this.story = this.escape;     // whichever story mode is open
     this.setArea('playplace');
     graphics.prepare(this.scene);
@@ -1055,6 +1058,7 @@ export class Game {
     this.sushi.leave();
     this.closets.leave();
     this.culac.leave();
+    this.shadows.clear();
     this.campaign.leave();    // (out of Story mode: Survival's save again)
     this.story = this.escape;
     this.viewCam = null;
@@ -1207,6 +1211,7 @@ export class Game {
   startNight(n) {
     const p = this.profile;
     this.timmyQuest = false;
+    this.shadows.roll();
     this.setArea('playplace');
     this.hidePeople();
     this.retry = () => this.showCard(n);
@@ -1241,6 +1246,7 @@ export class Game {
 
   startHome() {
     this.retry = () => this.startHome();
+    this.shadows.roll();
     this.replaying = this.profile.homeDone;
     this.setArea('home');
     this.hidePeople();
@@ -1292,8 +1298,9 @@ export class Game {
   // Something caught Jonathan.
   caught(who) {
     if (!this.hunting || this.grace > 0 || this.player.out) return;
-    if (this.night.secondChance) { this.getAway(who); return; }
-    if (this.shop.saveLife(who)) return;
+    // (a shadow: nothing can stop it — no second chance, no extra life)
+    if (this.night.secondChance && !who.shadow) { this.getAway(who); return; }
+    if (!who.shadow && this.shop.saveLife(who)) return;
     // (two playing: only the one it caught sees it, in their half — `scareP`)
     this.scareP = this.player;
     this.stopEmote(this.player);
@@ -1377,8 +1384,9 @@ export class Game {
       if (this.twoUp && this.knockOut(sp)) { this.afterKnockOut(a, this.scareFrom); return; }
       exitPointerLock();
       const home = !this.area.isPlayPlace;
-      const tip = home ? TIPS.home : a.id === 'gus' && this.night.boss === 'gus' ? TIPS.gusBoss : TIPS[a.id];
-      this.hud.caught(a.name, home ? 'Try again' : `Try Night ${this.night.n} again`, tip);
+      const tip = a.shadow ? a.tip : home ? TIPS.home : a.id === 'gus' && this.night.boss === 'gus' ? TIPS.gusBoss : TIPS[a.id];
+      if (a.shadow) this.hud.caught(a.name, home ? 'Try again' : `Try Night ${this.night.n} again`, tip, a.title, a.why);
+      else this.hud.caught(a.name, home ? 'Try again' : `Try Night ${this.night.n} again`, tip);
       this.night.stop();
       // Everyone back where they started, so nothing you'd zapped gets up behind the menu.
       this.resetBots();
@@ -1636,6 +1644,7 @@ export class Game {
       default:
         if (this.mode === 'morning' || this.mode === 'caught') this.updateBackdrop(dt);
     }
+    if (this.mode === 'night' || this.mode === 'home' || this.mode === 'escape') this.shadows.update(dt);
     this.effects.update(dt);
     // Fog rolls in wherever the camera is in the Play Maze — you, or a cutscene.
     const cp = this.camera.position;

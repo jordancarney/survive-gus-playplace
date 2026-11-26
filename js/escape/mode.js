@@ -365,6 +365,8 @@ export class EscapeMode {
     g.touch.relabel?.('use', '⌚');
     g.touch.relabel?.('swap', this.story.box ? '📦' : '⤓');
     this.say(s ? this.story.resumeLine : def.firstLine || 'Come on, let\'s get out of here!', 3);
+    // once in a thousand nights, a shadow (shadows.js)
+    g.shadows?.roll();
     if (this.story.box) {
       setTimeout(() => {
         if (g.mode === 'escape') g.hud.toast(`📦 Your box: press ${g.touch.active ? '📦' : 'B'} to hide in it anywhere — but only for ${BOX_SECONDS} seconds!`, 4.5);
@@ -905,8 +907,8 @@ export class EscapeMode {
   caught(who, why = null) {
     const g = this.game;
     if (g.mode !== 'escape' || this.grace > 0 || this.player.out) return;
-    // Spooky's second chance, and the lucky Gus coin
-    if ((g.diff.secondChance && !this.chanceUsed) || this.upgrades.has('chance')) {
+    // Spooky's second chance, and the lucky Gus coin (but nothing stops a shadow)
+    if (!who.shadow && ((g.diff.secondChance && !this.chanceUsed) || this.upgrades.has('chance'))) {
       if (this.upgrades.has('chance')) this.upgrades.delete('chance');
       else this.chanceUsed = true;
       this.grace = 3;
@@ -993,8 +995,8 @@ export class EscapeMode {
     setEyes(a.rig, 'on');
     const s = this.save.save;
     const back = s && s.level === this.level.n ? 'Back to your save box' : `Try ${this.story.unit} ${this.level.n} again`;
-    const tip = (this.def.tips && this.def.tips[a.id]) || 'Hide when they see you, and touch every save box you find!';
-    g.hud.caught(a.name, back, tip, 'GOTCHA!', cap(this.why || `${a.name} caught you.`));
+    const tip = a.tip || (this.def.tips && this.def.tips[a.id]) || 'Hide when they see you, and touch every save box you find!';
+    g.hud.caught(a.name, back, tip, a.title || 'GOTCHA!', cap(this.why || `${a.name} caught you.`));
     for (const e of this.enemies) e.root.visible = false;
     this.jack.hide();
     g.setArea('playplace');

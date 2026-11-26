@@ -1949,6 +1949,23 @@ cutscenes seen — and turning it off reloads the real save. It's remembered und
 `survive_gus_debug`. (This is separate from `?debug=1`, which adds the developer handles
 below.)
 
+## Shadows
+
+The designer's idea, from his ninth round: **shadow versions of all the animatronics, but
+really rare.** Asked the rest, he chose: they show up **everywhere** (any night at the
+PlayPlace, any level of any story), **one night in a thousand**, and when one comes **"it kills
+you automatically, nothing can stop them, but it's super rare."**
+
+So once in a thousand starts (every night, level or chapter, retries included), a shadow comes
+20 to 90 seconds in ([js/shadows.js](js/shadows.js)): one of the animatronics that's there that
+night, painted pitch black, with white glowing eyes. It appears nine metres behind whoever
+it's after, stares for a moment, then drifts straight at them through the walls; get more
+than 15 m away and it's six metres behind you again. When it reaches you (or after nine
+seconds) it catches you, and nothing helps: not a hiding spot, not Spooky's second chance, not
+the Shop's extra life, not the lucky coin. Its jumpscare is the usual one, and the caught
+screen says **A SHADOW!** — then it's a retry like any other. `stats.shadows` counts how many
+you've met. (People in suits — Officer Grumble, Peter — don't have shadows.)
+
 ## Jumpscares
 
 Like the real FNAF games (the designer's call), everywhere in the game
@@ -1976,6 +1993,14 @@ in yours, screen goes crazy, creepy eyes."** So now:
 - **The scream** (`sfx.fnafScream`) is louder and longer (1.9 s), climbing as it goes, with a
   second, higher shriek on top and a growl underneath. The face holds for 1.7 s (Nightmare
   2.3 s) before the static.
+
+## The loading screen
+
+While the game loads, **Gus does cartwheels round and round a circle** (the designer's pick,
+over spinning in place or running round it): a drawing of him, arms and legs out, turning
+over and over as he goes. It's plain CSS, so it keeps going even while the page is busy, and
+it comes back while Culac's Daycare is being built the first time ("BUILDING CULAC'S
+DAYCARE…").
 
 ## Graphics
 
@@ -2118,6 +2143,7 @@ js/culac/story.js    Its cutscenes: Mom dropping Jimmy off, and everybody out th
 js/plex/timmy/tubes.js  Timmy's play tubes and play houses: crawling, hiding where nothing else fits
 js/plex/followers.js    Friends walking along behind you (Chapter 50)
 js/jumpscare.js   The FNAF-style jumpscare every scare in the game uses: lunge, scream, static
+js/shadows.js     The shadow animatronics: once in a thousand nights, anywhere, and nothing stops them
 js/updates.js     Detects new deploys and refreshes stale sessions
 js/version.js     Build version — bump on every deploy
 dev/preview.html  Art preview: framed day/night shots of rooms and characters
@@ -2136,6 +2162,8 @@ Load with `?debug=1` to get (add `&gfx=fast` or `&gfx=real` to force a graphics 
 - `window.__game` — the running game. `__game.profile` is the save; `__game.night`,
   `__game.bots`, `__game.player`, `__game.machines` are the live state.
 - `window.__input` — the input singleton.
+- `__game.shadows.summon()` brings a shadow now; `__game.shadows.force = true` gives the next
+  night one.
 - `window.__three` — the Three.js namespace.
 
 Useful one-liners:
@@ -2159,7 +2187,7 @@ from a background tab needs `__game.update(1/60)` called yourself.
 
 One profile in `localStorage` under `survive_gus_save_v1` — current night, kids' happiness,
 whether the intro has been seen, whether the house level is done, whether Timmy is home, which one-time cutscenes
-have played (and whether you've read the old guard's note), the two boss wins, the furthest night reached, which nights have a Nightmare ⭐, whether you have Old John's badge, and lifetime stats. It's merged over a fresh profile on load, so a save written by an older build never
+have played (and whether you've read the old guard's note), the two boss wins, the furthest night reached, which nights have a Nightmare ⭐, whether you have Old John's badge, and lifetime stats (including how many shadows you've met). It's merged over a fresh profile on load, so a save written by an older build never
 arrives missing a field newer code reads, and it only changes at 6 AM (or a boss win).
 
 The story modes keep their progress inside it, each the same shape: `escape` (When

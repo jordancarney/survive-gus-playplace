@@ -549,6 +549,24 @@ canvas#game.night-vision { filter: saturate(0.35) sepia(0.35) hue-rotate(70deg) 
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+/* The loading screen: Gus doing cartwheels round and round a circle (the designer's idea).
+   The orbit carries him round; the wheel turns him over and over as he goes. (CSS transform
+   animations keep going even while the page is busy building something.) */
+.gus-loader { position: relative; width: 270px; height: 270px; }
+.gus-track {
+  position: absolute; inset: 44px; border-radius: 50%;
+  border: 3px dashed rgba(255, 210, 63, 0.3);
+  box-shadow: 0 0 24px rgba(255, 63, 164, 0.15) inset;
+}
+.gus-orbit { position: absolute; inset: 0; animation: gus-orbit 3.2s linear infinite; }
+.gus-spot { position: absolute; left: 50%; top: 0; width: 86px; height: 88px; margin-left: -43px; }
+.gus-wheel {
+  width: 100%; height: 100%; animation: gus-wheel 0.8s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 162, 31, 0.45));
+}
+@keyframes gus-orbit { to { transform: rotate(360deg); } }
+@keyframes gus-wheel { to { transform: rotate(360deg); } }
+
 @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0.2; } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
